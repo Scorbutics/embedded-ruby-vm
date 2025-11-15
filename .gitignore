@@ -1,8 +1,9 @@
 *.a
 *.so
+*.o
 CMakeCache.txt
 Makefile
 *.cmake
 CMakeFiles/
 !external/
-/cpp/_deps/
+/_deps/
