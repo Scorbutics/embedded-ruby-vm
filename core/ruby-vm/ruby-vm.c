@@ -84,8 +84,6 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
     transferredMemoryArgs->script = script;
     transferredMemoryArgs->on_complete = on_complete;
 
-    fprintf(stderr, "ENQUEUING SCRIPT\n");
-
     pthread_t script_thread;
     // "transferredMemoryArgs" is consumed and freed by the thread
     // TODO: implement an Async queue instead
@@ -121,6 +119,25 @@ static void cleanup_script_args(void* arg) {
     free(args);
 }
 
+static int send_script_to_ruby(int socket_fd, const char* script_content) {
+    size_t script_length = strlen(script_content);
+    char length_buffer[32];
+    
+    // Send length prefix: "<length>\n"
+    int written = snprintf(length_buffer, sizeof(length_buffer), "%zu\n", script_length);
+    if (write(socket_fd, length_buffer, written) != written) {
+        perror("Failed to write length prefix");
+        return -1;
+    }
+    
+    // Send script content (no trailing newline needed)
+    if (write(socket_fd, script_content, script_length) != (ssize_t)script_length) {
+        perror("Failed to write script content");
+        return -1;
+    }
+    return 0;
+}
+
 void* ruby_vm_script_thread_func(void* arg) {
     RubyScriptEnqueueArgs* args = (RubyScriptEnqueueArgs*)arg;
 
@@ -135,14 +152,16 @@ void* ruby_vm_script_thread_func(void* arg) {
     pthread_mutex_lock(&vm->socket_lock);
 
     // Write commands as VM socket input
-    write(vm->commands_channel.main_fd , content, strlen(content));
-    write(vm->commands_channel.main_fd, "\n", 1);
+    send_script_to_ruby(vm->commands_channel.main_fd, content);
 
-    // Read exit code from VM socket output
-    if (read(vm->commands_channel.main_fd, &result, sizeof(result)) >= 0) {
-        result = result - '0';
+    // Read exit code + newline as confirmation
+    char read_buffer[2] = {0};
+    ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
+
+    if (bytes_read == 2 && read_buffer[1] == '\n') {
+        result = read_buffer[0] - '0';
     } else {
-        fprintf(stderr, "error while reading exit code socket\n");
+        fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
     }
 
     // Now command is executed and return code queried, let the place to the next script

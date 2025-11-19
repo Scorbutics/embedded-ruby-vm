@@ -36,7 +36,7 @@ set_target_properties(minizip PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-add_library(assets OBJECT
+add_library(assets STATIC
         ${EMBEDDED_FIFO_INTERPRETER}
         ${EMBEDDED_RUBY_STDLIB}
         ${EMBEDDED_RUBY_STDLIB_EXT}
@@ -46,7 +46,7 @@ add_library(assets OBJECT
 set_target_properties(assets PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Werror")
 
 # Link minizip-ng to your assets library
-target_link_libraries(assets PUBLIC minizip)
+target_link_libraries(assets PRIVATE minizip)
 
 target_compile_definitions(assets PRIVATE HAS_EMBEDDED_DATA)
 
@@ -54,6 +54,6 @@ target_compile_definitions(assets PRIVATE HAS_EMBEDDED_DATA)
 set_target_properties(assets PROPERTIES LINKER_LANGUAGE C)
 
 # Make minizip headers available to consumers of assets library
-target_include_directories(assets PUBLIC
+target_include_directories(assets PRIVATE
         $<TARGET_PROPERTY:minizip,INTERFACE_INCLUDE_DIRECTORIES>
 )

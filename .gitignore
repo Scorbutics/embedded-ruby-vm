@@ -3,7 +3,11 @@
 *.o
 CMakeCache.txt
 Makefile
-*.cmake
+cmake_install.cmake
+CTestTestfile.cmake
 CMakeFiles/
 !external/
 /_deps/
+ruby_vm_test.log
+/lib/
+/bin/

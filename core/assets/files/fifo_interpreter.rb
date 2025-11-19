@@ -3,8 +3,10 @@
 #
 # Usage: ruby fifo_interpreter.rb <socket_fd>
 #
-# This script runs an infinite REPL that reads Ruby commands from a socket,
-# executes them, and writes back exit codes (0 = success, 1 = failure).
+# Protocol:
+# 1. C side sends: "<length>\n<script_content>"
+# 2. Ruby side executes the full script
+# 3. Ruby side responds: "<exit_code>\n"
 
 begin
   # Get socket file descriptor from command-line argument
@@ -28,27 +30,60 @@ begin
 
   # Main REPL loop
   loop do
-    # Read one line of Ruby code
-    line = socket.gets
+    # Read the length prefix (format: "<bytes>\n")
+    length_line = socket.gets
 
     # EOF means the C side closed the socket - time to exit
-    if line.nil?
+    if length_line.nil?
       STDOUT.puts "[Ruby VM] Socket closed by peer, shutting down"
       break
     end
 
-    command = line.strip
+    length_str = length_line.strip
 
-    # Skip empty commands
-    next if command.empty?
+    # Skip empty lines
+    next if length_str.empty?
 
-    # Execute the Ruby code
+    # Parse the length
+    begin
+      script_length = Integer(length_str)
+    rescue ArgumentError
+      STDERR.puts "[Ruby Error] Invalid length prefix: '#{length_str}'"
+      socket.write("1\n")
+      socket.flush
+      next
+    end
+
+    # Validate length
+    if script_length <= 0 || script_length > 10_000_000  # 10MB max
+      STDERR.puts "[Ruby Error] Invalid script length: #{script_length}"
+      socket.write("1\n")
+      socket.flush
+      next
+    end
+
+    # Read exactly script_length bytes
+    script_content = socket.read(script_length)
+
+    if script_content.nil? || script_content.bytesize != script_length
+      STDERR.puts "[Ruby Error] Failed to read complete script (expected #{script_length} bytes)"
+      socket.write("1\n")
+      socket.flush
+      next
+    end
+
+    STDOUT.puts "[Ruby VM] Executing script (#{script_length} bytes)"
+    STDOUT.flush
+
+    # Execute the Ruby script
     begin
       # Use TOPLEVEL_BINDING so code has access to top-level context
-      result = eval(command, TOPLEVEL_BINDING)
+      result = eval(script_content, TOPLEVEL_BINDING, "<socket-script>")
 
       # Send success exit code
-      socket.write('0')
+      socket.write("0\n")
+      STDOUT.puts "[Ruby VM] Script executed successfully"
+      STDOUT.flush
 
     rescue ScriptError, StandardError => error
       # Log the error to stderr (visible in logcat on Android)
@@ -57,7 +92,7 @@ begin
       STDERR.flush
 
       # Send failure exit code
-      socket.write('1')
+      socket.write("1\n")
     end
 
     # Flush to ensure exit code is sent immediately
