@@ -11,3 +11,9 @@ CMakeFiles/
 ruby_vm_test.log
 /lib/
 /bin/
+/.gradle/
+/build/
+/examples/*.jar
+/examples/*.class
+# By default the assets files are loaded in./ruby
+/ruby/

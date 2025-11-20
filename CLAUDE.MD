@@ -6,6 +6,38 @@ This is a C library that embeds a full Ruby interpreter for use in native applic
 
 ## Architecture
 
+### Multi-Layer Architecture
+
+This project uses a **three-layer architecture** for maximum platform compatibility:
+
+```
+┌─────────────────────────────────────────────────┐
+│  Kotlin Multiplatform (KMP) - Unified API      │
+│  - commonMain: Shared interfaces                │
+│  - androidMain/jvmMain: JNI implementations     │
+│  - nativeMain: cinterop implementations         │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│  Native Bridge Layer                            │
+│  - JNI: For Android & JVM Desktop               │
+│  - cinterop: For iOS & Native Desktop           │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│  C Core Library - Embedded Ruby VM              │
+│  - Cross-platform Ruby interpreter              │
+│  - Asset management, logging, threading         │
+└─────────────────────────────────────────────────┘
+```
+
+**Supported Platforms:**
+- Android (via JNI)
+- JVM Desktop (via JNI)
+- iOS (arm64 + simulator via cinterop)
+- macOS (arm64 + x64 via cinterop)
+- Linux (x64 via cinterop)
+
 ### Core Components
 
 1. **Ruby VM Wrapper** (`core/ruby-vm/`)
@@ -56,14 +88,46 @@ This is a C library that embeds a full Ruby interpreter for use in native applic
 
 ### Build System
 
-- **CMake** (minimum version 3.19.2)
-- **Build Options**:
-  - `BUILD_ANDROID_JNI`: Enable Android JNI bindings (default: OFF)
-  - `BUILD_TESTS`: Build test executable (default: ON)
-- **Host-specific**: Builds are configured for specific platform triplets (e.g., `aarch64-linux-android`)
-- **External Dependencies**:
-  - Ruby shared library (`libruby.so`) expected in `core/external/lib/{host}/`
-  - minizip-ng fetched as dependency
+**Two-tier build system:**
+
+1. **Gradle** (top-level) - Kotlin Multiplatform orchestration
+   - Coordinates builds for all platforms
+   - Invokes CMake for each target platform
+   - Manages Kotlin compilation and packaging
+   - Generates XCFramework for iOS distribution
+
+2. **CMake** (native layer) - C library compilation
+   - Minimum version: 3.19.2
+   - Build Options:
+     - `BUILD_JNI`: Enable JNI bindings (default: OFF)
+     - `BUILD_JNI_ANDROID_LOG`: Enable Android logging module (default: OFF)
+     - `BUILD_TESTS`: Build test suite (default: ON)
+   - Host-specific: Platform triplets (e.g., `aarch64-linux-android`)
+   - External Dependencies:
+     - Ruby shared library in `core/external/lib/{host}/`
+     - minizip-ng (fetched automatically)
+
+**Building with Gradle (Recommended):**
+```bash
+# Build all platforms
+./gradlew build
+
+# Build specific platform
+./gradlew :ruby-vm-kmp:desktopJar              # JVM Desktop
+./gradlew :ruby-vm-kmp:assembleRelease     # Android
+./gradlew :ruby-vm-kmp:linkDebugFrameworkIosArm64  # iOS
+
+# Run CMake tasks to build native libraries
+./gradlew buildNativeLibsIOS
+./gradlew buildNativeLibsMacOS
+./gradlew buildNativeLibsLinux
+```
+
+**Building with CMake only (C library):**
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
 
 ## Key APIs
 
@@ -92,10 +156,48 @@ RubyScript* ruby_script_create_from_content(
 );
 ```
 
-### JNI API (Kotlin/Java)
+### Kotlin Multiplatform API (Unified API for all platforms)
+
+```kotlin
+// Package: com.scorbutics.rubyvm
+
+// Log listener interface
+interface LogListener {
+    fun onLog(message: String)
+    fun onError(message: String)
+}
+
+// Create interpreter (works on all platforms)
+val interpreter = RubyInterpreter.create(
+    appPath = "/path/to/app",
+    rubyBaseDir = "/path/to/ruby",
+    nativeLibsDir = "/path/to/native/libs",
+    listener = object : LogListener {
+        override fun onLog(message: String) {
+            println("Ruby: $message")
+        }
+        override fun onError(message: String) {
+            System.err.println("Ruby Error: $message")
+        }
+    }
+)
+
+// Create and execute script
+val script = RubyScript.fromContent("puts 'Hello from Ruby!'")
+interpreter.enqueue(script) { exitCode ->
+    println("Script completed with exit code: $exitCode")
+}
+
+// Cleanup
+script.destroy()
+interpreter.destroy()
+```
+
+### JNI API (Low-level, used internally by KMP)
 
 ```java
 // Package: com.scorbutics.rubyvm
+// This is used internally by androidMain/jvmMain implementations
 class RubyVMNative {
     static native long createInterpreter(String appPath, String rubyBaseDir,
                                          String nativeLibsLocation, LogListener listener);
@@ -117,7 +219,7 @@ The JNI layer uses a **weak symbol pattern** for platform-agnostic logging:
 4. Non-Android platforms get silent logging (or can provide custom implementation)
 
 **For Android Users:**
-- **Automatic**: Android logging is automatically enabled when building with `BUILD_ANDROID_JNI=ON`
+- **Automatic**: Android logging is automatically enabled when building with `BUILD_JNI=ON`
 - Logs go to logcat via `__android_log_write`
 - No setup required!
 
@@ -173,15 +275,33 @@ Then link `custom_logging.o` with your application.
 
 ### Common Tasks
 
-**Building the Project**:
+**Building with Kotlin Multiplatform (Recommended)**:
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+# First time setup - download Gradle wrapper
+./gradlew wrapper
+
+# Build all platforms
+./gradlew build
+
+# Build native libraries for each platform
+./gradlew buildNativeLibsAndroid buildNativeLibsIOS buildNativeLibsMacOS buildNativeLibsLinux
+
+# Clean build
+./gradlew clean
 ```
 
-**Building with Android JNI**:
+**Building C Library Only (CMake)**:
 ```bash
-cmake -B build -DBUILD_ANDROID_JNI=ON
+# Basic build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+
+# With Android JNI
+cmake -B build -DBUILD_JNI=ON
+cmake --build build
+
+# With Android logging
+cmake -B build -DBUILD_JNI=ON -DBUILD_JNI_ANDROID_LOG=ON
 cmake --build build
 ```
 
@@ -189,38 +309,88 @@ cmake --build build
 ```bash
 cd build
 ctest
-# or run directly:
-./bin/test
+
+# Or run specific test levels
+./bin/test_core                     # Core library tests
+./bin/test_jni                      # JNI layer tests (if built)
+./bin/test_jni_android_log          # Android logging tests (if built)
 ```
 
 ### Architecture Decisions
 
-1. **Why Socket Communication?**
+1. **Why Kotlin Multiplatform?**
+   - **Single codebase**: Write API once, works everywhere
+   - **Native performance**: No bridge overhead for native platforms (cinterop)
+   - **Minimal duplication**: Only platform-specific implementations differ
+   - **Type safety**: Compile-time errors instead of runtime crashes
+
+2. **Why Two Bridge Technologies (JNI + cinterop)?**
+   - **JNI for Android/JVM**: Reuses existing, battle-tested JNI layer
+   - **cinterop for iOS/Native**: Direct C calls, better performance, no JVM overhead
+   - **Best of both worlds**: Right tool for each platform
+
+3. **Why Socket Communication?**
    - Isolates Ruby VM in separate process/thread
    - Prevents crashes in Ruby from affecting main application
    - Clean separation of concerns
 
-2. **Why Embed Assets?**
+4. **Why Embed Assets?**
    - Single-binary deployment
    - No external Ruby installation required
    - Consistent stdlib version across platforms
 
-3. **Threading vs Process**
+5. **Threading vs Process**
    - Currently uses threads with socket pairs
    - Could be adapted to use separate processes for better isolation
 
 ## Files of Interest
 
+### Kotlin Multiplatform Layer
+- `kmp/build.gradle.kts`: KMP module configuration with platform targets
+- `kmp/src/commonMain/kotlin/`: Shared Kotlin API (expect declarations)
+  - `RubyInterpreter.kt`: Main interpreter interface
+  - `RubyScript.kt`: Script representation
+  - `LogListener.kt`: Logging callback interface
+- `kmp/src/androidMain/kotlin/`: Android implementations (JNI-based)
+  - `RubyInterpreter.android.kt`
+  - `RubyScript.android.kt`
+- `kmp/src/jvmMain/kotlin/`: JVM Desktop implementations (JNI-based)
+  - `RubyInterpreter.jvm.kt`
+  - `RubyScript.jvm.kt`
+- `kmp/src/nativeMain/kotlin/`: Native implementations (cinterop-based)
+  - `RubyInterpreter.native.kt`: iOS/macOS/Linux implementation
+  - `RubyScript.native.kt`
+- `kmp/src/nativeInterop/cinterop/ruby_vm.def`: cinterop configuration
+
+### Build System
+- `settings.gradle.kts`: Gradle project configuration
+- `build.gradle.kts`: Root Gradle build file
+- `gradle.properties`: Gradle settings
+- `gradle/libs.versions.toml`: Version catalog for dependencies
+- `core/assets/embed_binary.cmake`: Asset embedding logic
+
+### Core C Library
 - `core/ruby-vm/exec-main-vm.c`: Ruby VM initialization and main execution loop
 - `core/assets/files/fifo_interpreter.rb`: Ruby-side script executor
-- `tests/test.c`: Example usage and integration test
-- `jni/ruby_vm_jni.c`: Android JNI bridge implementation
+- `jni/ruby_vm_jni.c`: JNI bridge implementation
 - `jni/jni_logging.c/h`: Weak symbol logging interface
 - `jni/android/android_logging.c`: Android logging implementation (strong symbol)
-- `core/assets/embed_binary.cmake`: Asset embedding logic
+
+### Tests
+- `tests/core/test_core.c`: Core library tests
+- `tests/jni/test_jni.c`: JNI layer tests (weak symbol verification)
+- `tests/jni-android/test_jni_android_log.c`: Android logging tests
 
 ## Platform Support
 
+### Kotlin Multiplatform Targets
+- **Android**: API 21+ (armeabi-v7a, arm64-v8a, x86, x86_64)
+- **JVM Desktop**: Java 8+ (Windows, macOS, Linux)
+- **iOS**: 12.0+ (arm64 device, x64/arm64 simulator) - XCFramework
+- **macOS**: 10.13+ (arm64, x64)
+- **Linux**: x64
+
+### Native C Library Support
 - Linux (Termux/Android)
 - Android (via JNI)
 - Architecture: aarch64, x86_64
@@ -234,7 +404,7 @@ ctest
 - **zlib**: Required for JNI builds (zip handling)
 
 **Platform-Specific:**
-- **Android**: `liblog` (automatically linked by `jni/android/` module when `BUILD_ANDROID_JNI=ON`)
+- **Android**: `liblog` (automatically linked by `jni/android/` module when `BUILD_JNI_ANDROID_LOG=ON`)
 - **Other platforms**: No platform-specific dependencies (uses no-op logging by default)
 
 ## Troubleshooting

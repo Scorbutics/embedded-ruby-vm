@@ -1,0 +1,35 @@
+# Kotlin/Native cinterop definition for Ruby VM
+# This file tells K/N which C headers to use and how to link the library
+
+package = com.scorbutics.rubyvm.native
+
+# C headers to expose to Kotlin
+headers = ruby-interpreter.h ruby-script.h ruby-vm.h completion-task.h log-listener.h
+
+# Filter which headers are processed (only our public API)
+headerFilter = ruby-interpreter.h ruby-script.h
+
+# Compiler options for finding headers
+compilerOpts.ios_arm64 = -I../../../core/ruby-vm -I../../../core/logging
+compilerOpts.ios_x64 = -I../../../core/ruby-vm -I../../../core/logging
+compilerOpts.ios_simulator_arm64 = -I../../../core/ruby-vm -I../../../core/logging
+compilerOpts.macos_arm64 = -I../../../core/ruby-vm -I../../../core/logging
+compilerOpts.macos_x64 = -I../../../core/ruby-vm -I../../../core/logging
+compilerOpts.linux_x64 = -I../../../core/ruby-vm -I../../../core/logging
+compilerOpts.linux_arm64 = -I../../../core/ruby-vm -I../../../core/logging
+
+# Linker options for linking against the native library
+linkerOpts.ios_arm64 = -L../libs/ios_arm64 -lembedded-ruby
+linkerOpts.ios_x64 = -L../libs/ios_x64 -lembedded-ruby
+linkerOpts.ios_simulator_arm64 = -L../libs/ios_simulator_arm64 -lembedded-ruby
+linkerOpts.macos_arm64 = -L../libs/macos_arm64 -lembedded-ruby
+linkerOpts.macos_x64 = -L../libs/macos_x64 -lembedded-ruby
+linkerOpts.linux_x64 = -L../libs/linux_x64 -lembedded-ruby
+linkerOpts.linux_arm64 = -L../libs/linux_arm64 -lembedded-ruby
+
+# Exclude internal implementation details
+excludedFunctions = ruby_vm_main_thread_func ruby_vm_log_reader_thread_func ruby_vm_script_thread_func
+
+# Static libraries to link (if needed)
+# staticLibraries = libembedded-ruby.a
+# libraryPaths = ../libs/${target}

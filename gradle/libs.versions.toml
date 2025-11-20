@@ -1,0 +1,12 @@
+[versions]
+kotlin = "1.9.22"
+agp = "8.2.2"
+kotlinxCoroutines = "1.7.3"
+
+[libraries]
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+android-library = { id = "com.android.library", version.ref = "agp" }
