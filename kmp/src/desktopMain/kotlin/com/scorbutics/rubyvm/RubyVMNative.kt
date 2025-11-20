@@ -26,12 +26,9 @@ internal object RubyVMNative {
 
     init {
         // Load native library for desktop JVM
-        // Library should be in java.library.path
-        try {
-            System.loadLibrary("embedded-ruby")
-        } catch (e: UnsatisfiedLinkError) {
-            throw RuntimeException("Failed to load native library. Make sure libembedded-ruby is in java.library.path", e)
-        }
+        // First tries to load from embedded JAR resources,
+        // then falls back to java.library.path
+        NativeLibraryLoader.loadLibrary()
     }
 }
 

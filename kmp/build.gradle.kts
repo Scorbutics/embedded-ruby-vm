@@ -155,6 +155,45 @@ android {
 }
 
 // ============================================================================
+// Native Library Packaging
+// ============================================================================
+
+/**
+ * Package native libraries into the JAR for self-contained distribution.
+ * This allows users to use the JAR without setting java.library.path.
+ */
+tasks.register<Copy>("packageNativeLibraries") {
+    description = "Copy native libraries into JAR resources"
+    group = "build"
+
+    // Define where native libraries are built
+    val nativeLibsSource = mapOf(
+        "linux-x64" to "../build/linux-x64/lib/libembedded-ruby.so",
+        "linux-arm64" to "../build/jvm/lib/libembedded-ruby.so",
+        "macos-x64" to "../build/macos-x64/lib/libembedded-ruby.dylib",
+        "macos-arm64" to "../build/macos-arm64/lib/libembedded-ruby.dylib",
+        "windows-x64" to "../build/windows-x64/lib/embedded-ruby.dll"
+    )
+
+    // Copy each platform's library to resources
+    nativeLibsSource.forEach { (platform, sourcePath) ->
+        val sourceFile = file(sourcePath)
+        if (sourceFile.exists()) {
+            from(sourceFile) {
+                into("natives/$platform")
+            }
+        }
+    }
+
+    into("src/desktopMain/resources")
+}
+
+// Make JAR task depend on native library packaging
+tasks.named("desktopProcessResources") {
+    dependsOn("packageNativeLibraries")
+}
+
+// ============================================================================
 // CMake Integration Tasks
 // ============================================================================
 
