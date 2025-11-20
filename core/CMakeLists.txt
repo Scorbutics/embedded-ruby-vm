@@ -34,4 +34,6 @@ target_link_libraries(core INTERFACE
 )
 target_include_directories(core INTERFACE 
     ${RUBY_VM_DIR}
+    ${LOGGING_DIR}
+    ${IMPORT_DIR}
 )

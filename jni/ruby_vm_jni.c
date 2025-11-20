@@ -1,10 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
-#include <logging.h>
-
-#include <android/log.h>
 
 #include "env.h"
+#include "logging.h"
+#include "jni_logging.h"
 #include "ruby_vm_jni.h"
 #include "ruby-vm.h"
 #include "ruby-script-location.h"
@@ -41,14 +40,14 @@ static JNIEnv* get_jni_env(JavaVM* jvm) {
         if ((*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL) == JNI_OK) {
             return env;
         }
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to attach thread as daemon");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to attach thread as daemon");
         return NULL;
     } else if (result == JNI_OK) {
         // Already attached
         return env;
     }
 
-    __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "GetEnv failed with unknown error");
+    jni_log_write(JNI_LOG_ERROR, "RubyVM", "GetEnv failed with unknown error");
     return NULL;
 }
 
@@ -78,19 +77,19 @@ static char* jstring_to_cstring(JNIEnv* env, jstring j_str) {
  */
 static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotlin_listener) {
     if (!env || !kotlin_listener) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Invalid parameters to create_jni_callback_context");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Invalid parameters to create_jni_callback_context");
         return NULL;
     }
 
     JNICallbackContext* context = malloc(sizeof(JNICallbackContext));
     if (!context) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to allocate JNI callback context");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to allocate JNI callback context");
         return NULL;
     }
 
     // Get JavaVM for later use in callbacks from native threads
     if ((*env)->GetJavaVM(env, &context->jvm) != JNI_OK) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get JavaVM");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JavaVM");
         free(context);
         return NULL;
     }
@@ -99,7 +98,7 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
     // This prevents the object from being garbage collected
     context->kotlin_listener = (*env)->NewGlobalRef(env, kotlin_listener);
     if (!context->kotlin_listener) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to create global reference");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create global reference");
         free(context);
         return NULL;
     }
@@ -107,7 +106,7 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
     // Get the class and cache method IDs for better performance
     jclass listener_class = (*env)->GetObjectClass(env, kotlin_listener);
     if (!listener_class) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get listener class");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get listener class");
         (*env)->DeleteGlobalRef(env, context->kotlin_listener);
         free(context);
         return NULL;
@@ -122,7 +121,7 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
     (*env)->DeleteLocalRef(env, listener_class);
 
     if (!context->accept_method_id || !context->error_method_id) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get method IDs");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get method IDs");
         (*env)->DeleteGlobalRef(env, context->kotlin_listener);
         free(context);
         return NULL;
@@ -170,7 +169,7 @@ static void jni_log_accept_callback(LogListener* listener, const char* message) 
     // Get JNI environment for current thread
     JNIEnv* env = get_jni_env(context->jvm);
     if (!env) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get JNI env in log accept");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in log accept");
         return;
     }
 
@@ -187,7 +186,7 @@ static void jni_log_accept_callback(LogListener* listener, const char* message) 
 
     // Check for exceptions and log them
     if ((*env)->ExceptionCheck(env)) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Exception in log accept callback");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log accept callback");
         (*env)->ExceptionDescribe(env);
         (*env)->ExceptionClear(env);
     }
@@ -206,7 +205,7 @@ static void jni_log_error_callback(LogListener* listener, const char* error_mess
     // Get JNI environment for current thread
     JNIEnv* env = get_jni_env(context->jvm);
     if (!env) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get JNI env in log error");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in log error");
         return;
     }
 
@@ -223,7 +222,7 @@ static void jni_log_error_callback(LogListener* listener, const char* error_mess
 
     // Check for exceptions and log them
     if ((*env)->ExceptionCheck(env)) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Exception in log error callback");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log error callback");
         (*env)->ExceptionDescribe(env);
         (*env)->ExceptionClear(env);
     }
@@ -246,14 +245,14 @@ static void jni_log_error_callback(LogListener* listener, const char* error_mess
 static CompletionCallbackContext* create_completion_context(JNIEnv* env, jobject completion_callback, int* errorCode) {
     if (!env || !completion_callback) {
         *errorCode = 1;
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Invalid parameters to create_completion_context");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Invalid parameters to create_completion_context");
         return NULL;
     }
 
     CompletionCallbackContext* context = malloc(sizeof(CompletionCallbackContext));
     if (!context) {
         *errorCode = 2;
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to allocate completion context");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to allocate completion context");
         return NULL;
     }
 
@@ -261,7 +260,7 @@ static CompletionCallbackContext* create_completion_context(JNIEnv* env, jobject
     if ((*env)->GetJavaVM(env, &context->jvm) != JNI_OK) {
         free(context);
         *errorCode = 3;
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get JavaVM for completion");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JavaVM for completion");
         return NULL;
     }
 
@@ -270,7 +269,7 @@ static CompletionCallbackContext* create_completion_context(JNIEnv* env, jobject
     if (!context->callback_obj) {
         free(context);
         *errorCode = 4;
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to create global ref for completion");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create global ref for completion");
         return NULL;
     }
 
@@ -280,7 +279,7 @@ static CompletionCallbackContext* create_completion_context(JNIEnv* env, jobject
         (*env)->DeleteGlobalRef(env, context->callback_obj);
         free(context);
         *errorCode = 5;
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get completion callback class");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get completion callback class");
         return NULL;
     }
 
@@ -294,7 +293,7 @@ static CompletionCallbackContext* create_completion_context(JNIEnv* env, jobject
         (*env)->DeleteGlobalRef(env, context->callback_obj);
         free(context);
         *errorCode = 6;
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get complete method ID");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get complete method ID");
         return NULL;
     }
 
@@ -339,7 +338,7 @@ static void destroy_completion_context(CompletionCallbackContext* context) {
  */
 static void jni_completion_callback(void* user_context, int result) {
     if (!user_context) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Completion callback called with NULL context");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Completion callback called with NULL context");
         return;
     }
 
@@ -348,7 +347,7 @@ static void jni_completion_callback(void* user_context, int result) {
     // Get JNI environment for current thread
     JNIEnv* env = get_jni_env(context->jvm);
     if (!env) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to get JNI env in completion callback");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in completion callback");
         destroy_completion_context(context);
         return;
     }
@@ -359,7 +358,7 @@ static void jni_completion_callback(void* user_context, int result) {
 
     // Check for exceptions
     if ((*env)->ExceptionCheck(env)) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Exception in completion callback");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in completion callback");
         (*env)->ExceptionDescribe(env);
         (*env)->ExceptionClear(env);
     }
@@ -389,20 +388,19 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createInterpreter(JNIEnv *env, jclass cl
     char* c_native_libs_directory = jstring_to_cstring(env, native_libs_directory);
 
     if (!c_app_path || !c_ruby_base_directory || !c_native_libs_directory) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to convert path strings");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to convert path strings");
         free(c_app_path);
         free(c_ruby_base_directory);
         free(c_native_libs_directory);
         return 0;
     }
 
-    // Set up Android logging
-    LoggingSetNativeLoggingFunction(__android_log_write);
+    // Note: Native logging function should be set by user via setLogCallback
 
     // Create JNI callback context for log listener
     JNICallbackContext* callback_context = create_jni_callback_context(env, kotlin_listener);
     if (!callback_context) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to create JNI callback context");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create JNI callback context");
         free(c_app_path);
         free(c_ruby_base_directory);
         free(c_native_libs_directory);
@@ -432,7 +430,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createInterpreter(JNIEnv *env, jclass cl
     free(c_app_path);
 
     if (!interpreter) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to create Ruby interpreter");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create Ruby interpreter");
         destroy_jni_callback_context(callback_context);
         return 0;
     }
@@ -447,7 +445,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_destroyInterpreter(JNIEnv *env, jclass c
     (void) clazz;
 
     if (!interpreter_ptr) {
-        __android_log_write(ANDROID_LOG_WARN, "RubyVM", "Attempting to destroy NULL interpreter");
+        jni_log_write(JNI_LOG_WARN, "RubyVM", "Attempting to destroy NULL interpreter");
         return;
     }
 
@@ -479,7 +477,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createScript(JNIEnv *env, jclass clazz,
 
     char* c_content = jstring_to_cstring(env, content);
     if (!c_content) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to convert script content");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to convert script content");
         return 0;
     }
 
@@ -487,7 +485,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createScript(JNIEnv *env, jclass clazz,
     free(c_content);
 
     if (!script) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to create Ruby script");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create Ruby script");
         return 0;
     }
 
@@ -501,7 +499,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_destroyScript(JNIEnv *env, jclass clazz,
     (void) clazz;
 
     if (!script_ptr) {
-        __android_log_write(ANDROID_LOG_WARN, "RubyVM", "Attempting to destroy NULL script");
+        jni_log_write(JNI_LOG_WARN, "RubyVM", "Attempting to destroy NULL script");
         return;
     }
 
@@ -521,7 +519,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enqueueScript(JNIEnv *env, jclass clazz,
 
     // Validate inputs
     if (!interpreter || !script) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Invalid interpreter or script pointer");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Invalid interpreter or script pointer");
 
         // If callback exists, call it with error result immediately
         if (completion_callback) {
@@ -550,8 +548,8 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enqueueScript(JNIEnv *env, jclass clazz,
             c_completion_callback = jni_completion_callback;
         } else {
             // Failed to create context
-            __android_log_print(ANDROID_LOG_ERROR, "RubyVM",
-                                "Failed to create completion context (error %d)", context_result);
+            jni_log_printf(JNI_LOG_ERROR, "RubyVM",
+                           "Failed to create completion context (error %d)", context_result);
 
             // Call callback with error immediately
             jclass callback_class = (*env)->GetObjectClass(env, completion_callback);
@@ -575,8 +573,8 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enqueueScript(JNIEnv *env, jclass clazz,
     );
 
     if (interpreter_script_result != 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "RubyVM",
-                            "Failed to enqueue script (error %d)", interpreter_script_result);
+        jni_log_printf(JNI_LOG_ERROR, "RubyVM",
+                       "Failed to enqueue script (error %d)", interpreter_script_result);
 
         // If enqueue failed immediately, clean up context and notify callback
         if (context) {
@@ -611,7 +609,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_updateEnvLocations(JNIEnv *env, jclass c
     char* c_extra_arg = jstring_to_cstring(env, extra_arg);
 
     if (!c_current_directory || !c_extra_arg) {
-        __android_log_write(ANDROID_LOG_ERROR, "RubyVM", "Failed to convert env location strings");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to convert env location strings");
         free(c_current_directory);
         free(c_extra_arg);
         return -1;

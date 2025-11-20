@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include <android/log.h>
 
+#include "jni_logging.h"
 #include "get_activity_parameters.h"
 
 const char* GetNewNativeActivityParameter(ANativeActivity* activity, const char* parameterName) {
@@ -9,7 +9,7 @@ const char* GetNewNativeActivityParameter(ANativeActivity* activity, const char*
 	JavaVM* vm = activity->vm;
 	const int res = (*vm)->AttachCurrentThread(vm, &env, NULL);
 	if (res != 0) {
-		__android_log_write(ANDROID_LOG_ERROR, "com.scorbutics.rubyvm", "Cannot attach current thread (GetNewNativeActivityParameter)\n");
+		jni_log_write(JNI_LOG_ERROR, "com.scorbutics.rubyvm", "Cannot attach current thread (GetNewNativeActivityParameter)\n");
 		return NULL;
 	}
 
