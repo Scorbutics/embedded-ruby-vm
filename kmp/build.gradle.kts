@@ -115,9 +115,16 @@ kotlin {
             }
         }
 
+        // JVM source set (shared between Android and Desktop)
+        // Both platforms use JNI-based implementation
+        val jvmMain by creating {
+            dependsOn(commonMain)
+        }
+
         // Android implementation (JNI-based) - only if Android SDK is available
         if (isAndroidAvailable) {
             val androidMain by getting {
+                dependsOn(jvmMain)
                 dependencies {
                     implementation(libs.kotlinx.coroutines.android)
                 }
@@ -126,6 +133,7 @@ kotlin {
 
         // JVM Desktop implementation (JNI-based)
         val desktopMain by getting {
+            dependsOn(jvmMain)
             resources.srcDir(layout.buildDirectory.dir("generated/natives"))
             dependencies {
                 // Same as Android, uses JNI

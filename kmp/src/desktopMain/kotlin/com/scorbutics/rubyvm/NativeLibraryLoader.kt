@@ -6,13 +6,14 @@ import java.io.InputStream
 import java.nio.file.Files
 
 /**
+ * Desktop implementation of native library loader.
  * Loads native libraries embedded in the JAR.
  *
  * This utility extracts platform-specific native libraries from the JAR's resources
  * to a temporary directory and loads them. This allows the JAR to be self-contained
  * without requiring users to set java.library.path.
  */
-internal object NativeLibraryLoader {
+internal actual object NativeLibraryLoader {
     private var loaded = false
     private val libraryName = "embedded-ruby"
 
@@ -21,7 +22,7 @@ internal object NativeLibraryLoader {
      * The library is extracted from JAR resources to a temp directory.
      */
     @Synchronized
-    fun loadLibrary() {
+    actual fun loadLibrary() {
         if (loaded) {
             return
         }

@@ -16,7 +16,7 @@ fun main() {
     println("=== Ruby VM Native Test (Linux x64) ===")
     println()
 
-    val sleepTime = 500u
+    val sleepTime = 5u
 
     // Create a log listener
     val listener = object : LogListener {
@@ -70,7 +70,7 @@ fun main() {
     interpreter.enqueue(script3) { exitCode ->
         println("✓ Array script completed with exit code: $exitCode")
     }
-    sleep(sleepTime)
+    sleep(sleepTime * 10u)
 
     // Cleanup
     println("\nCleaning up...")
