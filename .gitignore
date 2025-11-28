@@ -6,7 +6,7 @@ Makefile
 cmake_install.cmake
 CTestTestfile.cmake
 CMakeFiles/
-!external/
+!core/external/lib/**/*.so
 /_deps/
 ruby_vm_test.log
 /lib/
