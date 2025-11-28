@@ -89,24 +89,25 @@ int main(int argc, char* argv[]) {
         fprintf(g_log_file, "Initializing Ruby interpreter...\n");
         fflush(g_log_file);
     }
-    
+
     interpreter = ruby_interpreter_create(
         execution_location,
         ruby_base_dir,
         native_libs_dir,
         listener
     );
-    
+
     if (interpreter == NULL) {
-        const char* error_msg = "Error: Failed to create Ruby interpreter";
+        const char* error_msg = "Error: Failed to create Ruby interpreter (out of memory)";
         fprintf(stderr, "%s\n", error_msg);
         if (g_log_file != NULL) {
             fprintf(g_log_file, "%s\n", error_msg);
+            fflush(g_log_file);
         }
         result = 1;
         goto cleanup;
     }
-    
+
     printf("Interpreter created successfully\n\n");
 
     /* Create script */
@@ -125,16 +126,28 @@ int main(int argc, char* argv[]) {
 
     /* Execute script */
     printf("=== Script Output ===\n");
-    
+
     result = ruby_interpreter_enqueue(
-        interpreter, 
-        script, 
+        interpreter,
+        script,
         ruby_completion_task_create(OnScriptCompleted, NULL)
     );
-    
+
     if (result != 0) {
-        const char* error_msg = "\nError: Script execution failed with code";
-        fprintf(stderr, "%s %d\n", error_msg, result);
+        const char* error_msg = "\nError: Script execution failed";
+        fprintf(stderr, "%s with code %d\n", error_msg, result);
+
+        // Get detailed error message from interpreter
+        const char* detailed_error = ruby_interpreter_get_error_message(interpreter);
+        if (detailed_error) {
+            fprintf(stderr, "Details: %s\n", detailed_error);
+            if (g_log_file != NULL) {
+                fprintf(g_log_file, "%s with code %d\n", error_msg, result);
+                fprintf(g_log_file, "Details: %s\n", detailed_error);
+                fflush(g_log_file);
+            }
+        }
+
         goto cleanup;
     }
     
@@ -147,11 +160,6 @@ cleanup:
     /* Cleanup */
     if (interpreter != NULL) {
         ruby_interpreter_destroy(interpreter);
-    }
-    
-    /* Free dynamically allocated script content if loaded from file */
-    if (argc > 1 && script_content != test_script) {
-        free((void*)script_content);
     }
 
     printf("\nTest completed with exit code: %d\n", result);

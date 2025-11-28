@@ -37,7 +37,7 @@ static JNIEnv* get_jni_env(JavaVM* jvm) {
 
     if (result == JNI_EDETACHED) {
         // Not attached, use daemon attachment for automatic cleanup
-        if ((*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL) == JNI_OK) {
+        if ((*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL) == JNI_OK) {
             return env;
         }
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to attach thread as daemon");
@@ -142,7 +142,7 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
 
     if (result == JNI_EDETACHED) {
         // Not attached, need to attach temporarily to delete global ref
-        if ((*context->jvm)->AttachCurrentThread(context->jvm, &env, NULL) == JNI_OK) {
+        if ((*context->jvm)->AttachCurrentThread(context->jvm, (void**)&env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->kotlin_listener);
             (*context->jvm)->DetachCurrentThread(context->jvm);
         }
@@ -313,7 +313,7 @@ static void destroy_completion_context(CompletionCallbackContext* context) {
 
     if (result == JNI_EDETACHED) {
         // Not attached, need to attach temporarily to delete global ref
-        if ((*context->jvm)->AttachCurrentThread(context->jvm, &env, NULL) == JNI_OK) {
+        if ((*context->jvm)->AttachCurrentThread(context->jvm, (void**)&env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->callback_obj);
             (*context->jvm)->DetachCurrentThread(context->jvm);
         }

@@ -31,6 +31,9 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
 void ruby_interpreter_destroy(RubyInterpreter* interpreter);
 int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, RubyCompletionTask on_complete );
 
+// Error handling - delegates to underlying VM
+const char* ruby_interpreter_get_error_message(const RubyInterpreter* interpreter);
+
 #ifdef __cplusplus
 }
 #endif

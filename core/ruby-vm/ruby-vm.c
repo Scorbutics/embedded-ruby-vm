@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <android/log.h>
+#include <pthread.h>
 
 #include "constants.h"
 
@@ -12,6 +12,16 @@
 #include "ruby-script.h"
 #include "ruby-vm.h"
 #include "exec-main-vm.h"
+
+// Debug logging macro - can be disabled by defining NDEBUG
+#ifdef NDEBUG
+    #define DEBUG_LOG(fmt, ...) ((void)0)
+#else
+    #define DEBUG_LOG(fmt, ...) do { \
+        fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__); \
+        fflush(stderr); \
+    } while(0)
+#endif
 
 RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, LogListener listener) {
     if (!application_path || !main_script) return NULL;
@@ -24,6 +34,7 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
     vm->log_listener = listener;
     vm->vm_started = 0;
     pthread_mutex_init(&vm->socket_lock, NULL);
+    ruby_vm_error_init(&vm->last_error);
     return vm;
 }
 
@@ -50,31 +61,96 @@ static void native_log_callbacks(const char* line, log_stream_t stream, void* co
 }
 
 int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* native_libs_location) {
-    // Already started, no need to change anything
-    if (vm->vm_started) return 1;
-
-    // Create socket pair for communication
-    if (create_comm_channel(&vm->commands_channel) != 0) {
-        return -1;
+    if (!vm) {
+        return RUBY_VM_ERROR_INVALID_PARAM;
     }
 
+    // Already started
+    if (vm->vm_started) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_ALREADY_STARTED,
+                          "VM is already started");
+        return RUBY_VM_ERROR_ALREADY_STARTED;
+    }
+
+    // Clear any previous errors
+    ruby_vm_clear_error(vm);
+
+    DEBUG_LOG("ruby_vm_start: Creating socket pair");
+    // Create socket pair for communication
+    if (create_comm_channel(&vm->commands_channel) != 0) {
+        DEBUG_LOG("ruby_vm_start: Failed to create comm channel");
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_COMM_CHANNEL,
+                          "Failed to create communication channel (socketpair failed)");
+        return RUBY_VM_ERROR_COMM_CHANNEL;
+    }
+    DEBUG_LOG("ruby_vm_start: Socket pair created");
+
     // Create thread arguments
+    DEBUG_LOG("ruby_vm_start: Preparing thread args");
     RubyVMStartArgs* transferredMemoryArgs = malloc(sizeof(RubyVMStartArgs));
+    if (!transferredMemoryArgs) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Failed to allocate memory for VM start args");
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
     transferredMemoryArgs->vm = vm;
     transferredMemoryArgs->ruby_base_directory = strdup(ruby_base_directory);
     transferredMemoryArgs->native_libs_location = strdup(native_libs_location);
 
-    // Setup log reading callbacks
+    // Setup log reading callbacks (but don't start logging thread yet)
+    DEBUG_LOG("ruby_vm_start: Setting up logging callbacks");
     LoggingSetCustomOutputCallback(native_log_callbacks, vm);
 
-    // Start logging thread
-    LoggingThreadRun("com.scorbutics.rubyvm");
+    // NOTE: Logging thread initialization is now OPTIONAL
+    // Call ruby_vm_enable_logging() separately if you want stdout/stderr redirection
+    // For platforms like WSL where fd redirection may hang, you can skip this entirely
 
     // Start main thread
     // "transferredMemoryArgs" is consumed and freed by the main thread
-    pthread_create(&vm->main_thread, NULL, ruby_vm_main_thread_func, transferredMemoryArgs);
+    DEBUG_LOG("ruby_vm_start: Creating main VM thread");
+    int thread_result = pthread_create(&vm->main_thread, NULL, ruby_vm_main_thread_func, transferredMemoryArgs);
+    if (thread_result != 0) {
+        DEBUG_LOG("ruby_vm_start: Failed to create main VM thread");
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_THREAD_CREATE,
+                          "Failed to create Ruby VM thread (error code: %d)", thread_result);
+        free(transferredMemoryArgs->ruby_base_directory);
+        free(transferredMemoryArgs->native_libs_location);
+        free(transferredMemoryArgs);
+        return RUBY_VM_ERROR_THREAD_CREATE;
+    }
+    DEBUG_LOG("ruby_vm_start: Main VM thread created");
 
     vm->vm_started = 1;
+    DEBUG_LOG("ruby_vm_start: VM started successfully, returning");
+    return RUBY_VM_OK;
+}
+
+/**
+ * Enable logging with stdout/stderr redirection (OPTIONAL)
+ *
+ * This function is separate from ruby_vm_start() to allow the VM to initialize
+ * even on platforms where file descriptor redirection may be problematic (e.g., WSL).
+ *
+ * Call this AFTER ruby_vm_start() if you want Ruby's stdout/stderr to be captured
+ * through the logging system. If not called, Ruby output goes to normal stdout/stderr.
+ *
+ * @param vm The Ruby VM instance
+ * @return 0 on success, negative on error
+ */
+int ruby_vm_enable_logging(RubyVM* vm) {
+    if (!vm) return -1;
+
+    DEBUG_LOG("ruby_vm_enable_logging: Starting logging thread");
+
+    int logging_result = LoggingThreadRun("com.scorbutics.rubyvm");
+
+    if (logging_result != 0) {
+        DEBUG_LOG("ruby_vm_enable_logging: Logging thread failed to start (error %d)", logging_result);
+        DEBUG_LOG("Continuing without logging redirection - output will go to normal stdout/stderr");
+        return logging_result;
+    }
+
+    DEBUG_LOG("ruby_vm_enable_logging: Logging thread started successfully");
     return 0;
 }
 
@@ -174,4 +250,28 @@ void* ruby_vm_script_thread_func(void* arg) {
     pthread_cleanup_pop(1);
 
     return NULL;
+}
+
+// ============================================================================
+// Error Handling API
+// ============================================================================
+
+const RubyVMError* ruby_vm_get_last_error(const RubyVM* vm) {
+    if (!vm) return NULL;
+    return &vm->last_error;
+}
+
+void ruby_vm_clear_error(RubyVM* vm) {
+    if (!vm) return;
+    ruby_vm_error_init(&vm->last_error);
+}
+
+const char* ruby_vm_get_error_message(const RubyVM* vm) {
+    if (!vm) return "Invalid VM pointer";
+    if (vm->last_error.code == RUBY_VM_OK) return NULL;
+
+    if (vm->last_error.message[0] != '\0') {
+        return vm->last_error.message;
+    }
+    return ruby_vm_error_string(vm->last_error.code);
 }

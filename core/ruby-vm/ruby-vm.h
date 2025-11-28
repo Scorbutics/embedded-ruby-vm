@@ -10,6 +10,7 @@ extern "C" {
 #include "ruby-comm-channel.h"
 #include "log-listener.h"
 #include "completion-task.h"
+#include "ruby-vm-error.h"
 
 struct RubyScript;
 struct RubyScriptCurrentLocation;
@@ -25,13 +26,20 @@ struct RubyVM {
     LogListener log_listener;
     int vm_started;
     pthread_mutex_t socket_lock;
+    RubyVMError last_error;  // Last error that occurred
 };
 typedef struct RubyVM RubyVM;
 
 RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, LogListener listener);
 void ruby_vm_destroy(RubyVM* vm);
 int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* native_libs_location);
+int ruby_vm_enable_logging(RubyVM* vm);  // Optional: enable stdout/stderr redirection
 void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_complete);
+
+// Error handling
+const RubyVMError* ruby_vm_get_last_error(const RubyVM* vm);
+void ruby_vm_clear_error(RubyVM* vm);
+const char* ruby_vm_get_error_message(const RubyVM* vm);
 
 // Thread function prototypes
 void* ruby_vm_main_thread_func(void* arg);

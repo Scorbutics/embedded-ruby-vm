@@ -126,7 +126,7 @@ cmake --build build/jvm --config Release
 ```bash
 ./gradlew clean
 rm -rf build/jvm
-cmake -B build/jvm -DCMAKE_BUILD_TYPE=Release -DBUILD_JNI=OFF -DBUILD_TESTS=ON
+cmake -B build/jvm -DCMAKE_BUILD_TYPE=Release -DBUILD_JNI_ANDROID_LOG=OFF -DBUILD_TESTS=ON
 cmake --build build/jvm
 ./gradlew :ruby-vm-kmp:desktopJar
 ```

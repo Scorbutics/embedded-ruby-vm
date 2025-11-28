@@ -13,7 +13,10 @@ ruby_vm_test.log
 /bin/
 /.gradle/
 /build/
+/build-test/
 /examples/*.jar
 /examples/*.class
+/.claude/
 # By default the assets files are loaded in./ruby
 /ruby/
+/META-INF/

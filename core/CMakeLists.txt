@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.19.2)
 
 project("core")
 
-string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_CXX_PLATFORM_ID}-${CMAKE_SYSTEM_NAME}" HOST)
-message(NOTICE "Configuring for host: ${HOST}")
-
 set(IMPORT_DIR 
     ${CMAKE_CURRENT_SOURCE_DIR}/external/include 
     ${CMAKE_CURRENT_SOURCE_DIR}/external/include/${HOST}

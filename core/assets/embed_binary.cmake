@@ -61,17 +61,27 @@ function(embed_binary INPUT_PATH INPUT_FILE OUTPUT_OBJ_VAR)
   # Derive output object file path inside build dir based on OUTPUT_OBJ_VAR
   set(output_obj "${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FILE_NAME}.o")
 
+  # Temporary object file before adding GNU-stack note
+  set(temp_obj "${output_obj}.tmp")
+
   # Create the custom command to embed the file
   add_custom_command(
           OUTPUT ${output_obj}
+          # Step 1: Create binary object
           COMMAND ${CMAKE_OBJCOPY}
-          ARGS -I binary
+          -I binary
           -O elf${objcopy_bits}-${objcopy_arch}
-          -B ${objcopy_arch}
-          ${INPUT_FILE} ${output_obj}
+          ${INPUT_FILE} ${temp_obj}
+          # Step 2: Add GNU-stack note section (mark stack as non-executable)
+          COMMAND ${CMAKE_OBJCOPY}
+          --add-section .note.GNU-stack=/dev/null
+          --set-section-flags .note.GNU-stack=noload,readonly
+          ${temp_obj} ${output_obj}
+          # Step 3: Clean up temp file
+          COMMAND ${CMAKE_COMMAND} -E remove ${temp_obj}
           WORKING_DIRECTORY ${INPUT_PATH}
           DEPENDS ${INPUT_PATH}/${INPUT_FILE}
-          COMMENT "Embedding ${INPUT_FILE} as ${output_obj}"
+          COMMENT "Embedding ${INPUT_PATH}/${INPUT_FILE} as ${output_obj}"
           VERBATIM
   )
 

@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <errno.h>
 
@@ -53,8 +54,14 @@ static void SetupRubyEnv(const char* baseDirectory, const char* extraLoadPath)
 }
 
 #pragma GCC diagnostic push
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#else
+#ifdef __clang__
 #pragma clang diagnostic ignored "-Wdefault-const-init-field-unsafe"
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
+#endif
 #include "ruby/ruby.h"
 #pragma GCC diagnostic pop
 
