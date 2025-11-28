@@ -8,16 +8,7 @@
 #include "ruby-vm.h"
 #include "ruby-script.h"
 #include "ruby-interpreter.h"
-
-// Debug logging macro - can be disabled by defining NDEBUG
-#ifdef NDEBUG
-    #define DEBUG_LOG(fmt, ...) ((void)0)
-#else
-    #define DEBUG_LOG(fmt, ...) do { \
-        fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__); \
-        fflush(stderr); \
-    } while(0)
-#endif
+#include "debug.h"
 
 static RubyVM* g_global_vm = NULL; // Static VM instance
 
@@ -80,6 +71,7 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
         if (start_result != 0) {
             DEBUG_LOG("ruby_vm_start() failed with code: %d", start_result);
             DEBUG_LOG("Error message: %s", ruby_vm_get_error_message(g_global_vm));
+            ruby_completion_task_invoke(&on_complete, 3);
             return start_result;
         }
         DEBUG_LOG("VM started successfully");

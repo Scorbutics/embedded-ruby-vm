@@ -12,16 +12,7 @@
 #include "ruby-script.h"
 #include "ruby-vm.h"
 #include "exec-main-vm.h"
-
-// Debug logging macro - can be disabled by defining NDEBUG
-#ifdef NDEBUG
-    #define DEBUG_LOG(fmt, ...) ((void)0)
-#else
-    #define DEBUG_LOG(fmt, ...) do { \
-        fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__); \
-        fflush(stderr); \
-    } while(0)
-#endif
+#include "debug.h"
 
 RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, LogListener listener) {
     if (!application_path || !main_script) return NULL;
@@ -97,14 +88,6 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     transferredMemoryArgs->ruby_base_directory = strdup(ruby_base_directory);
     transferredMemoryArgs->native_libs_location = strdup(native_libs_location);
 
-    // Setup log reading callbacks (but don't start logging thread yet)
-    DEBUG_LOG("ruby_vm_start: Setting up logging callbacks");
-    LoggingSetCustomOutputCallback(native_log_callbacks, vm);
-
-    // NOTE: Logging thread initialization is now OPTIONAL
-    // Call ruby_vm_enable_logging() separately if you want stdout/stderr redirection
-    // For platforms like WSL where fd redirection may hang, you can skip this entirely
-
     // Start main thread
     // "transferredMemoryArgs" is consumed and freed by the main thread
     DEBUG_LOG("ruby_vm_start: Creating main VM thread");
@@ -128,20 +111,18 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
 /**
  * Enable logging with stdout/stderr redirection (OPTIONAL)
  *
- * This function is separate from ruby_vm_start() to allow the VM to initialize
- * even on platforms where file descriptor redirection may be problematic (e.g., WSL).
+ * Call this if you want Ruby's stdout/stderr to be captured through the logging system. 
+ * If not called, Ruby output goes to normal stdout/stderr.
  *
- * Call this AFTER ruby_vm_start() if you want Ruby's stdout/stderr to be captured
- * through the logging system. If not called, Ruby output goes to normal stdout/stderr.
- *
- * @param vm The Ruby VM instance
  * @return 0 on success, negative on error
  */
 int ruby_vm_enable_logging(RubyVM* vm) {
-    if (!vm) return -1;
+
+    // Setup log reading callbacks (but don't start logging thread yet)
+    DEBUG_LOG("ruby_vm_enable_logging: Setting up logging callbacks");
+    LoggingSetCustomOutputCallback(native_log_callbacks, vm);
 
     DEBUG_LOG("ruby_vm_enable_logging: Starting logging thread");
-
     int logging_result = LoggingThreadRun("com.scorbutics.rubyvm");
 
     if (logging_result != 0) {

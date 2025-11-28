@@ -10,6 +10,7 @@
 #include "ruby-script.h"
 #include "ruby-interpreter.h"
 #include "completion-task.h"
+#include "debug.h"
 
 // Completion callback context
 typedef struct {
@@ -569,7 +570,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enqueueScript(JNIEnv *env, jclass clazz,
     const int interpreter_script_result = ruby_interpreter_enqueue(
             interpreter,
             script,
- ruby_completion_task_create(c_completion_callback, context)
+            ruby_completion_task_create(c_completion_callback, context)
     );
 
     if (interpreter_script_result != 0) {
@@ -621,4 +622,24 @@ Java_com_scorbutics_rubyvm_RubyVMNative_updateEnvLocations(JNIEnv *env, jclass c
     free(c_current_directory);
 
     return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_scorbutics_rubyvm_RubyVMNative_enableLogging(JNIEnv *env, jclass clazz,
+                                                      jlong interpreter_ptr) {
+    (void) clazz;
+    (void) env;
+
+    RubyInterpreter* interpreter = (RubyInterpreter*)interpreter_ptr;
+
+    // Setup logging
+    DEBUG_LOG("Enabling logging");
+    int logging_result = ruby_vm_enable_logging(interpreter->vm);
+    if (logging_result != 0) {
+        DEBUG_LOG("ruby_vm_enable_logging() failed with code: %d", logging_result);
+        DEBUG_LOG("Error message: %s", ruby_vm_get_error_message(interpreter->vm));
+        return logging_result;
+    }
+
+    return 0;
 }

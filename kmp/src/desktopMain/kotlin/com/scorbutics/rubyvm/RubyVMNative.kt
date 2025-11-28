@@ -24,6 +24,8 @@ internal object RubyVMNative {
         callback: CompletionCallback
     )
 
+    external fun enableLogging(interpreterPtr: Long)
+
     init {
         // Load native library for desktop JVM
         // First tries to load from embedded JAR resources,
