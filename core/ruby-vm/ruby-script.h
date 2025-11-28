@@ -1,6 +1,8 @@
 #ifndef RUBY_SCRIPT_H
 #define RUBY_SCRIPT_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

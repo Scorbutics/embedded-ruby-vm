@@ -38,10 +38,9 @@ kotlin {
         }
     }
 
-    // NOTE: All Kotlin/Native targets (iOS, macOS, Linux) are disabled
-    // because the host platform (Linux ARM64) is not supported by Kotlin/Native.
+    // NOTE: Almost all Kotlin/Native targets (iOS, macOS, Linux) are disabled.
     // This prevents Gradle from trying to download kotlin-native-prebuilt-linux-aarch64.
-    // To re-enable these targets, build on a supported platform (macOS, Linux x64, or Windows).
+    // If you want to enable these targets, build on a supported platform (macOS, Linux x64, or Windows).
 
     // iOS targets (uses cinterop) - DISABLED
     // val xcf = XCFramework()
@@ -66,8 +65,39 @@ kotlin {
     //     }
     // }
 
-    // Linux targets (uses cinterop) - DISABLED
-    // linuxX64()
+    // Linux targets (uses cinterop)
+    linuxX64 {
+        binaries {
+            executable {
+                entryPoint = "main"
+                baseName = "ruby-vm-test"
+
+                freeCompilerArgs += listOf("-linker-option", "--allow-shlib-undefined")
+
+                // Configure linker options with absolute paths
+                val libDir = project.file("libs/linux_x64").absoluteFile
+                val rubyLibDir = project.file("../core/external/lib/x86_64-linux-linux").absoluteFile
+
+                // Link static libraries and Ruby
+                linkerOpts(
+                    "-L${libDir.absolutePath}",
+                    "-L${rubyLibDir.absolutePath}",
+                    // Our static libraries (order matters - dependents BEFORE dependencies!)
+                    "${libDir.absolutePath}/libruby-vm.a",
+                    "${libDir.absolutePath}/liblogging.a",
+                    "${libDir.absolutePath}/libassets.a",
+                    "${libDir.absolutePath}/libminizip.a",
+                    // Ruby interpreter
+                    "-lruby",
+                    // System libraries (math and crypt for Ruby)
+                    "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt",
+                    // Set RPATH so executable can find Ruby library in same directory
+                    "-Wl,-rpath,\$ORIGIN",
+                    "-Wl,-rpath,${rubyLibDir.absolutePath}"
+                )
+            }
+        }
+    }
     // linuxArm64() // Kotlin/Native doesn't support Linux ARM64
 
     // Source sets configuration
@@ -102,10 +132,10 @@ kotlin {
             }
         }
 
-        // Native implementations (cinterop-based) - DISABLED
-        // val nativeMain by creating {
-        //     dependsOn(commonMain)
-        // }
+        // Native implementations (cinterop-based)
+        val nativeMain by creating {
+            dependsOn(commonMain)
+        }
 
         // val iosMain by getting {
         //     dependsOn(nativeMain)
@@ -119,9 +149,9 @@ kotlin {
         //     dependsOn(nativeMain)
         // }
 
-        // val linuxX64Main by getting {
-        //     dependsOn(nativeMain)
-        // }
+        val linuxX64Main by getting {
+            dependsOn(nativeMain)
+        }
 
         // val linuxArm64Main by getting {
         //     dependsOn(nativeMain)
@@ -136,14 +166,18 @@ kotlin {
                     defFile(project.file("src/nativeInterop/cinterop/ruby_vm.def"))
                     packageName("com.scorbutics.rubyvm.native")
 
-                    // Include directories for C headers
-                    includeDirs.headerFilterOnly(
-                        project.file("../core/ruby-vm"),
-                        project.file("../core/logging")
-                    )
+                    // Include directories for C headers (using absolute paths)
+                    val coreRubyVm = project.file("../core/ruby-vm").absoluteFile
+                    val coreLogging = project.file("../core/logging").absoluteFile
 
-                    // Link against the compiled native library
-                    extraOpts("-libraryPath", project.file("libs/${target.konanTarget.name}").absolutePath)
+                    includeDirs.allHeaders(coreRubyVm, coreLogging)
+
+                    // Also add compiler options with absolute paths
+                    compilerOpts("-I${coreRubyVm.absolutePath}", "-I${coreLogging.absolutePath}")
+
+                    // Link against the compiled native library (using absolute paths)
+                    val libDir = project.file("libs/${target.konanTarget.name}").absoluteFile
+                    extraOpts("-libraryPath", libDir.absolutePath)
                 }
             }
         }
@@ -268,11 +302,23 @@ fun Project.runCMake(
         "-DBUILD_TESTS=OFF"
     ) + cmakeArgs
 
-    exec {
-        workingDir = cmakeBuildDir
-        commandLine("cmake", *allCMakeArgs.toTypedArray(), file("..").absolutePath)
+    // Only run configure if cache doesn't exist or CMakeLists.txt changed
+    val cmakeCache = File(cmakeBuildDir, "CMakeCache.txt")
+    val rootCMakeLists = file("../CMakeLists.txt")
+    val needsReconfigure = !cmakeCache.exists() ||
+                          cmakeCache.lastModified() < rootCMakeLists.lastModified()
+
+    if (needsReconfigure) {
+        println("  Configuring CMake...")
+        exec {
+            workingDir = cmakeBuildDir
+            commandLine("cmake", *allCMakeArgs.toTypedArray(), file("..").absolutePath)
+        }
+    } else {
+        println("  CMake cache is up-to-date, skipping configure")
     }
 
+    // Always run build (CMake handles incremental builds)
     exec {
         workingDir = cmakeBuildDir
         commandLine("cmake", "--build", ".", "--config", buildType)

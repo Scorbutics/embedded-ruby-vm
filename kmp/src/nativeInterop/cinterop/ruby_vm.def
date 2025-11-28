@@ -4,32 +4,18 @@
 package = com.scorbutics.rubyvm.native
 
 # C headers to expose to Kotlin
-headers = ruby-interpreter.h ruby-script.h ruby-vm.h completion-task.h log-listener.h
+headers = completion-task.h log-listener.h ruby-interpreter.h ruby-script.h ruby-vm.h
 
-# Filter which headers are processed (only our public API)
-headerFilter = ruby-interpreter.h ruby-script.h
+# Filter which headers are processed (include dependencies needed by public API)
+# Note: completion-task.h and log-listener.h are required by ruby-interpreter.h
+headerFilter = ruby-interpreter.h ruby-script.h completion-task.h log-listener.h
 
 # Compiler options for finding headers
-compilerOpts.ios_arm64 = -I../../../core/ruby-vm -I../../../core/logging
-compilerOpts.ios_x64 = -I../../../core/ruby-vm -I../../../core/logging
-compilerOpts.ios_simulator_arm64 = -I../../../core/ruby-vm -I../../../core/logging
-compilerOpts.macos_arm64 = -I../../../core/ruby-vm -I../../../core/logging
-compilerOpts.macos_x64 = -I../../../core/ruby-vm -I../../../core/logging
-compilerOpts.linux_x64 = -I../../../core/ruby-vm -I../../../core/logging
-compilerOpts.linux_arm64 = -I../../../core/ruby-vm -I../../../core/logging
+# NOTE: Include paths are configured in build.gradle.kts via includeDirs.headerFilterOnly()
+# This ensures absolute paths are used and avoids path resolution issues
 
-# Linker options for linking against the native library
-linkerOpts.ios_arm64 = -L../libs/ios_arm64 -lembedded-ruby
-linkerOpts.ios_x64 = -L../libs/ios_x64 -lembedded-ruby
-linkerOpts.ios_simulator_arm64 = -L../libs/ios_simulator_arm64 -lembedded-ruby
-linkerOpts.macos_arm64 = -L../libs/macos_arm64 -lembedded-ruby
-linkerOpts.macos_x64 = -L../libs/macos_x64 -lembedded-ruby
-linkerOpts.linux_x64 = -L../libs/linux_x64 -lembedded-ruby
-linkerOpts.linux_arm64 = -L../libs/linux_arm64 -lembedded-ruby
+# Note: Linker options are configured in build.gradle.kts with absolute paths
+# This ensures reliable linking across different build environments
 
 # Exclude internal implementation details
 excludedFunctions = ruby_vm_main_thread_func ruby_vm_log_reader_thread_func ruby_vm_script_thread_func
-
-# Static libraries to link (if needed)
-# staticLibraries = libembedded-ruby.a
-# libraryPaths = ../libs/${target}

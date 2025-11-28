@@ -4,6 +4,16 @@ import com.scorbutics.rubyvm.native.*
 import kotlinx.cinterop.*
 import platform.posix.pthread_self
 
+// Type aliases to avoid naming conflicts between Kotlin classes and C structs
+@OptIn(ExperimentalForeignApi::class)
+internal typealias CRubyInterpreter = com.scorbutics.rubyvm.native.RubyInterpreter
+
+@OptIn(ExperimentalForeignApi::class)
+internal typealias CLogListener = com.scorbutics.rubyvm.native.LogListener
+
+@OptIn(ExperimentalForeignApi::class)
+internal typealias CRubyCompletionTask = com.scorbutics.rubyvm.native.RubyCompletionTask
+
 /**
  * Native (iOS/macOS/Linux) implementation of RubyInterpreter using cinterop.
  *
@@ -12,8 +22,8 @@ import platform.posix.pthread_self
  */
 @OptIn(ExperimentalForeignApi::class)
 actual class RubyInterpreter private constructor(
-    private val interpreterPtr: CPointer<ruby_interpreter>?,
-    private val listener: LogListener,
+    private val interpreterPtr: CPointer<CRubyInterpreter>?,
+    private val listener: com.scorbutics.rubyvm.LogListener,
     private val stableRefHolder: StableRefHolder
 ) {
     private var isDestroyed = false
@@ -26,8 +36,8 @@ actual class RubyInterpreter private constructor(
         val callbackRef = StableRef.create(onComplete)
 
         // Create completion task with callback
-        val completionTask = nativeHeap.alloc<completion_task>().apply {
-            this.callback = staticCFunction { exitCode, userData ->
+        val completionTask = nativeHeap.alloc<CRubyCompletionTask>().apply {
+            this.callback = staticCFunction { userData, exitCode ->
                 val callback = userData?.asStableRef<(Int) -> Unit>()?.get()
                 callback?.invoke(exitCode)
                 // Dispose the stable reference
@@ -36,7 +46,7 @@ actual class RubyInterpreter private constructor(
             this.user_data = callbackRef.asCPointer()
         }
 
-        ruby_interpreter_enqueue(interpreterPtr, script.scriptPtr, completionTask.ptr)
+        ruby_interpreter_enqueue(interpreterPtr, script.scriptPtr?.reinterpret(), completionTask.readValue())
 
         nativeHeap.free(completionTask)
     }
@@ -56,45 +66,43 @@ actual class RubyInterpreter private constructor(
             appPath: String,
             rubyBaseDir: String,
             nativeLibsDir: String,
-            listener: LogListener
+            listener: com.scorbutics.rubyvm.LogListener
         ): RubyInterpreter {
-            // Create stable references for the listener callbacks
-            val onLogRef = StableRef.create { message: String ->
-                listener.onLog(message)
-            }
-
-            val onErrorRef = StableRef.create { message: String ->
-                listener.onError(message)
-            }
-
-            val holder = StableRefHolder(onLogRef, onErrorRef)
+            // Create stable reference for the listener itself
+            val listenerRef = StableRef.create(listener)
+            val holder = StableRefHolder(listenerRef, listenerRef) // Same ref for both
 
             // Create log listener structure
-            val logListener = nativeHeap.alloc<log_listener>().apply {
-                this.on_log = staticCFunction { message, userData ->
-                    val callback = userData?.asStableRef<(String) -> Unit>()?.get()
-                    callback?.invoke(message?.toKString() ?: "")
+            val logListener = nativeHeap.alloc<CLogListener>().apply {
+                // Store the listener reference in context
+                this.context = listenerRef.asCPointer()
+                this.user_data = null
+
+                // Set callback function pointers
+                this.accept = staticCFunction { listenerPtr, message ->
+                    val listener = listenerPtr?.pointed?.context
+                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
+                    listener?.onLog(message?.toKString() ?: "")
                 }
-                this.on_log_error = staticCFunction { message, userData ->
-                    val callback = userData?.asStableRef<(String) -> Unit>()?.get()
-                    callback?.invoke(message?.toKString() ?: "")
+                this.on_log_error = staticCFunction { listenerPtr, message ->
+                    val listener = listenerPtr?.pointed?.context
+                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
+                    listener?.onError(message?.toKString() ?: "")
                 }
-                this.on_log_user_data = onLogRef.asCPointer()
-                this.on_log_error_user_data = onErrorRef.asCPointer()
             }
 
             val interpreterPtr = ruby_interpreter_create(
                 appPath,
                 rubyBaseDir,
                 nativeLibsDir,
-                logListener.ptr
+                logListener.readValue()
             )
 
             nativeHeap.free(logListener)
 
             require(interpreterPtr != null) { "Failed to create Ruby interpreter" }
 
-            return RubyInterpreter(interpreterPtr, listener, holder)
+            return RubyInterpreter(interpreterPtr?.reinterpret(), listener, holder)
         }
     }
 }
@@ -104,11 +112,10 @@ actual class RubyInterpreter private constructor(
  */
 @OptIn(ExperimentalForeignApi::class)
 private class StableRefHolder(
-    private val onLogRef: StableRef<(String) -> Unit>,
-    private val onErrorRef: StableRef<(String) -> Unit>
+    private val listenerRef: StableRef<com.scorbutics.rubyvm.LogListener>,
+    @Suppress("UNUSED_PARAMETER") private val unused: StableRef<*>? = null
 ) {
     fun dispose() {
-        onLogRef.dispose()
-        onErrorRef.dispose()
+        listenerRef.dispose()
     }
 }

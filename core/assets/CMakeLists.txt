@@ -30,11 +30,20 @@ set(MZ_BUILD_TESTS OFF CACHE BOOL "Build minizip tests")
 set(MZ_BUILD_UNIT_TESTS OFF CACHE BOOL "Build minizip unit tests")
 set(MZ_COMPAT ON CACHE BOOL "Enable minizip 1.x compatibility layer")
 
+# Disable getrandom to avoid GLIBC 2.25+ dependency (for Kotlin/Native compatibility)
+set(MZ_FETCH_LIBS OFF CACHE BOOL "Disable external lib fetching")
+set(MZ_PKCRYPT OFF CACHE BOOL "Disable PKWARE traditional encryption")
+set(MZ_SIGNING OFF CACHE BOOL "Disable signing support")
+
 FetchContent_MakeAvailable(minizip-ng)
 
-set_target_properties(minizip PROPERTIES 
+set_target_properties(minizip PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
+
+# Override HAVE_GETRANDOM and HAVE_ARC4RANDOM_BUF after minizip is configured
+# This forces minizip to use /dev/urandom instead
+target_compile_options(minizip PRIVATE -UHAVE_GETRANDOM -UHAVE_ARC4RANDOM_BUF)
 
 add_library(assets STATIC
         ${EMBEDDED_FIFO_INTERPRETER}
