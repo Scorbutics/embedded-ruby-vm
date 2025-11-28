@@ -52,7 +52,7 @@ fun main() {
     }
 
     // Wait a bit for async execution
-    Thread.sleep(2000)
+    Thread.sleep(30000)
 
     // Cleanup
     script.destroy()

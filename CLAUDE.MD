@@ -88,46 +88,70 @@ This project uses a **three-layer architecture** for maximum platform compatibil
 
 ### Build System
 
-**Two-tier build system:**
+**Fully Integrated Gradle + CMake Build System:**
+
+The project uses an automated two-tier build system where **Gradle automatically invokes CMake** - you never need to run CMake manually!
 
 1. **Gradle** (top-level) - Kotlin Multiplatform orchestration
-   - Coordinates builds for all platforms
-   - Invokes CMake for each target platform
+   - Automatically invokes CMake before compilation
+   - Supports architecture selection via `-PtargetArch`
+   - Supports build type selection via `-PbuildType`
    - Manages Kotlin compilation and packaging
-   - Generates XCFramework for iOS distribution
+   - Generates platform-specific artifacts (JAR, AAR, XCFramework)
 
 2. **CMake** (native layer) - C library compilation
    - Minimum version: 3.19.2
+   - Automatically invoked by Gradle tasks
    - Build Options:
-     - `BUILD_JNI`: Enable JNI bindings (default: OFF)
-     - `BUILD_JNI_ANDROID_LOG`: Enable Android logging module (default: OFF)
+     - `BUILD_JNI`: Enable JNI bindings (auto-set by Gradle)
+     - `BUILD_JNI_ANDROID_LOG`: Enable Android logging (auto-set for Android)
      - `BUILD_TESTS`: Build test suite (default: ON)
-   - Host-specific: Platform triplets (e.g., `aarch64-linux-android`)
+     - `CMAKE_BUILD_TYPE`: Debug or Release (controlled by `-PbuildType`)
    - External Dependencies:
      - Ruby shared library in `core/external/lib/{host}/`
      - minizip-ng (fetched automatically)
 
-**Building with Gradle (Recommended):**
+**Quick Start - Build Everything with Gradle:**
 ```bash
-# Build all platforms
+# Build for current architecture (auto-detected)
 ./gradlew build
 
-# Build specific platform
-./gradlew :ruby-vm-kmp:desktopJar              # JVM Desktop
-./gradlew :ruby-vm-kmp:assembleRelease     # Android
-./gradlew :ruby-vm-kmp:linkDebugFrameworkIosArm64  # iOS
+# Build for specific architecture
+./gradlew build -PtargetArch=x86_64
+./gradlew build -PtargetArch=arm64
+./gradlew build -PtargetArch=all
 
-# Run CMake tasks to build native libraries
-./gradlew buildNativeLibsIOS
-./gradlew buildNativeLibsMacOS
-./gradlew buildNativeLibsLinux
+# Debug build
+./gradlew build -PbuildType=Debug
 ```
 
-**Building with CMake only (C library):**
+**Platform-Specific Builds:**
+```bash
+# Android (with architecture selection)
+./gradlew :ruby-vm-kmp:assembleRelease -PtargetArch=arm64
+
+# JVM Desktop (auto-builds native libraries)
+./gradlew :ruby-vm-kmp:desktopJar -PtargetArch=x86_64
+
+# iOS
+./gradlew :ruby-vm-kmp:linkDebugFrameworkIosArm64
+
+# Build native libraries only (all platforms)
+./gradlew buildAllNativeLibs -PtargetArch=all
+```
+
+**Architecture Selection:**
+- `x86_64` - 64-bit Intel/AMD (default on x64 systems)
+- `arm64` - 64-bit ARM (default on ARM systems)
+- `all` - Build for all supported architectures
+
+**Advanced CMake-only Build (for C library development):**
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
+See [BUILD_GUIDE.md](BUILD_GUIDE.md) for comprehensive build documentation.
 
 ## Key APIs
 

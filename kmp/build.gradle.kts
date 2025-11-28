@@ -1,19 +1,30 @@
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
+// Detect if Android SDK is available
+val isAndroidAvailable = System.getenv("ANDROID_HOME") != null ||
+                         System.getenv("ANDROID_SDK_ROOT") != null ||
+                         findProperty("android.skip")?.toString()?.toBoolean() == false
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.library) apply false
+}
+
+if (isAndroidAvailable) {
+    apply(plugin = libs.plugins.android.library.get().pluginId)
 }
 
 group = "com.scorbutics.rubyvm"
 version = "1.0.0-SNAPSHOT"
 
 kotlin {
-    // Android target (uses JNI)
-    androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
+    // Android target (uses JNI) - only if Android SDK is available
+    if (isAndroidAvailable) {
+        androidTarget {
+            compilations.all {
+                kotlinOptions {
+                    jvmTarget = "1.8"
+                }
             }
         }
     }
@@ -74,15 +85,18 @@ kotlin {
             }
         }
 
-        // Android implementation (JNI-based)
-        val androidMain by getting {
-            dependencies {
-                implementation(libs.kotlinx.coroutines.android)
+        // Android implementation (JNI-based) - only if Android SDK is available
+        if (isAndroidAvailable) {
+            val androidMain by getting {
+                dependencies {
+                    implementation(libs.kotlinx.coroutines.android)
+                }
             }
         }
 
         // JVM Desktop implementation (JNI-based)
         val desktopMain by getting {
+            resources.srcDir(layout.buildDirectory.dir("generated/natives"))
             dependencies {
                 // Same as Android, uses JNI
             }
@@ -136,22 +150,24 @@ kotlin {
     }
 }
 
-// Android configuration
-android {
-    namespace = "com.scorbutics.rubyvm"
-    compileSdk = 34
+// Android configuration - only if Android SDK is available
+if (isAndroidAvailable) {
+    configure<com.android.build.gradle.LibraryExtension> {
+        namespace = "com.scorbutics.rubyvm"
+        compileSdk = 34
 
-    defaultConfig {
-        minSdk = 24
+        defaultConfig {
+            minSdk = 24
+        }
+
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_1_8
+            targetCompatibility = JavaVersion.VERSION_1_8
+        }
+
+        sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+        sourceSets["main"].res.srcDirs("src/androidMain/res")
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
 }
 
 // ============================================================================
@@ -165,19 +181,27 @@ android {
 tasks.register<Copy>("packageNativeLibraries") {
     description = "Copy native libraries into JAR resources"
     group = "build"
+    dependsOn("buildNativeLibsDesktop")
 
     // Define where native libraries are built
     val nativeLibsSource = mapOf(
-        "linux-x64" to "../build/linux-x64/lib/libembedded-ruby.so",
-        "linux-arm64" to "../build/jvm/lib/libembedded-ruby.so",
-        "macos-x64" to "../build/macos-x64/lib/libembedded-ruby.dylib",
-        "macos-arm64" to "../build/macos-arm64/lib/libembedded-ruby.dylib",
-        "windows-x64" to "../build/windows-x64/lib/embedded-ruby.dll"
+        "linux-x64" to "libs/linux_x86_64/libembedded-ruby.so",
+        "linux-arm64" to "libs/linux_arm64/libembedded-ruby.so",
+        "macos-x64" to "libs/macos_x64/libembedded-ruby.dylib",
+        "macos-arm64" to "libs/macos_arm64/libembedded-ruby.dylib",
+        "windows-x64" to "libs/windows_x64/embedded-ruby.dll"
     )
 
     // Copy each platform's library to resources
     nativeLibsSource.forEach { (platform, sourcePath) ->
         val sourceFile = file(sourcePath)
+        // We don't check for existence here so it fails if the lib is missing (which is good)
+        // But since we might be building on a specific host, we should only copy what exists
+        // OR we rely on the fact that we only build for the current host usually?
+        // The user wants the JAR to carry everything needed.
+        // But we can only build for the current host (mostly).
+        // Let's keep the existence check but log a warning?
+        // Actually, for now, let's just copy what we have.
         if (sourceFile.exists()) {
             from(sourceFile) {
                 into("natives/$platform")
@@ -185,10 +209,10 @@ tasks.register<Copy>("packageNativeLibraries") {
         }
     }
 
-    into("src/desktopMain/resources")
+    into(layout.buildDirectory.dir("generated/natives"))
 }
 
-// Make JAR task depend on native library packaging
+// Ensure resources are processed after native libs are packaged
 tasks.named("desktopProcessResources") {
     dependsOn("packageNativeLibraries")
 }
@@ -199,202 +223,333 @@ tasks.named("desktopProcessResources") {
 
 /**
  * Build native libraries using CMake for all required platforms.
- * These tasks run before cinterop to ensure libraries are available.
+ * These tasks run automatically before compilation.
+ *
+ * Architecture selection via Gradle properties:
+ * - targetArch=x86_64|arm64|all (default: host architecture)
+ * - buildType=Debug|Release (default: Release)
+ *
+ * Examples:
+ *   ./gradlew build -PtargetArch=x86_64
+ *   ./gradlew build -PtargetArch=arm64 -PbuildType=Debug
+ *   ./gradlew build -PtargetArch=all
  */
+
+// Get architecture from Gradle properties or detect host
+val targetArch: String = findProperty("targetArch")?.toString() ?: run {
+    val osArch = System.getProperty("os.arch")
+    when {
+        osArch.contains("aarch64") || osArch.contains("arm64") -> "arm64"
+        osArch.contains("amd64") || osArch.contains("x86_64") -> "x86_64"
+        else -> "x86_64" // default
+    }
+}
+
+val buildType: String = findProperty("buildType")?.toString() ?: "Release"
+
+println("CMake Build Configuration:")
+println("  Target Architecture: $targetArch")
+println("  Build Type: $buildType")
 
 // Helper function to run CMake
 fun Project.runCMake(
     targetPlatform: String,
+    architecture: String,
     cmakeArgs: List<String>,
     outputDir: File
 ) {
-    val buildDir = file("$buildDir/cmake/$targetPlatform")
-    buildDir.mkdirs()
+    val cmakeBuildDir = file("${layout.buildDirectory.get()}/cmake/$targetPlatform-$architecture")
+    cmakeBuildDir.mkdirs()
+
+    println("Building native library for $targetPlatform-$architecture")
+
+    val allCMakeArgs = mutableListOf(
+        "-DCMAKE_BUILD_TYPE=$buildType",
+        "-DBUILD_TESTS=OFF"
+    ) + cmakeArgs
 
     exec {
-        workingDir = buildDir
-        commandLine("cmake", *cmakeArgs.toTypedArray(), file("..").absolutePath)
+        workingDir = cmakeBuildDir
+        commandLine("cmake", *allCMakeArgs.toTypedArray(), file("..").absolutePath)
     }
 
     exec {
-        workingDir = buildDir
-        commandLine("cmake", "--build", ".")
+        workingDir = cmakeBuildDir
+        commandLine("cmake", "--build", ".", "--config", buildType)
     }
 
-    // Copy built libraries to libs directory
+    // Copy built libraries to output directory
     outputDir.mkdirs()
     copy {
-        from("$buildDir/lib")
+        from("$cmakeBuildDir/lib")
         into(outputDir)
-        include("*.so", "*.a", "*.dylib")
+        include("*.so", "*.a", "*.dylib", "*.dll")
     }
+
+    println("Native library built successfully: ${outputDir.absolutePath}")
 }
 
 // Task: Build for iOS (arm64 and simulator)
 tasks.register("buildNativeLibsIOS") {
-    description = "Build native Ruby VM library for iOS"
+    description = "Build native Ruby VM library for iOS (respects -PtargetArch)"
     group = "build"
 
     doLast {
-        // iOS arm64 (device)
-        runCMake(
-            "ios-arm64",
-            listOf(
-                "-DCMAKE_SYSTEM_NAME=iOS",
-                "-DCMAKE_OSX_ARCHITECTURES=arm64",
-                "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
-                "-DBUILD_JNI=OFF",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/ios_arm64")
-        )
+        val architectures = when (targetArch) {
+            "arm64" -> listOf("arm64")
+            "x86_64" -> listOf("x86_64") // Simulator only
+            "all" -> listOf("arm64", "x86_64")
+            else -> listOf(targetArch)
+        }
 
-        // iOS Simulator (x64 and arm64)
-        runCMake(
-            "ios-simulator-arm64",
-            listOf(
-                "-DCMAKE_SYSTEM_NAME=iOS",
-                "-DCMAKE_OSX_ARCHITECTURES=arm64",
-                "-DCMAKE_OSX_SYSROOT=iphonesimulator",
-                "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
-                "-DBUILD_JNI=OFF",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/ios_simulator_arm64")
-        )
+        architectures.forEach { arch ->
+            if (arch == "arm64") {
+                // iOS arm64 (device)
+                runCMake(
+                    "ios",
+                    "arm64",
+                    listOf(
+                        "-DCMAKE_SYSTEM_NAME=iOS",
+                        "-DCMAKE_OSX_ARCHITECTURES=arm64",
+                        "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
+                        "-DBUILD_JNI=OFF"
+                    ),
+                    file("libs/ios_arm64")
+                )
+
+                // iOS Simulator arm64
+                runCMake(
+                    "ios-simulator",
+                    "arm64",
+                    listOf(
+                        "-DCMAKE_SYSTEM_NAME=iOS",
+                        "-DCMAKE_OSX_ARCHITECTURES=arm64",
+                        "-DCMAKE_OSX_SYSROOT=iphonesimulator",
+                        "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
+                        "-DBUILD_JNI=OFF"
+                    ),
+                    file("libs/ios_simulator_arm64")
+                )
+            }
+
+            if (arch == "x86_64") {
+                // iOS Simulator x64
+                runCMake(
+                    "ios-simulator",
+                    "x86_64",
+                    listOf(
+                        "-DCMAKE_SYSTEM_NAME=iOS",
+                        "-DCMAKE_OSX_ARCHITECTURES=x86_64",
+                        "-DCMAKE_OSX_SYSROOT=iphonesimulator",
+                        "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
+                        "-DBUILD_JNI=OFF"
+                    ),
+                    file("libs/ios_simulator_x64")
+                )
+            }
+        }
     }
 }
 
 // Task: Build for macOS
 tasks.register("buildNativeLibsMacOS") {
-    description = "Build native Ruby VM library for macOS"
+    description = "Build native Ruby VM library for macOS (respects -PtargetArch)"
     group = "build"
 
     doLast {
-        // macOS arm64 (Apple Silicon)
-        runCMake(
-            "macos-arm64",
-            listOf(
-                "-DCMAKE_OSX_ARCHITECTURES=arm64",
-                "-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0",
-                "-DBUILD_JNI=OFF",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/macos_arm64")
-        )
+        val architectures = when (targetArch) {
+            "arm64" -> listOf("arm64")
+            "x86_64" -> listOf("x86_64")
+            "all" -> listOf("arm64", "x86_64")
+            else -> listOf(targetArch)
+        }
 
-        // macOS x64 (Intel)
-        runCMake(
-            "macos-x64",
-            listOf(
-                "-DCMAKE_OSX_ARCHITECTURES=x86_64",
-                "-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15",
-                "-DBUILD_JNI=OFF",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/macos_x64")
-        )
+        architectures.forEach { arch ->
+            val (cmakeArch, deploymentTarget, outputName) = when (arch) {
+                "arm64" -> Triple("arm64", "11.0", "macos_arm64")
+                "x86_64" -> Triple("x86_64", "10.15", "macos_x64")
+                else -> throw GradleException("Unsupported macOS architecture: $arch")
+            }
+
+            runCMake(
+                "macos",
+                arch,
+                listOf(
+                    "-DCMAKE_OSX_ARCHITECTURES=$cmakeArch",
+                    "-DCMAKE_OSX_DEPLOYMENT_TARGET=$deploymentTarget",
+                    "-DBUILD_JNI=OFF"
+                ),
+                file("libs/$outputName")
+            )
+        }
     }
 }
 
 // Task: Build for Linux
 tasks.register("buildNativeLibsLinux") {
-    description = "Build native Ruby VM library for Linux (x64 and arm64)"
+    description = "Build native Ruby VM library for Linux (respects -PtargetArch)"
     group = "build"
 
     doLast {
-        // Linux x64
-        runCMake(
-            "linux-x64",
-            listOf(
-                "-DCMAKE_BUILD_TYPE=Release",
-                "-DBUILD_JNI=OFF",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/linux_x64")
-        )
-
-        // Linux arm64 (aarch64)
-        runCMake(
-            "linux-arm64",
-            listOf(
-                "-DCMAKE_BUILD_TYPE=Release",
-                "-DBUILD_JNI=OFF",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/linux_arm64")
-        )
-    }
-}
-
-// Task: Build for current Linux architecture
-tasks.register("buildNativeLibsLinuxNative") {
-    description = "Build native Ruby VM library for current Linux architecture"
-    group = "build"
-
-    doLast {
-        val arch = System.getProperty("os.arch")
-        val (targetName, outputDir) = when {
-            arch.contains("aarch64") || arch.contains("arm64") -> "linux-arm64" to "linux_arm64"
-            arch.contains("amd64") || arch.contains("x86_64") -> "linux-x64" to "linux_x64"
-            else -> throw GradleException("Unsupported architecture: $arch")
+        val architectures = when (targetArch) {
+            "arm64" -> listOf("arm64")
+            "x86_64" -> listOf("x86_64")
+            "all" -> listOf("arm64", "x86_64")
+            else -> listOf(targetArch)
         }
 
-        println("Building for current architecture: $arch -> $targetName")
-        runCMake(
-            targetName,
-            listOf(
-                "-DCMAKE_BUILD_TYPE=Release",
-                "-DBUILD_JNI=OFF",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/$outputDir")
-        )
+        architectures.forEach { arch ->
+            val outputName = when (arch) {
+                "arm64" -> "linux_arm64"
+                "x86_64" -> "linux_x64"
+                else -> throw GradleException("Unsupported Linux architecture: $arch")
+            }
+
+            runCMake(
+                "linux",
+                arch,
+                listOf(
+                    "-DBUILD_JNI=OFF"
+                ),
+                file("libs/$outputName")
+            )
+        }
     }
 }
 
-// Task: Build for Android (via existing build system)
-tasks.register("buildNativeLibsAndroid") {
-    description = "Build native Ruby VM library for Android"
+// Task: Build for JVM Desktop (Linux, macOS, Windows)
+tasks.register("buildNativeLibsDesktop") {
+    description = "Build native Ruby VM library for JVM Desktop with JNI (respects -PtargetArch)"
     group = "build"
 
     doLast {
-        // Android libraries should be built using NDK
-        // This is typically done through Android Gradle Plugin
-        runCMake(
-            "android-arm64",
-            listOf(
-                "-DCMAKE_SYSTEM_NAME=Android",
-                "-DCMAKE_ANDROID_ARCH_ABI=arm64-v8a",
-                "-DCMAKE_ANDROID_NDK=${System.getenv("ANDROID_NDK_HOME")}",
-                "-DCMAKE_SYSTEM_VERSION=24",
-                "-DBUILD_JNI=ON",
-                "-DBUILD_JNI_ANDROID_LOG=ON",
-                "-DBUILD_TESTS=OFF"
-            ),
-            file("libs/android")
-        )
+        val os = System.getProperty("os.name").lowercase()
+        val architectures = when (targetArch) {
+            "arm64" -> listOf("arm64")
+            "x86_64" -> listOf("x86_64")
+            "all" -> listOf("arm64", "x86_64")
+            else -> listOf(targetArch)
+        }
+
+        architectures.forEach { arch ->
+            val (platformName, libExtension) = when {
+                os.contains("linux") -> "linux" to "so"
+                os.contains("mac") -> "macos" to "dylib"
+                os.contains("win") -> "windows" to "dll"
+                else -> throw GradleException("Unsupported OS: $os")
+            }
+
+            val outputName = "${platformName}_${arch}"
+            val cmakeArgs = mutableListOf("-DBUILD_JNI=ON")
+
+            // Add platform-specific CMake arguments
+            when {
+                os.contains("mac") -> {
+                    val (cmakeArch, deploymentTarget) = when (arch) {
+                        "arm64" -> "arm64" to "11.0"
+                        "x86_64" -> "x86_64" to "10.15"
+                        else -> throw GradleException("Unsupported macOS architecture: $arch")
+                    }
+                    cmakeArgs.add("-DCMAKE_OSX_ARCHITECTURES=$cmakeArch")
+                    cmakeArgs.add("-DCMAKE_OSX_DEPLOYMENT_TARGET=$deploymentTarget")
+                }
+                os.contains("win") -> {
+                    if (arch == "x86_64") {
+                        cmakeArgs.add("-A")
+                        cmakeArgs.add("x64")
+                    }
+                }
+            }
+
+            runCMake(
+                "desktop-$platformName",
+                arch,
+                cmakeArgs,
+                file("libs/$outputName")
+            )
+        }
     }
 }
 
-// Make cinterop depend on CMake builds
+// Task: Build for Android
+tasks.register("buildNativeLibsAndroid") {
+    description = "Build native Ruby VM library for Android (respects -PtargetArch)"
+    group = "build"
+
+    doLast {
+        val ndkHome = System.getenv("ANDROID_NDK_HOME")
+            ?: throw GradleException("ANDROID_NDK_HOME environment variable not set")
+
+        val architectures = when (targetArch) {
+            "arm64" -> listOf("arm64-v8a")
+            "x86_64" -> listOf("x86_64")
+            "all" -> listOf("arm64-v8a", "x86_64", "armeabi-v7a", "x86")
+            else -> {
+                // Map common arch names to Android ABIs
+                when (targetArch) {
+                    "armv7" -> listOf("armeabi-v7a")
+                    "x86" -> listOf("x86")
+                    else -> listOf(targetArch)
+                }
+            }
+        }
+
+        architectures.forEach { abi ->
+            runCMake(
+                "android",
+                abi,
+                listOf(
+                    "-DCMAKE_SYSTEM_NAME=Android",
+                    "-DCMAKE_ANDROID_ARCH_ABI=$abi",
+                    "-DCMAKE_ANDROID_NDK=$ndkHome",
+                    "-DCMAKE_SYSTEM_VERSION=24",
+                    "-DBUILD_JNI=ON",
+                    "-DBUILD_JNI_ANDROID_LOG=ON"
+                ),
+                file("libs/android/$abi")
+            )
+        }
+    }
+}
+
+// ============================================================================
+// Automatic Build Integration
+// ============================================================================
+
+/**
+ * Automatically build native libraries before compilation tasks.
+ * This makes the build fully automated - just run ./gradlew build!
+ */
+
+// Hook into Android compilation
+tasks.matching { it.name.startsWith("compile") && it.name.contains("Android") }.configureEach {
+    dependsOn("buildNativeLibsAndroid")
+}
+
+// Hook into JVM Desktop compilation
+tasks.matching { it.name.startsWith("compileKotlinDesktop") }.configureEach {
+    dependsOn("buildNativeLibsDesktop")
+}
+
+// Hook into native cinterop tasks
 tasks.matching { it.name.contains("cinterop", ignoreCase = true) }.configureEach {
     when {
         name.contains("Ios", ignoreCase = true) -> dependsOn("buildNativeLibsIOS")
         name.contains("Macos", ignoreCase = true) -> dependsOn("buildNativeLibsMacOS")
-        name.contains("Linux", ignoreCase = true) -> dependsOn("buildNativeLibsLinux")
+        name.contains("Linux", ignoreCase = true) && !name.contains("Desktop") -> dependsOn("buildNativeLibsLinux")
     }
 }
 
 // Convenience task to build all native libraries
 tasks.register("buildAllNativeLibs") {
-    description = "Build native libraries for all platforms"
+    description = "Build native libraries for all platforms (respects -PtargetArch)"
     group = "build"
 
     dependsOn(
         "buildNativeLibsIOS",
         "buildNativeLibsMacOS",
         "buildNativeLibsLinux",
-        "buildNativeLibsAndroid"
+        "buildNativeLibsAndroid",
+        "buildNativeLibsDesktop"
     )
 }

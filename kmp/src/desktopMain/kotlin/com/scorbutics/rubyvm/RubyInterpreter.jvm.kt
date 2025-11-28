@@ -33,13 +33,58 @@ actual class RubyInterpreter private constructor(
 
     actual companion object {
         init {
-            // Load native library for desktop JVM
-            // Library should be in java.library.path
             try {
-                System.loadLibrary("embedded-ruby")
-            } catch (e: UnsatisfiedLinkError) {
-                throw RuntimeException("Failed to load native library. Make sure libembedded-ruby is in java.library.path", e)
+                loadNativeLibrary()
+            } catch (e: Exception) {
+                // Fallback to standard loading if extraction fails
+                try {
+                    System.loadLibrary("embedded-ruby")
+                } catch (e2: UnsatisfiedLinkError) {
+                    throw RuntimeException("Failed to load native library. \n" +
+                            "Extraction error: ${e.message}\n" +
+                            "Standard load error: ${e2.message}", e)
+                }
             }
+        }
+
+        private fun loadNativeLibrary() {
+            val os = System.getProperty("os.name").lowercase()
+            val arch = System.getProperty("os.arch").lowercase()
+
+            val platform = when {
+                os.contains("linux") -> "linux"
+                os.contains("mac") -> "macos"
+                os.contains("win") -> "windows"
+                else -> throw UnsupportedOperationException("Unsupported OS: $os")
+            }
+
+            val architecture = when {
+                arch.contains("amd64") || arch.contains("x86_64") -> "x64"
+                arch.contains("aarch64") || arch.contains("arm64") -> "arm64"
+                else -> throw UnsupportedOperationException("Unsupported architecture: $arch")
+            }
+
+            val libName = when {
+                os.contains("win") -> "embedded-ruby.dll"
+                os.contains("mac") -> "libembedded-ruby.dylib"
+                else -> "libembedded-ruby.so"
+            }
+
+            val resourcePath = "/natives/$platform-$architecture/$libName"
+            val resourceStream = RubyInterpreter::class.java.getResourceAsStream(resourcePath)
+                ?: throw java.io.FileNotFoundException("Native library not found in resources: $resourcePath")
+
+            val tempDir = java.io.File(System.getProperty("java.io.tmpdir"), "rubyvm_natives")
+            if (!tempDir.exists()) tempDir.mkdirs()
+
+            val tempFile = java.io.File(tempDir, "rubyvm_${System.currentTimeMillis()}_$libName")
+            tempFile.deleteOnExit()
+
+            java.io.FileOutputStream(tempFile).use { out ->
+                resourceStream.copyTo(out)
+            }
+
+            System.load(tempFile.absolutePath)
         }
 
         actual fun create(

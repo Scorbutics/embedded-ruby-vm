@@ -48,7 +48,7 @@ public class SimpleJavaExample {
         });
 
         // Wait for async execution
-        Thread.sleep(3000);
+        Thread.sleep(30000);
 
         // Cleanup
         script.destroy();
