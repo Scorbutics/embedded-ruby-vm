@@ -32,26 +32,26 @@ typedef void (*logging_custom_output_func_t)(const char* line, log_stream_t stre
 /**
  * Set the native logging function
  */
-void LoggingSetNativeLoggingFunction(logging_native_logging_func_t func);
+void logging_set_native_function(logging_native_logging_func_t func);
 
 /**
  * Set custom output callback for receiving log lines
  * @param func Callback function
  * @param context User-defined context (can be NULL)
  */
-void LoggingSetCustomOutputCallback(logging_custom_output_func_t func, void* context);
+void logging_set_custom_output_callback(logging_custom_output_func_t func, void* context);
 
 /**
  * Start logging thread
  * @param appname Application name for log tag
  * @return 0 on success, negative on error
  */
-int LoggingThreadRun(const char* appname);
+int logging_thread_run(const char* appname);
 
 /**
  * Stop logging thread gracefully
  */
-void LoggingThreadStop(void);
+int logging_thread_stop(void);
 
 #ifdef __cplusplus
 }

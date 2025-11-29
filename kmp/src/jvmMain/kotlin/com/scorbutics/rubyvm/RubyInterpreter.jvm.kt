@@ -24,6 +24,12 @@ actual class RubyInterpreter private constructor(
         RubyVMNative.enqueueScript(interpreterPtr, script.scriptPtr, callback)
     }
 
+    actual fun enableLogging() {
+        check(!isDestroyed) { "Interpreter has been destroyed" }
+
+        RubyVMNative.enableLogging(interpreterPtr)
+    }
+
     actual fun destroy() {
         if (!isDestroyed) {
             RubyVMNative.destroyInterpreter(interpreterPtr)

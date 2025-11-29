@@ -17,5 +17,3 @@ headerFilter = ruby-interpreter.h ruby-script.h completion-task.h log-listener.h
 # Note: Linker options are configured in build.gradle.kts with absolute paths
 # This ensures reliable linking across different build environments
 
-# Exclude internal implementation details
-excludedFunctions = ruby_vm_main_thread_func ruby_vm_log_reader_thread_func ruby_vm_script_thread_func

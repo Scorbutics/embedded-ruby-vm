@@ -14,6 +14,140 @@
 #include "exec-main-vm.h"
 #include "debug.h"
 
+/**
+ * Helper structure for thread communication
+ */
+typedef struct {
+    RubyVM* vm;
+    char* ruby_base_directory;
+    char* native_libs_location;
+} RubyVMStartArgs;
+
+/**
+ * Helper structure for thread communication
+ */
+typedef struct {
+    RubyVM* vm;
+    RubyScript* script;
+    RubyCompletionTask on_complete;
+} RubyScriptEnqueueArgs;
+
+
+
+/**
+ * Main thread function for the Ruby VM
+ *
+ * @param arg Pointer to the Ruby VM instance
+ * @return NULL
+ */
+static void* main_thread_func(void* arg) {
+    RubyVMStartArgs* args = (RubyVMStartArgs*)arg;
+    RubyVM* vm = args->vm;
+
+    const int exitCode = ExecMainRubyVM(
+        ruby_script_get_content(vm->main_script),
+        vm->commands_channel.second_fd,
+        args->ruby_base_directory,
+        args->native_libs_location
+    );
+
+    if (exitCode != 0) {
+        fprintf(stderr, "Error during VM execution: %d", exitCode);
+    }
+
+    free(args->native_libs_location);
+    free(args->ruby_base_directory);
+    free(args);
+    return NULL;
+}
+
+/**
+ * Cleanup function - ALWAYS called on thread exit
+ */
+static void cleanup_script_args(void* arg) {
+    RubyScriptEnqueueArgs* args = (RubyScriptEnqueueArgs*)arg;
+    free(args);
+}
+
+/**
+ * Send a script to the Ruby VM
+ *
+ * @param socket_fd Socket file descriptor
+ * @param script_content Script content to send
+ * @return 0 on success, negative on error
+ */
+static int send_script_to_ruby(int socket_fd, const char* script_content) {
+    size_t script_length = strlen(script_content);
+    char length_buffer[32];
+    
+    // Send length prefix: "<length>\n"
+    int written = snprintf(length_buffer, sizeof(length_buffer), "%zu\n", script_length);
+    if (write(socket_fd, length_buffer, written) != written) {
+        perror("Failed to write length prefix");
+        return -1;
+    }
+    
+    // Send script content (no trailing newline needed)
+    if (write(socket_fd, script_content, script_length) != (ssize_t)script_length) {
+        perror("Failed to write script content");
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * Script thread function for the Ruby VM
+ *
+ * @param arg Pointer to the Ruby VM instance
+ * @return NULL
+ */
+static void* script_thread_func(void* arg) {
+    RubyScriptEnqueueArgs* args = (RubyScriptEnqueueArgs*)arg;
+
+    pthread_cleanup_push(cleanup_script_args, args);
+
+    RubyVM* vm = args->vm;
+    RubyCompletionTask on_complete = args->on_complete;
+    char result = 1; // Default to error
+    const char* content = ruby_script_get_content(args->script);
+
+    // Lock for entire transaction
+    pthread_mutex_lock(&vm->socket_lock);
+
+    // Write commands as VM socket input
+    send_script_to_ruby(vm->commands_channel.main_fd, content);
+
+    // Read exit code + newline as confirmation
+    char read_buffer[2] = {0};
+    ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
+
+    if (bytes_read == 2 && read_buffer[1] == '\n') {
+        result = read_buffer[0] - '0';
+    } else {
+        fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
+    }
+
+    // Now command is executed and return code queried, let the place to the next script
+    pthread_mutex_unlock(&vm->socket_lock);
+
+    ruby_completion_task_invoke(&on_complete, result);
+
+    // Pop and execute cleanup handler
+    // NOTE: argument '1' means EXECUTE the cleanup
+    pthread_cleanup_pop(1);
+
+    return NULL;
+}
+
+static void native_log_callbacks(const char* line, log_stream_t stream, void* context) {
+    RubyVM* vm = (RubyVM*)context;
+    if (stream == LOG_STREAM_STDOUT && vm->log_listener.accept) {
+        vm->log_listener.accept(&vm->log_listener, line);
+    } else if (stream == LOG_STREAM_STDERR && vm->log_listener.on_log_error) {
+        vm->log_listener.on_log_error(&vm->log_listener, line);
+    }
+}
+
 RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, LogListener listener) {
     if (!application_path || !main_script) return NULL;
 
@@ -33,22 +167,13 @@ void ruby_vm_destroy(RubyVM* vm) {
     if (!vm) return;
 
     // Stop the logging thread
-    LoggingThreadStop();
+    ruby_vm_disable_logging(vm);
 
     // Close communication channels
     close_comm_channel(&vm->commands_channel);
 
     free(vm->application_path);
     free(vm);
-}
-
-static void native_log_callbacks(const char* line, log_stream_t stream, void* context) {
-    RubyVM* vm = (RubyVM*)context;
-    if (stream == LOG_STREAM_STDOUT && vm->log_listener.accept) {
-        vm->log_listener.accept(&vm->log_listener, line);
-    } else if (stream == LOG_STREAM_STDERR && vm->log_listener.on_log_error) {
-        vm->log_listener.on_log_error(&vm->log_listener, line);
-    }
 }
 
 int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* native_libs_location) {
@@ -91,7 +216,7 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     // Start main thread
     // "transferredMemoryArgs" is consumed and freed by the main thread
     DEBUG_LOG("ruby_vm_start: Creating main VM thread");
-    int thread_result = pthread_create(&vm->main_thread, NULL, ruby_vm_main_thread_func, transferredMemoryArgs);
+    int thread_result = pthread_create(&vm->main_thread, NULL, main_thread_func, transferredMemoryArgs);
     if (thread_result != 0) {
         DEBUG_LOG("ruby_vm_start: Failed to create main VM thread");
         ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_THREAD_CREATE,
@@ -108,30 +233,38 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     return RUBY_VM_OK;
 }
 
-/**
- * Enable logging with stdout/stderr redirection (OPTIONAL)
- *
- * Call this if you want Ruby's stdout/stderr to be captured through the logging system. 
- * If not called, Ruby output goes to normal stdout/stderr.
- *
- * @return 0 on success, negative on error
- */
 int ruby_vm_enable_logging(RubyVM* vm) {
 
     // Setup log reading callbacks (but don't start logging thread yet)
     DEBUG_LOG("ruby_vm_enable_logging: Setting up logging callbacks");
-    LoggingSetCustomOutputCallback(native_log_callbacks, vm);
+    logging_set_custom_output_callback(native_log_callbacks, vm);
 
     DEBUG_LOG("ruby_vm_enable_logging: Starting logging thread");
-    int logging_result = LoggingThreadRun("com.scorbutics.rubyvm");
+    int logging_result = logging_thread_run("com.scorbutics.rubyvm");
 
     if (logging_result != 0) {
         DEBUG_LOG("ruby_vm_enable_logging: Logging thread failed to start (error %d)", logging_result);
         DEBUG_LOG("Continuing without logging redirection - output will go to normal stdout/stderr");
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_LOGGING,
+                          "Failed to start logging thread (error code: %d)", logging_result);
         return logging_result;
     }
 
     DEBUG_LOG("ruby_vm_enable_logging: Logging thread started successfully");
+    return 0;
+}
+
+int ruby_vm_disable_logging(RubyVM* vm) {
+    DEBUG_LOG("ruby_vm_disable_logging: Stopping logging thread");
+    const int result = logging_thread_stop();
+    if (result != 0) {
+        DEBUG_LOG("ruby_vm_disable_logging: Logging thread failed to stop (error %d)", result);
+        DEBUG_LOG("Continuing without logging redirection - output will go to normal stdout/stderr");
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_LOGGING,
+                          "Failed to stop logging thread (error code: %d)", result);
+        return result;
+    }
+    DEBUG_LOG("ruby_vm_disable_logging: Logging thread stopped successfully");
     return 0;
 }
 
@@ -144,98 +277,9 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
     pthread_t script_thread;
     // "transferredMemoryArgs" is consumed and freed by the thread
     // TODO: implement an Async queue instead
-    pthread_create(&script_thread, NULL, ruby_vm_script_thread_func, transferredMemoryArgs);
+    pthread_create(&script_thread, NULL, script_thread_func, transferredMemoryArgs);
     pthread_detach(script_thread);
 }
-
-// Thread functions
-void* ruby_vm_main_thread_func(void* arg) {
-    RubyVMStartArgs* args = (RubyVMStartArgs*)arg;
-    RubyVM* vm = args->vm;
-
-    const int exitCode = ExecMainRubyVM(
-        ruby_script_get_content(vm->main_script),
-        vm->commands_channel.second_fd,
-        args->ruby_base_directory,
-        args->native_libs_location
-    );
-
-    if (exitCode != 0) {
-        fprintf(stderr, "Error during VM execution: %d", exitCode);
-    }
-
-    free(args->native_libs_location);
-    free(args->ruby_base_directory);
-    free(args);
-    return NULL;
-}
-
-// Cleanup function - ALWAYS called on thread exit
-static void cleanup_script_args(void* arg) {
-    RubyScriptEnqueueArgs* args = (RubyScriptEnqueueArgs*)arg;
-    free(args);
-}
-
-static int send_script_to_ruby(int socket_fd, const char* script_content) {
-    size_t script_length = strlen(script_content);
-    char length_buffer[32];
-    
-    // Send length prefix: "<length>\n"
-    int written = snprintf(length_buffer, sizeof(length_buffer), "%zu\n", script_length);
-    if (write(socket_fd, length_buffer, written) != written) {
-        perror("Failed to write length prefix");
-        return -1;
-    }
-    
-    // Send script content (no trailing newline needed)
-    if (write(socket_fd, script_content, script_length) != (ssize_t)script_length) {
-        perror("Failed to write script content");
-        return -1;
-    }
-    return 0;
-}
-
-void* ruby_vm_script_thread_func(void* arg) {
-    RubyScriptEnqueueArgs* args = (RubyScriptEnqueueArgs*)arg;
-
-    pthread_cleanup_push(cleanup_script_args, args);
-
-    RubyVM* vm = args->vm;
-    RubyCompletionTask on_complete = args->on_complete;
-    char result = 1; // Default to error
-    const char* content = ruby_script_get_content(args->script);
-
-    // Lock for entire transaction
-    pthread_mutex_lock(&vm->socket_lock);
-
-    // Write commands as VM socket input
-    send_script_to_ruby(vm->commands_channel.main_fd, content);
-
-    // Read exit code + newline as confirmation
-    char read_buffer[2] = {0};
-    ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
-
-    if (bytes_read == 2 && read_buffer[1] == '\n') {
-        result = read_buffer[0] - '0';
-    } else {
-        fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
-    }
-
-    // Now command is executed and return code queried, let the place to the next script
-    pthread_mutex_unlock(&vm->socket_lock);
-
-    ruby_completion_task_invoke(&on_complete, result);
-
-    // Pop and execute cleanup handler
-    // NOTE: argument '1' means EXECUTE the cleanup
-    pthread_cleanup_pop(1);
-
-    return NULL;
-}
-
-// ============================================================================
-// Error Handling API
-// ============================================================================
 
 const RubyVMError* ruby_vm_get_last_error(const RubyVM* vm) {
     if (!vm) return NULL;

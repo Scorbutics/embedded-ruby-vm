@@ -51,6 +51,18 @@ actual class RubyInterpreter private constructor(
         nativeHeap.free(completionTask)
     }
 
+    actual fun enableLogging() {
+        check(!isDestroyed) { "Interpreter has been destroyed" }
+
+        ruby_interpreter_enable_logging(interpreterPtr)
+    }
+
+    actual fun disableLogging() {
+        check(!isDestroyed) { "Interpreter has been destroyed" }
+
+        ruby_interpreter_disable_logging(interpreterPtr)
+    }
+
     actual fun destroy() {
         if (!isDestroyed && interpreterPtr != null) {
             ruby_interpreter_destroy(interpreterPtr)

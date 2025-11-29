@@ -26,38 +26,85 @@ struct RubyVM {
     LogListener log_listener;
     int vm_started;
     pthread_mutex_t socket_lock;
-    RubyVMError last_error;  // Last error that occurred
+    RubyVMError last_error;
 };
 typedef struct RubyVM RubyVM;
 
+/**
+ * Create a new Ruby VM instance
+ *
+ * @param application_path Path to the application directory
+ * @param main_script Main Ruby script to execute
+ * @param listener Log listener for receiving log messages
+ * @return Pointer to the created Ruby VM instance, or NULL on failure
+ */
 RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, LogListener listener);
+
+/**
+ * Destroy a Ruby VM instance
+ *
+ * @param vm Pointer to the Ruby VM instance to destroy
+ */
 void ruby_vm_destroy(RubyVM* vm);
+
+/**
+ * Start the Ruby VM
+ *
+ * @param vm Pointer to the Ruby VM instance to start
+ * @param ruby_base_directory Path to the Ruby base directory
+ * @param native_libs_location Path to the native libraries location
+ * @return 0 on success, negative on error
+ */
 int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* native_libs_location);
-int ruby_vm_enable_logging(RubyVM* vm);  // Optional: enable stdout/stderr redirection
+
+/**
+ * Enable logging with stdout/stderr redirection
+ *
+ * Call this if you want Ruby's stdout/stderr to be captured through the logging system. 
+ * If not called, Ruby output goes to normal stdout/stderr.
+ *
+ * @return 0 on success, negative on error
+ */
+int ruby_vm_enable_logging(RubyVM* vm);
+
+/**
+ * Disable logging with stdout/stderr redirection
+ *
+ * @return 0 on success, negative on error
+ */
+int ruby_vm_disable_logging(RubyVM* vm);
+
+/**
+ * Enqueue a Ruby script to be executed
+ *
+ * @param vm Pointer to the Ruby VM instance
+ * @param script Ruby script to enqueue
+ * @param on_complete Completion callback
+ */
 void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_complete);
 
-// Error handling
+/**
+ * Get the last error that occurred in the Ruby VM
+ *
+ * @param vm Pointer to the Ruby VM instance
+ * @return Pointer to the last error, or NULL if no error occurred
+ */
 const RubyVMError* ruby_vm_get_last_error(const RubyVM* vm);
+
+/**
+ * Clear the last error in the Ruby VM
+ *
+ * @param vm Pointer to the Ruby VM instance
+ */
 void ruby_vm_clear_error(RubyVM* vm);
+
+/**
+ * Get the error message for the last error that occurred in the Ruby VM
+ *
+ * @param vm Pointer to the Ruby VM instance
+ * @return Error message, or NULL if no error occurred
+ */
 const char* ruby_vm_get_error_message(const RubyVM* vm);
-
-// Thread function prototypes
-void* ruby_vm_main_thread_func(void* arg);
-void* ruby_vm_log_reader_thread_func(void* arg);
-void* ruby_vm_script_thread_func(void* arg);
-
-// Helper structures for thread communication
-typedef struct {
-    RubyVM* vm;
-    char* ruby_base_directory;
-    char* native_libs_location;
-} RubyVMStartArgs;
-
-typedef struct {
-    RubyVM* vm;
-    RubyScript* script;
-    RubyCompletionTask on_complete;
-} RubyScriptEnqueueArgs;
 
 #ifdef __cplusplus
 }

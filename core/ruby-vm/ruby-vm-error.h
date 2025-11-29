@@ -30,7 +30,7 @@ const char* ruby_vm_error_string(RubyVMErrorCode code);
  */
 typedef struct {
     RubyVMErrorCode code;
-    char message[512];  // Detailed error message
+    char message[512];
 } RubyVMError;
 
 /**

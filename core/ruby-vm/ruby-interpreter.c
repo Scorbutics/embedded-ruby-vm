@@ -10,7 +10,8 @@
 #include "ruby-interpreter.h"
 #include "debug.h"
 
-static RubyVM* g_global_vm = NULL; // Static VM instance
+// Static global VM instance
+static RubyVM* g_global_vm = NULL;
 
 RubyInterpreter* ruby_interpreter_create(const char* application_path,
                                        const char* ruby_base_directory,
@@ -85,6 +86,20 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
     ruby_vm_enqueue(g_global_vm, script, on_complete);
     DEBUG_LOG("Script enqueued");
     return 0;
+}
+
+int ruby_interpreter_enable_logging(RubyInterpreter* interpreter) {
+    if (!interpreter || !interpreter->vm) {
+        return -1;
+    }
+    return ruby_vm_enable_logging(interpreter->vm);
+}
+
+int ruby_interpreter_disable_logging(RubyInterpreter* interpreter) {
+    if (!interpreter || !interpreter->vm) {
+        return -1;
+    }
+    return ruby_vm_disable_logging(interpreter->vm);
 }
 
 const char* ruby_interpreter_get_error_message(const RubyInterpreter* interpreter) {
