@@ -48,11 +48,11 @@ The project uses a **three-layer architecture** for maximum platform compatibili
 |----------|-------------|--------|--------|
 | **Android** | arm64-v8a, armeabi-v7a, x86, x86_64 | JNI | ✅ Supported |
 | **JVM Desktop** | x86_64, arm64 | JNI | ✅ Supported |
+| **Linux Native** | x86_64 | cinterop | ✅ Supported |
 | **iOS** | arm64, simulator | cinterop | ⚠️ Disabled* |
 | **macOS** | arm64, x86_64 | cinterop | ⚠️ Disabled* |
-| **Linux** | x86_64, arm64 | cinterop | ⚠️ Disabled* |
 
-*Native targets (iOS, macOS, Linux) are currently disabled due to Kotlin/Native platform limitations but can be re-enabled on supported build hosts.
+*iOS and macOS targets are currently disabled due to Kotlin/Native platform limitations but can be re-enabled on supported build hosts.
 
 ## 🚀 Quick Start
 
@@ -237,6 +237,21 @@ embedded-ruby-vm/
 # For specific architecture
 ./gradlew :ruby-vm-kmp:desktopJar -PtargetArch=x86_64
 ```
+
+### Linux Native (cinterop - without JVM)
+
+```bash
+# Build native executable (no JVM required)
+./gradlew :ruby-vm-kmp:linuxX64MainBinaries
+
+# Build and run tests
+./gradlew :ruby-vm-kmp:linuxX64TestBinaries
+
+# Build native C library for Linux
+./gradlew buildNativeLibsLinux
+```
+
+**Note**: This target uses Kotlin/Native with cinterop to directly call C functions, providing a JVM-free native Linux binary.
 
 ### iOS (when enabled)
 

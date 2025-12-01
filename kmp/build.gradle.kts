@@ -288,10 +288,14 @@ val targetArch: String = findProperty("targetArch")?.toString() ?: run {
 }
 
 val buildType: String = findProperty("buildType")?.toString() ?: "Release"
+val forceRebuild: Boolean = findProperty("forceRebuild")?.toString()?.toBoolean() ?: false
 
 println("CMake Build Configuration:")
 println("  Target Architecture: $targetArch")
 println("  Build Type: $buildType")
+if (forceRebuild) {
+    println("  Force Rebuild: ENABLED (will clean before building)")
+}
 
 // Helper function to run CMake
 fun Project.runCMake(
@@ -329,7 +333,18 @@ fun Project.runCMake(
     // Always run build (CMake handles incremental builds)
     exec {
         workingDir = cmakeBuildDir
-        commandLine("cmake", "--build", ".", "--config", buildType)
+        val buildCommand = mutableListOf("cmake", "--build", ".")
+
+        // Add --clean-first if force rebuild is requested
+        if (forceRebuild) {
+            buildCommand.add("--clean-first")
+            println("  Force rebuilding (cleaning first)...")
+        }
+
+        buildCommand.add("--config")
+        buildCommand.add(buildType)
+
+        commandLine(*buildCommand.toTypedArray())
     }
 
     // Copy built libraries to output directory
@@ -592,6 +607,34 @@ tasks.matching { it.name.contains("cinterop", ignoreCase = true) }.configureEach
         name.contains("Macos", ignoreCase = true) -> dependsOn("buildNativeLibsMacOS")
         name.contains("Linux", ignoreCase = true) && !name.contains("Desktop") -> dependsOn("buildNativeLibsLinux")
     }
+
+    // Disable caching for cinterop tasks to ensure they pick up library changes
+    // This prevents stale cached linking when C libraries are rebuilt
+    outputs.cacheIf { false }
+}
+
+// Configure all Kotlin/Native linking tasks to track library changes (platform-agnostic)
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink>().configureEach {
+    // Get the Kotlin/Native target name from the task's binary
+    val konanTargetName = binary.target.konanTarget.name
+
+    // Map konanTarget names to library directory paths
+    // konanTarget.name examples: "linux_x64", "ios_arm64", "macos_x64", "macos_arm64"
+    val libDir = file("libs/$konanTargetName")
+
+    // Only track library files if the directory exists (platform might not be built yet)
+    if (libDir.exists()) {
+        // Make the linking task depend on the actual library files
+        // This ensures re-linking when C libraries are rebuilt
+        inputs.files(fileTree(libDir) {
+            include("*.a", "*.so", "*.dylib", "*.dll")
+        })
+
+        logger.info("Linking task $name will track library changes in: $libDir")
+    }
+
+    // Disable caching to ensure fresh linking when libraries change
+    outputs.cacheIf { false }
 }
 
 // Convenience task to build all native libraries

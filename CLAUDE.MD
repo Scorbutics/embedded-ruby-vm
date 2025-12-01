@@ -66,17 +66,19 @@ This project uses a **three-layer architecture** for maximum platform compatibil
   - Windows, macOS, Linux
   - Architectures: x86_64, arm64
   - Java 11+
+- **Linux Native** (via cinterop) - ✅ Fully Supported
+  - x86_64 architecture
+  - JVM-free native executable
+  - Direct C function calls through Kotlin/Native
+  - Gradle targets: `:ruby-vm-kmp:linuxX64MainBinaries`, `:ruby-vm-kmp:linuxX64TestBinaries`
 - **iOS** (via cinterop) - ⚠️ Currently Disabled
   - arm64 (device), x64/arm64 (simulator)
   - Can be re-enabled on supported build hosts
 - **macOS** (via cinterop) - ⚠️ Currently Disabled
   - arm64 (Apple Silicon), x64 (Intel)
   - Can be re-enabled on supported build hosts
-- **Linux Native** (via cinterop) - ⚠️ Currently Disabled
-  - x64
-  - Can be re-enabled on supported build hosts
 
-> **Note**: Native targets (iOS, macOS, Linux) are currently disabled in `kmp/build.gradle.kts` because the host platform (Linux ARM64) is not supported by Kotlin/Native. To re-enable these targets, build on a supported platform (macOS, Linux x64, or Windows) and uncomment the relevant sections in the build file.
+> **Note**: iOS and macOS targets are currently disabled in `kmp/build.gradle.kts`. To re-enable these targets, build on a supported platform (macOS for iOS/macOS targets) and uncomment the relevant sections in the build file.
 
 ### Core Components
 
@@ -173,7 +175,11 @@ The project uses an automated two-tier build system where **Gradle automatically
 # JVM Desktop (auto-builds native libraries)
 ./gradlew :ruby-vm-kmp:desktopJar -PtargetArch=x86_64
 
-# iOS
+# Linux Native x64 (JVM-free executable via cinterop)
+./gradlew :ruby-vm-kmp:linuxX64MainBinaries
+./gradlew :ruby-vm-kmp:linuxX64TestBinaries
+
+# iOS (when enabled)
 ./gradlew :ruby-vm-kmp:linkDebugFrameworkIosArm64
 
 # Build native libraries only (all platforms)
@@ -585,11 +591,14 @@ embedded-ruby-vm/
 **Currently Active:**
 - **Android**: API 24+ (arm64-v8a, armeabi-v7a, x86, x86_64)
 - **JVM Desktop**: Java 11+ (Windows, macOS, Linux - x86_64, arm64)
+- **Linux Native x64**: JVM-free executable via cinterop
+  - Gradle targets: `:ruby-vm-kmp:linuxX64MainBinaries`, `:ruby-vm-kmp:linuxX64TestBinaries`
+  - Direct C function calls through Kotlin/Native
+  - No JVM dependency required
 
 **Currently Disabled** (can be re-enabled on supported build hosts):
 - **iOS**: 13.0+ (arm64 device, x64/arm64 simulator) - XCFramework
 - **macOS**: 10.13+ (arm64, x64)
-- **Linux Native**: x64
 
 ### Native C Library Support
 - **Ruby Version**: 3.1.0
@@ -599,8 +608,10 @@ embedded-ruby-vm/
 
 ### Build Host Requirements
 - **For Android/JVM**: Any platform with JDK 11+ and Android NDK (for Android)
-- **For iOS/macOS**: macOS with Xcode
-- **For Linux Native**: Linux x64 or macOS
+- **For Linux Native x64**: Linux x64 with Kotlin/Native support
+  - Builds JVM-free native executable using cinterop
+  - Requires CMake 3.19.2+ for building C libraries
+- **For iOS/macOS**: macOS with Xcode (currently disabled)
 - **For Windows**: Windows with Visual Studio or MinGW
 
 ## External Dependencies
