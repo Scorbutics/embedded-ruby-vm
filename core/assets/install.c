@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <libgen.h>
 
+#include "assets-error.h"
+#include "assets-logging.h"
+
 #ifdef HAS_EMBEDDED_DATA
 #include "mz.h"
 #include "mz_zip.h"
@@ -51,7 +54,7 @@ static int create_directories(const char *path) {
         }
 
         if (mkdir(dir, 0755) != 0 && errno != EEXIST) {
-            fprintf(stderr, "Failed to create directory %s: %s\n", dir, strerror(errno));
+            ASSETS_ERROR_LOG("Failed to create directory %s: %s", dir, strerror(errno));
             free(path_copy);
             return -1;
         }
@@ -143,7 +146,7 @@ static int write_manifest(const char *install_dir, const Manifest *manifest) {
 
     FILE *file = fopen(manifest_path, "w");
     if (!file) {
-        fprintf(stderr, "Failed to create manifest file %s: %s\n", manifest_path, strerror(errno));
+        ASSETS_ERROR_LOG("Failed to create manifest file %s: %s", manifest_path, strerror(errno));
         return -1;
     }
 
@@ -159,7 +162,7 @@ static int write_manifest(const char *install_dir, const Manifest *manifest) {
     fprintf(file, "fifo_interpreter_rb_size=%zu\n", manifest->fifo_interpreter_rb_size);
 
     fclose(file);
-    printf("Manifest written: %s\n", manifest_path);
+    ASSETS_INFO_LOG("Manifest written: %s", manifest_path);
     return 0;
 }
 
@@ -171,19 +174,19 @@ static int verify_installation(const char *install_dir, const Manifest *manifest
     // Check fifo_interpreter.rb
     snprintf(file_path, sizeof(file_path), "%s/fifo_interpreter.rb", install_dir);
     if (stat(file_path, &st) != 0) {
-        printf("Verification failed: %s not found\n", file_path);
+        ASSETS_DEBUG_LOG("Verification failed: %s not found", file_path);
         return -1;
     }
     if ((size_t)st.st_size != manifest->fifo_interpreter_rb_size) {
-        printf("Verification failed: %s size mismatch (expected %zu, got %lld)\n",
-               file_path, manifest->fifo_interpreter_rb_size, (long long)st.st_size);
+        ASSETS_DEBUG_LOG("Verification failed: %s size mismatch (expected %zu, got %lld)",
+                         file_path, manifest->fifo_interpreter_rb_size, (long long)st.st_size);
         return -1;
     }
 
     // Check that ruby directory exists (we extract zips, so just check directory)
     snprintf(file_path, sizeof(file_path), "%s/ruby", install_dir);
     if (stat(file_path, &st) != 0 || !S_ISDIR(st.st_mode)) {
-        printf("Verification failed: %s directory not found\n", file_path);
+        ASSETS_DEBUG_LOG("Verification failed: %s directory not found", file_path);
         return -1;
     }
 
@@ -205,7 +208,7 @@ static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const 
     // Create memory stream
     stream = mz_stream_mem_create();
     if (!stream) {
-        fprintf(stderr, "Failed to create memory stream\n");
+        ASSETS_ERROR_LOG("Failed to create memory stream");
         return -1;
     }
 
@@ -214,27 +217,27 @@ static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const 
     // Create zip reader
     zip_handle = mz_zip_reader_create();
     if (!zip_handle) {
-        fprintf(stderr, "Failed to create zip reader\n");
+        ASSETS_ERROR_LOG("Failed to create zip reader");
         goto cleanup;
     }
 
     // Open zip from memory stream
     err = mz_zip_reader_open(zip_handle, stream);
     if (err != MZ_OK) {
-        fprintf(stderr, "Failed to open zip from memory: %d\n", err);
+        ASSETS_ERROR_LOG("Failed to open zip from memory: %d", err);
         goto cleanup;
     }
 
     // Go to first entry
     err = mz_zip_reader_goto_first_entry(zip_handle);
     if (err != MZ_OK && err != MZ_END_OF_LIST) {
-        fprintf(stderr, "Failed to go to first zip entry: %d\n", err);
+        ASSETS_ERROR_LOG("Failed to go to first zip entry: %d", err);
         goto cleanup;
     }
 
     buf = malloc(buf_size);
     if (!buf) {
-        fprintf(stderr, "Failed to allocate buffer\n");
+        ASSETS_ERROR_LOG("Failed to allocate buffer");
         err = MZ_MEM_ERROR;
         goto cleanup;
     }
@@ -243,7 +246,7 @@ static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const 
     do {
         err = mz_zip_reader_entry_get_info(zip_handle, &file_info);
         if (err != MZ_OK) {
-            fprintf(stderr, "Failed to get zip entry info: %d\n", err);
+            ASSETS_ERROR_LOG("Failed to get zip entry info: %d", err);
             goto cleanup;
         }
 
@@ -253,7 +256,7 @@ static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const 
             // Remove trailing slash
             extract_path[strlen(extract_path) - 1] = '\0';
             if (mkdir(extract_path, 0755) != 0 && errno != EEXIST) {
-                fprintf(stderr, "Failed to create directory %s: %s\n", extract_path, strerror(errno));
+                ASSETS_ERROR_LOG("Failed to create directory %s: %s", extract_path, strerror(errno));
                 // Continue with other files
             }
         } else {
@@ -262,21 +265,21 @@ static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const 
 
             // Create parent directories
             if (create_directories(extract_path) != 0) {
-                fprintf(stderr, "Failed to create parent directories for %s\n", extract_path);
+                ASSETS_ERROR_LOG("Failed to create parent directories for %s", extract_path);
                 goto next_entry;
             }
 
             // Open entry for reading
             err = mz_zip_reader_entry_open(zip_handle);
             if (err != MZ_OK) {
-                fprintf(stderr, "Failed to open zip entry %s: %d\n", file_info->filename, err);
+                ASSETS_ERROR_LOG("Failed to open zip entry %s: %d", file_info->filename, err);
                 goto next_entry;
             }
 
             // Open output file
             output_file = fopen(extract_path, "wb");
             if (!output_file) {
-                fprintf(stderr, "Failed to create file %s: %s\n", extract_path, strerror(errno));
+                ASSETS_ERROR_LOG("Failed to create file %s: %s", extract_path, strerror(errno));
                 mz_zip_reader_entry_close(zip_handle);
                 goto next_entry;
             }
@@ -285,12 +288,12 @@ static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const 
             do {
                 bytes_read = mz_zip_reader_entry_read(zip_handle, buf, buf_size);
                 if (bytes_read < 0) {
-                    fprintf(stderr, "Error reading from zip entry: %d\n", bytes_read);
+                    ASSETS_ERROR_LOG("Error reading from zip entry: %d", bytes_read);
                     break;
                 }
                 if (bytes_read > 0) {
                     if (fwrite(buf, 1, bytes_read, output_file) != (size_t)bytes_read) {
-                        fprintf(stderr, "Error writing to file %s: %s\n", extract_path, strerror(errno));
+                        ASSETS_ERROR_LOG("Error writing to file %s: %s", extract_path, strerror(errno));
                         break;
                     }
                 }
@@ -331,7 +334,7 @@ static int write_binary_file(const char *filename, const char *data, size_t size
 
     FILE *file = fopen(filename, "wb");
     if (!file) {
-        fprintf(stderr, "Failed to create file %s: %s\n", filename, strerror(errno));
+        ASSETS_ERROR_LOG("Failed to create file %s: %s", filename, strerror(errno));
         return -1;
     }
 
@@ -339,64 +342,70 @@ static int write_binary_file(const char *filename, const char *data, size_t size
     fclose(file);
 
     if (written != size) {
-        fprintf(stderr, "Failed to write complete data to %s\n", filename);
+        ASSETS_ERROR_LOG("Failed to write complete data to %s", filename);
         return -1;
     }
 
-    printf("Created: %s (%zu bytes)\n", filename, size);
+    ASSETS_DEBUG_LOG("Created: %s (%zu bytes)", filename, size);
     return 0;
 }
 
 // Main installation function
-int install_embedded_files(const char *install_dir) {
+int install_embedded_files(const char *install_dir, AssetsError* error) {
     char full_path[1024];
     int result = 0;
 
     if (!install_dir) {
-        fprintf(stderr, "Install directory cannot be NULL\n");
-        return -1;
+        assets_error_set(error, ASSETS_ERROR_INVALID_PARAM, NULL,
+                        "Install directory cannot be NULL");
+        return ASSETS_ERROR_INVALID_PARAM;
     }
 
-    printf("Installing embedded files to: %s\n", install_dir);
+    ASSETS_INFO_LOG("Installing embedded files to: %s", install_dir);
 
     // Create base installation directory
     if (mkdir(install_dir, 0755) != 0 && errno != EEXIST) {
-        fprintf(stderr, "Failed to create install directory %s: %s\n", install_dir, strerror(errno));
-        return -1;
+        assets_error_set_errno(error, ASSETS_ERROR_MKDIR, install_dir,
+                              "Failed to create install directory");
+        return ASSETS_ERROR_MKDIR;
     }
 
     // Extract Ruby standard library ZIP
-    printf("Extracting Ruby standard library...\n");
+    ASSETS_INFO_LOG("Extracting Ruby standard library...");
     size_t ruby_stdlib_size = _binary_ruby_stdlib_zip_end - _binary_ruby_stdlib_zip_start;
     if (mkdir(install_dir, 0755) != 0 && errno != EEXIST) {
-        fprintf(stderr, "Failed to create ruby-stdlib directory: %s\n", strerror(errno));
-        result = -1;
+        assets_error_set_errno(error, ASSETS_ERROR_MKDIR, install_dir,
+                              "Failed to create ruby-stdlib directory");
+        result = ASSETS_ERROR_MKDIR;
     } else {
         if (extract_zip_from_memory(_binary_ruby_stdlib_zip_start, ruby_stdlib_size, install_dir) != 0) {
-            fprintf(stderr, "Failed to extract Ruby standard library\n");
-            result = -1;
+            assets_error_set(error, ASSETS_ERROR_ZIP_EXTRACT, "ruby-stdlib.zip",
+                           "Failed to extract Ruby standard library");
+            result = ASSETS_ERROR_ZIP_EXTRACT;
         }
     }
 
-    printf("Extracting Ruby standard library platform specifics...\n");
+    ASSETS_INFO_LOG("Extracting Ruby standard library platform specifics...");
     size_t ruby_stdlib_ext_size = _binary_ruby_stdlib_ext_zip_end - _binary_ruby_stdlib_ext_zip_start;
     if (extract_zip_from_memory(_binary_ruby_stdlib_ext_zip_start, ruby_stdlib_ext_size, install_dir) != 0) {
-        fprintf(stderr, "Failed to extract Ruby standard library extensions\n");
-        result = -1;
+        assets_error_set(error, ASSETS_ERROR_ZIP_EXTRACT, "ruby-stdlib-ext.zip",
+                       "Failed to extract Ruby standard library extensions");
+        result = ASSETS_ERROR_ZIP_EXTRACT;
     }
 
     // Write FIFO interpreter Ruby file
-    printf("Installing FIFO interpreter...\n");
+    ASSETS_INFO_LOG("Installing FIFO interpreter...");
     size_t fifo_interpreter_size = _binary_fifo_interpreter_rb_end - _binary_fifo_interpreter_rb_start;
     snprintf(full_path, sizeof(full_path), "%s/fifo_interpreter.rb", install_dir);
     if (write_binary_file(full_path, _binary_fifo_interpreter_rb_start, fifo_interpreter_size) != 0) {
-        fprintf(stderr, "Failed to install FIFO interpreter\n");
-        result = -1;
+        assets_error_set(error, ASSETS_ERROR_FILE_WRITE, full_path,
+                       "Failed to install FIFO interpreter");
+        result = ASSETS_ERROR_FILE_WRITE;
     }
 
     if (result == 0) {
         // Write manifest file after successful installation
-        printf("Writing installation manifest...\n");
+        ASSETS_INFO_LOG("Writing installation manifest...");
 
         Manifest manifest = {0};
 
@@ -416,14 +425,14 @@ int install_embedded_files(const char *install_dir) {
                               manifest.fifo_interpreter_rb_crc32);
 
         if (write_manifest(install_dir, &manifest) != 0) {
-            fprintf(stderr, "Warning: Failed to write manifest file\n");
+            ASSETS_ERROR_LOG("Warning: Failed to write manifest file");
             // Don't fail installation due to manifest write failure
         }
 
-        printf("Installation completed successfully!\n");
-        printf("Version: %s\n", manifest.version);
+        ASSETS_INFO_LOG("Installation completed successfully!");
+        ASSETS_INFO_LOG("Version: %s", manifest.version);
     } else {
-        printf("Installation completed with errors.\n");
+        ASSETS_ERROR_LOG("Installation completed with errors");
     }
 
     return result;
@@ -450,13 +459,14 @@ const char* get_default_install_dir(void) {
 }
 
 // Function to check if installation is needed (files exist and are valid)
-int installation_needed(const char *install_dir) {
+int installation_needed(const char *install_dir, AssetsError* error) {
     Manifest current_manifest = {0};
     Manifest embedded_manifest = {0};
 
     if (!install_dir) {
-        fprintf(stderr, "Install directory cannot be NULL\n");
-        return -1;
+        assets_error_set(error, ASSETS_ERROR_INVALID_PARAM, NULL,
+                        "Install directory cannot be NULL");
+        return ASSETS_ERROR_INVALID_PARAM;
     }
 
     // Build expected manifest from embedded data
@@ -464,7 +474,7 @@ int installation_needed(const char *install_dir) {
     size_t ruby_stdlib_ext_size = _binary_ruby_stdlib_ext_zip_end - _binary_ruby_stdlib_ext_zip_start;
     size_t fifo_interpreter_size = _binary_fifo_interpreter_rb_end - _binary_fifo_interpreter_rb_start;
 
-    printf("Computing CRC32 checksums of embedded files...\n");
+    ASSETS_DEBUG_LOG("Computing CRC32 checksums of embedded files...");
     embedded_manifest.ruby_stdlib_zip_crc32 = compute_crc32(_binary_ruby_stdlib_zip_start, ruby_stdlib_size);
     embedded_manifest.ruby_stdlib_ext_zip_crc32 = compute_crc32(_binary_ruby_stdlib_ext_zip_start, ruby_stdlib_ext_size);
     embedded_manifest.fifo_interpreter_rb_crc32 = compute_crc32(_binary_fifo_interpreter_rb_start, fifo_interpreter_size);
@@ -479,21 +489,21 @@ int installation_needed(const char *install_dir) {
                           embedded_manifest.ruby_stdlib_ext_zip_crc32,
                           embedded_manifest.fifo_interpreter_rb_crc32);
 
-    printf("Embedded data version: %s\n", embedded_manifest.version);
+    ASSETS_INFO_LOG("Embedded data version: %s", embedded_manifest.version);
 
     // Try to read existing manifest
     if (read_manifest(install_dir, &current_manifest) != 0) {
-        printf("No manifest found - installation needed\n");
+        ASSETS_INFO_LOG("No manifest found - installation needed");
         return 1; // No manifest = need installation
     }
 
-    printf("Installed version: %s\n", current_manifest.version);
+    ASSETS_INFO_LOG("Installed version: %s", current_manifest.version);
 
     // Quick version check (fast path - avoids filesystem verification)
     if (strcmp(current_manifest.version, embedded_manifest.version) != 0) {
-        printf("Version mismatch - installation needed\n");
-        printf("  Expected: %s\n", embedded_manifest.version);
-        printf("  Found:    %s\n", current_manifest.version);
+        ASSETS_INFO_LOG("Version mismatch - installation needed");
+        ASSETS_DEBUG_LOG("  Expected: %s", embedded_manifest.version);
+        ASSETS_DEBUG_LOG("  Found:    %s", current_manifest.version);
         return 1;
     }
 
@@ -501,34 +511,39 @@ int installation_needed(const char *install_dir) {
     if (current_manifest.ruby_stdlib_zip_crc32 != embedded_manifest.ruby_stdlib_zip_crc32 ||
         current_manifest.ruby_stdlib_ext_zip_crc32 != embedded_manifest.ruby_stdlib_ext_zip_crc32 ||
         current_manifest.fifo_interpreter_rb_crc32 != embedded_manifest.fifo_interpreter_rb_crc32) {
-        printf("CRC32 mismatch detected - installation needed\n");
+        ASSETS_INFO_LOG("CRC32 mismatch detected - installation needed");
         return 1;
     }
 
     // Verify extracted files still exist and have correct sizes
-    printf("Verifying installation integrity...\n");
+    ASSETS_DEBUG_LOG("Verifying installation integrity...");
     if (verify_installation(install_dir, &current_manifest) != 0) {
-        printf("Installation verification failed - reinstallation needed\n");
+        ASSETS_INFO_LOG("Installation verification failed - reinstallation needed");
         return 1;
     }
 
-    printf("Installation is up-to-date - skipping extraction\n");
+    ASSETS_INFO_LOG("Installation is up-to-date - skipping extraction");
     return 0; // Installation not needed
 }
 
 #else // !HAS_EMBEDDED_DATA
 
-int install_embedded_files(const char *install_dir) {
-    fprintf(stderr, "No embedded data available. Library was compiled without HAS_EMBEDDED_DATA.\n");
-    return -1;
+int install_embedded_files(const char *install_dir, AssetsError* error) {
+    (void)install_dir; // Unused parameter
+    assets_error_set(error, ASSETS_ERROR_NO_EMBEDDED_DATA, NULL,
+                    "No embedded data available. Library was compiled without HAS_EMBEDDED_DATA");
+    return ASSETS_ERROR_NO_EMBEDDED_DATA;
 }
 
 const char* get_default_install_dir(void) {
     return NULL;
 }
 
-int installation_needed(const char *install_dir) {
-    return -1;
+int installation_needed(const char *install_dir, AssetsError* error) {
+    (void)install_dir; // Unused parameter
+    assets_error_set(error, ASSETS_ERROR_NO_EMBEDDED_DATA, NULL,
+                    "No embedded data available. Library was compiled without HAS_EMBEDDED_DATA");
+    return ASSETS_ERROR_NO_EMBEDDED_DATA;
 }
 
 #endif // HAS_EMBEDDED_DATA

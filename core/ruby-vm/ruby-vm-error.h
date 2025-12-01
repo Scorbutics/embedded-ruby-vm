@@ -18,6 +18,7 @@ typedef enum {
     RUBY_VM_ERROR_RUBY_EXEC = -6,
     RUBY_VM_ERROR_TIMEOUT = -7,
     RUBY_VM_ERROR_ALREADY_STARTED = -8,
+    RUBY_VM_ERROR_ASSETS = -9,
 } RubyVMErrorCode;
 
 /**

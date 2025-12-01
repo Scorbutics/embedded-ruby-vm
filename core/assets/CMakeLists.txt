@@ -49,6 +49,8 @@ add_library(assets STATIC
         ${EMBEDDED_FIFO_INTERPRETER}
         ${EMBEDDED_RUBY_STDLIB}
         ${EMBEDDED_RUBY_STDLIB_EXT}
+        assets-error.c
+        assets-vm-bridge.c
         install.c
         use_direct_memory.c
 )
@@ -62,7 +64,13 @@ target_compile_definitions(assets PRIVATE HAS_EMBEDDED_DATA)
 # For clarity: explicitly specify linker language if needed
 set_target_properties(assets PROPERTIES LINKER_LANGUAGE C)
 
-# Make minizip headers available to consumers of assets library
+# Make minizip and ruby-vm headers available to assets library
 target_include_directories(assets PRIVATE
         $<TARGET_PROPERTY:minizip,INTERFACE_INCLUDE_DIRECTORIES>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ruby-vm
+)
+
+# Make assets headers available to parent projects
+target_include_directories(assets PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )

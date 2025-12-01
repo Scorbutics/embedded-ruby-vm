@@ -223,11 +223,28 @@ static int run_main_vm_node(const char* baseDirectory,
 int ExecMainRubyVM(const char* scriptContent, int commandsFd,
                    const char* rubyDirectoryPath, const char* nativeLibsDirLocation)
 {
-    if (installation_needed(rubyDirectoryPath) == 1 && install_embedded_files(rubyDirectoryPath) != 0) {
-        fprintf(stderr, "Error while installing ruby standard files\n");
+    AssetsError assets_error;
+    assets_error_init(&assets_error);
+
+    int check_result = installation_needed(rubyDirectoryPath, &assets_error);
+    if (check_result < 0) {
+        // Error checking installation
+        fprintf(stderr, "Error checking installation: %s\n", assets_error.message);
         return -1;
     }
 
-    printf( "Installation of ruby standard library success!\n");
+    if (check_result == 1) {
+        // Installation needed
+        assets_error_init(&assets_error); // Reset error
+        int install_result = install_embedded_files(rubyDirectoryPath, &assets_error);
+        if (install_result != ASSETS_OK) {
+            fprintf(stderr, "Error installing ruby standard files: %s\n", assets_error.message);
+            if (assets_error.context[0] != '\0') {
+                fprintf(stderr, "  Context: %s\n", assets_error.context);
+            }
+            return -2;
+        }
+    }
+
     return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation, scriptContent, 0, commandsFd);
 }
