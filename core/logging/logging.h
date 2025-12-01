@@ -30,28 +30,49 @@ typedef int (*logging_native_logging_func_t)(int priority, const char* tag, cons
 typedef void (*logging_custom_output_func_t)(const char* line, log_stream_t stream, void* context);
 
 /**
- * Set the native logging function
- */
-void logging_set_native_function(logging_native_logging_func_t func);
-
-/**
- * Set custom output callback for receiving log lines
- * @param func Callback function
- * @param context User-defined context (can be NULL)
- */
-void logging_set_custom_output_callback(logging_custom_output_func_t func, void* context);
-
-/**
- * Start logging thread
+ * Initialize the logging system with an application name
  * @param appname Application name for log tag
  * @return 0 on success, negative on error
  */
-int logging_thread_run(const char* appname);
+int logging_init(const char* appname);
 
 /**
- * Stop logging thread gracefully
+ * Shutdown the logging system and free resources
+ * @return 0 on success, negative on error
  */
-int logging_thread_stop(void);
+int logging_shutdown(void);
+
+/**
+ * Add a native logging function
+ * @param func Native logging function to add
+ * @return 0 on success, negative on error
+ */
+int logging_add_native_function(logging_native_logging_func_t func);
+
+/**
+ * Remove a native logging function
+ * @param func Native logging function to remove
+ * @return 0 on success, -1 if not found
+ */
+int logging_remove_native_function(logging_native_logging_func_t func);
+
+/**
+ * Add a custom output callback
+ * Thread and redirection start automatically when the first callback is added
+ * @param func Callback function
+ * @param context User-defined context (can be NULL)
+ * @return 0 on success, negative on error
+ */
+int logging_add_custom_output(logging_custom_output_func_t func, void* context);
+
+/**
+ * Remove a custom output callback
+ * Thread and redirection stop automatically when the last callback is removed
+ * @param func Callback function to remove
+ * @param context Context pointer to match (must match both func and context)
+ * @return 0 on success, -1 if not found
+ */
+int logging_remove_custom_output(logging_custom_output_func_t func, void* context);
 
 #ifdef __cplusplus
 }

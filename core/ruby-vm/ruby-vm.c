@@ -237,13 +237,13 @@ int ruby_vm_enable_logging(RubyVM* vm) {
 
     // Setup log reading callbacks (but don't start logging thread yet)
     DEBUG_LOG("ruby_vm_enable_logging: Setting up logging callbacks");
-    logging_set_custom_output_callback(native_log_callbacks, vm);
-
-    DEBUG_LOG("ruby_vm_enable_logging: Starting logging thread");
-    int logging_result = logging_thread_run("com.scorbutics.rubyvm");
+    
+    // TODO add a way to override the tag
+    const int init_result = logging_init("com.scorbutics.rubyvm");
+    const int logging_result = init_result != 0 ? init_result : logging_add_custom_output(native_log_callbacks, vm);
 
     if (logging_result != 0) {
-        DEBUG_LOG("ruby_vm_enable_logging: Logging thread failed to start (error %d)", logging_result);
+        DEBUG_LOG("ruby_vm_enable_logging: Logging thread failed to start (error %d during %s)", logging_result, init_result != 0 ? "initialization": "adding custom output");
         DEBUG_LOG("Continuing without logging redirection - output will go to normal stdout/stderr");
         ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_LOGGING,
                           "Failed to start logging thread (error code: %d)", logging_result);
@@ -256,7 +256,7 @@ int ruby_vm_enable_logging(RubyVM* vm) {
 
 int ruby_vm_disable_logging(RubyVM* vm) {
     DEBUG_LOG("ruby_vm_disable_logging: Stopping logging thread");
-    const int result = logging_thread_stop();
+    const int result = logging_shutdown();
     if (result != 0) {
         DEBUG_LOG("ruby_vm_disable_logging: Logging thread failed to stop (error %d)", result);
         DEBUG_LOG("Continuing without logging redirection - output will go to normal stdout/stderr");

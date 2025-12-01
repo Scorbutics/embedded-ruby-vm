@@ -153,7 +153,6 @@ int main(int argc, char* argv[]) {
     
     while (!finished);
 
-    sleep(2);
     printf("=== End of Output ===\n");
 
 cleanup:
