@@ -223,7 +223,7 @@ static int run_main_vm_node(const char* baseDirectory,
 int ExecMainRubyVM(const char* scriptContent, int commandsFd,
                    const char* rubyDirectoryPath, const char* nativeLibsDirLocation)
 {
-    if (install_embedded_files(rubyDirectoryPath) != 0) {
+    if (installation_needed(rubyDirectoryPath) == 1 && install_embedded_files(rubyDirectoryPath) != 0) {
         fprintf(stderr, "Error while installing ruby standard files\n");
         return -1;
     }
