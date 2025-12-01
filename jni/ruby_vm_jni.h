@@ -44,4 +44,8 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enqueueScript(JNIEnv *env, jclass clazz,
 JNIEXPORT jint JNICALL
 Java_com_scorbutics_rubyvm_RubyVMNative_enableLogging(JNIEnv *env, jclass clazz,
                                                                 jlong interpreter_ptr);
+
+JNIEXPORT jint JNICALL
+Java_com_scorbutics_rubyvm_RubyVMNative_disableLogging(JNIEnv *env, jclass clazz,
+                                                                jlong interpreter_ptr);
 #endif // RUBY_VM_JNI_H

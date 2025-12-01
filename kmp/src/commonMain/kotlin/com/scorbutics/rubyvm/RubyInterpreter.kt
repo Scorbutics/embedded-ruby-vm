@@ -48,6 +48,20 @@ expect class RubyInterpreter {
     fun enqueue(script: RubyScript, onComplete: (exitCode: Int) -> Unit)
 
     /**
+     * Enable logging output from the Ruby VM.
+     *
+     * @throws IllegalStateException if interpreter has been destroyed
+     */
+    fun enableLogging()
+
+    /**
+     * Disable logging output from the Ruby VM.
+     *
+     * @throws IllegalStateException if interpreter has been destroyed
+     */
+    fun disableLogging()
+
+    /**
      * Destroy the interpreter and free all resources.
      * Must be called when the interpreter is no longer needed.
      *

@@ -30,6 +30,12 @@ actual class RubyInterpreter private constructor(
         RubyVMNative.enableLogging(interpreterPtr)
     }
 
+    actual fun disableLogging() {
+        check(!isDestroyed) { "Interpreter has been destroyed" }
+
+        RubyVMNative.disableLogging(interpreterPtr)
+    }
+
     actual fun destroy() {
         if (!isDestroyed) {
             RubyVMNative.destroyInterpreter(interpreterPtr)

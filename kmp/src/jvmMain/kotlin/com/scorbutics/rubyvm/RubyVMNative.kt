@@ -26,6 +26,8 @@ internal object RubyVMNative {
 
     external fun enableLogging(interpreterPtr: Long)
 
+    external fun disableLogging(interpreterPtr: Long)
+
     init {
         // Load native library using platform-specific loader
         NativeLibraryLoader.loadLibrary()

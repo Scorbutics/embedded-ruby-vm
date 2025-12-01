@@ -643,3 +643,23 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enableLogging(JNIEnv *env, jclass clazz,
 
     return 0;
 }
+
+JNIEXPORT jint JNICALL
+Java_com_scorbutics_rubyvm_RubyVMNative_disableLogging(JNIEnv *env, jclass clazz,
+                                                       jlong interpreter_ptr) {
+    (void) clazz;
+    (void) env;
+
+    RubyInterpreter* interpreter = (RubyInterpreter*)interpreter_ptr;
+
+    // Disable logging
+    DEBUG_LOG("Disabling logging");
+    int logging_result = ruby_vm_disable_logging(interpreter->vm);
+    if (logging_result != 0) {
+        DEBUG_LOG("ruby_vm_disable_logging() failed with code: %d", logging_result);
+        DEBUG_LOG("Error message: %s", ruby_vm_get_error_message(interpreter->vm));
+        return logging_result;
+    }
+
+    return 0;
+}
