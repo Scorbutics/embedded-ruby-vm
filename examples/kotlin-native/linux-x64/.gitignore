@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+gradle/
+gradlew
+gradlew.bat
+
+# IDE
+.idea/
+*.iml
+
+# Kotlin/Native
+*.kexe
+
+# Logs
+*.log

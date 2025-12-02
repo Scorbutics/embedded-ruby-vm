@@ -65,39 +65,42 @@ kotlin {
     //     }
     // }
 
-    // Linux targets (uses cinterop)
-    linuxX64 {
-        binaries {
-            executable {
-                entryPoint = "main"
-                baseName = "ruby-vm-test"
-
-                freeCompilerArgs += listOf("-linker-option", "--allow-shlib-undefined")
-
-                // Configure linker options with absolute paths
-                val libDir = project.file("libs/linux_x64").absoluteFile
-                val rubyLibDir = project.file("../core/external/lib/x86_64-linux-linux").absoluteFile
-
-                // Link static libraries and Ruby
-                linkerOpts(
-                    "-L${libDir.absolutePath}",
-                    "-L${rubyLibDir.absolutePath}",
-                    // Our static libraries (order matters - dependents BEFORE dependencies!)
-                    "${libDir.absolutePath}/libruby-vm.a",
-                    "${libDir.absolutePath}/liblogging.a",
-                    "${libDir.absolutePath}/libassets.a",
-                    "${libDir.absolutePath}/libminizip.a",
-                    // Ruby interpreter
-                    "-lruby",
-                    // System libraries (math and crypt for Ruby)
-                    "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt",
-                    // Set RPATH so executable can find Ruby library in same directory
-                    "-Wl,-rpath,\$ORIGIN",
-                    "-Wl,-rpath,${rubyLibDir.absolutePath}"
-                )
-            }
-        }
-    }
+    // Linux targets (uses cinterop) - DISABLED (moved to examples/kotlin-native/linux-x64)
+    // The linuxX64 example has been moved to examples/ as it was test/example code, not production.
+    // To run the example: see examples/kotlin-native/linux-x64/README.md
+    //
+    // linuxX64 {
+    //     binaries {
+    //         executable {
+    //             entryPoint = "main"
+    //             baseName = "ruby-vm-test"
+    //
+    //             freeCompilerArgs += listOf("-linker-option", "--allow-shlib-undefined")
+    //
+    //             // Configure linker options with absolute paths
+    //             val libDir = project.file("libs/linux_x64").absoluteFile
+    //             val rubyLibDir = project.file("../core/external/lib/x86_64-linux-linux").absoluteFile
+    //
+    //             // Link static libraries and Ruby
+    //             linkerOpts(
+    //                 "-L${libDir.absolutePath}",
+    //                 "-L${rubyLibDir.absolutePath}",
+    //                 // Our static libraries (order matters - dependents BEFORE dependencies!)
+    //                 "${libDir.absolutePath}/libruby-vm.a",
+    //                 "${libDir.absolutePath}/liblogging.a",
+    //                 "${libDir.absolutePath}/libassets.a",
+    //                 "${libDir.absolutePath}/libminizip.a",
+    //                 // Ruby interpreter
+    //                 "-lruby",
+    //                 // System libraries (math and crypt for Ruby)
+    //                 "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt",
+    //                 // Set RPATH so executable can find Ruby library in same directory
+    //                 "-Wl,-rpath,\$ORIGIN",
+    //                 "-Wl,-rpath,${rubyLibDir.absolutePath}"
+    //             )
+    //         }
+    //     }
+    // }
     // linuxArm64() // Kotlin/Native doesn't support Linux ARM64
 
     // Source sets configuration
@@ -157,9 +160,10 @@ kotlin {
         //     dependsOn(nativeMain)
         // }
 
-        val linuxX64Main by getting {
-            dependsOn(nativeMain)
-        }
+        // linuxX64Main - DISABLED (moved to examples/kotlin-native/linux-x64)
+        // val linuxX64Main by getting {
+        //     dependsOn(nativeMain)
+        // }
 
         // val linuxArm64Main by getting {
         //     dependsOn(nativeMain)

@@ -84,6 +84,12 @@ If you're working behind a corporate proxy or need custom CA certificates, follo
    - `install_certs.sh` - Script to process and install certificates
    - Your certificate files (`.crt`, `.pem`, etc.)
 
+   ## Important Notes
+
+   - **The directory is gitignored**
+   - The Dockerfile will copy this directory but only process certs if `INSTALL_CUSTOM_CERTS=true`
+   - If no additional files are present, the build will skip certificate installation
+
 2. **Create local override configuration**
 
    Copy the example override file:
@@ -93,18 +99,19 @@ If you're working behind a corporate proxy or need custom CA certificates, follo
 
 3. **Edit `docker-compose.override.yml`**
 
-   Uncomment and configure the certificate section:
+   Uncomment and set the certificate flag:
    ```yaml
    version: '3.8'
 
    services:
      dev:
        build:
-         additional_contexts:
-           certs: ./docker-certs  # or /absolute/path/to/certs
          args:
            - INSTALL_CUSTOM_CERTS=true
    ```
+
+   **That's it!** No need to configure build contexts - the Dockerfile automatically
+   looks for `./docker-certs/` directory if `INSTALL_CUSTOM_CERTS=true`.
 
 4. **Build and run**
 
@@ -130,23 +137,36 @@ services:
 
 ### For Android Builds with Custom Certs
 
-If you need Android NDK support with custom certificates, configure `dev-android` in your override file:
+The `dev-android` service is available in `docker-compose.override.yml.example`.
+To use it with custom certificates:
 
-```yaml
-services:
-  dev-android:
-    build:
-      additional_contexts:
-        certs: ./docker-certs
-      args:
-        - INSTALL_CUSTOM_CERTS=true
-```
+1. Copy the override file if you haven't already:
+   ```bash
+   cp docker-compose.override.yml.example docker-compose.override.yml
+   ```
+
+2. Edit `docker-compose.override.yml` and set certificates for Android:
+   ```yaml
+   services:
+     dev-android:
+       build:
+         args:
+           - INSTALL_CUSTOM_CERTS=true
+   ```
+
+3. Build and run:
+   ```bash
+   docker-compose build dev-android
+   docker-compose up -d dev-android
+   ```
 
 ### Important Notes
 
 - `docker-compose.override.yml` is **gitignored** and won't be committed
+- `docker-certs/` directory is **gitignored** and won't be committed
 - The base `docker-compose.yml` works without certificates for external contributors
 - Certificates are installed at build time, not runtime
+- The Dockerfile automatically looks for `./docker-certs/` - no build contexts needed
 - If you update certificates, rebuild the image: `docker-compose build --no-cache`
 
 ## Workflow
@@ -229,27 +249,36 @@ docker-compose up -d dev
 
 ## Android Builds (Optional)
 
-For Android builds with NDK support:
+For Android builds with NDK support, use the `dev-android` service from `docker-compose.override.yml.example`:
 
-### 1. Build Android Image
+### 1. Setup Override File
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.override.yml build dev-android
+# Copy the example override file
+cp docker-compose.override.yml.example docker-compose.override.yml
+
+# The dev-android service is already defined and ready to use!
 ```
 
-### 2. Sync Source Code
+### 2. Build Android Image
+
+```bash
+docker-compose build dev-android
+```
+
+### 3. Sync Source Code
 
 ```bash
 docker-compose run --rm source-sync-in
 ```
 
-### 3. Start Android Dev Container
+### 4. Start Android Dev Container
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d dev-android
+docker-compose up -d dev-android
 ```
 
-### 4. Build Android Artifacts
+### 5. Build Android Artifacts
 
 ```bash
 docker-compose exec dev-android bash
@@ -258,6 +287,8 @@ docker-compose exec dev-android bash
 ./gradlew :ruby-vm-kmp:assembleDebug -PtargetArch=arm64
 ./gradlew :ruby-vm-kmp:assembleRelease -PtargetArch=all
 ```
+
+**Note:** The Android image is large (~2GB) due to the Android SDK and NDK. Only build it if you need Android support.
 
 ## Helpful Commands
 

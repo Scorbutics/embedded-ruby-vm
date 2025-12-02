@@ -200,19 +200,27 @@ embedded-ruby-vm/
 │   │   ├── commonMain/       # Shared API definitions
 │   │   ├── androidMain/      # Android implementation (JNI)
 │   │   ├── desktopMain/      # JVM Desktop implementation (JNI)
-│   │   └── nativeMain/       # iOS/macOS/Linux (cinterop)
+│   │   ├── nativeMain/       # iOS/macOS/Linux (cinterop)
+│   │   └── desktopTest/      # KMP unit tests
 │   └── build.gradle.kts      # KMP build configuration
-├── tests/                    # Test suites
-│   ├── core/                 # Core library tests
-│   ├── jni/                  # JNI layer tests
-│   └── jni-android/          # Android logging tests
-├── examples/                 # Usage examples
-│   ├── JvmExample.kt         # Kotlin/JVM example
-│   └── SimpleJavaExample.java # Java example
+├── tests/                    # Test suites (organized by technology)
+│   ├── native/               # Native C tests
+│   │   ├── core/             # Core library tests
+│   │   ├── jni/              # JNI layer tests
+│   │   └── jni-android/      # Android logging tests
+│   └── README.md             # Test documentation
+├── examples/                 # Usage examples (organized by language)
+│   ├── java/                 # Java examples
+│   │   ├── SimpleJavaExample.java
+│   │   └── run-java-example.sh
+│   ├── kotlin-jvm/           # Kotlin/JVM examples
+│   │   └── JvmExample.kt
+│   ├── kotlin-native/        # Kotlin/Native examples
+│   │   └── linux-x64/        # Linux x64 cinterop example
+│   └── README.md             # Examples documentation
 ├── CMakeLists.txt            # Root CMake configuration
 ├── build.gradle.kts          # Root Gradle configuration
 ├── CLAUDE.md                 # Detailed technical documentation
-├── QUICK_START.md            # Quick start guide
 └── README.md                 # This file
 ```
 

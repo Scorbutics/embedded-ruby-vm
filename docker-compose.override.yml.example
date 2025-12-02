@@ -21,39 +21,48 @@ services:
 
   # dev:
   #   build:
-  #     additional_contexts:
-  #       # Path to your certificate directory
-  #       # This directory should contain:
-  #       #   - install_certs.sh (script to process certificates)
-  #       #   - Your .crt, .pem, or other certificate files
-  #       certs: /path/to/your/certs
-  #       # OR use a relative path:
-  #       # certs: ./docker-certs
   #     args:
   #       - INSTALL_CUSTOM_CERTS=true
-
-  # ===========================================================================
-  # Android Development Configuration
-  # ===========================================================================
-  # Uncomment this section if you need Android NDK support with custom certs
-
-  # dev-android:
-  #   build:
-  #     additional_contexts:
-  #       certs: /path/to/your/certs
-  #     args:
-  #       - INSTALL_CUSTOM_CERTS=true
-
-  # ===========================================================================
-  # Custom Environment Variables
-  # ===========================================================================
-  # Add any environment-specific variables here
-
-  # dev:
+  #   # Optional: Add proxy settings if needed
   #   environment:
   #     - HTTP_PROXY=http://proxy.company.com:8080
   #     - HTTPS_PROXY=http://proxy.company.com:8080
   #     - NO_PROXY=localhost,127.0.0.1
+
+  # ===========================================================================
+  # Android Development Configuration
+  # ===========================================================================
+  # Uncomment this section if you need Android NDK support
+
+  dev-android:
+    build:
+      context: .
+      dockerfile: Dockerfile.android
+      args:
+        - INSTALL_CUSTOM_CERTS=false
+        # Set to true if you need custom certs for Android builds
+        # - INSTALL_CUSTOM_CERTS=true
+    container_name: embedded-ruby-vm-dev-android
+    volumes:
+      - source-code:/workspace
+      - gradle-cache:/gradle-cache
+      - build-artifacts:/workspace/build
+      - kmp-artifacts:/workspace/kmp/build
+      - android-sdk:/android-sdk
+      - android-ndk:/android-ndk
+    environment:
+      - GRADLE_USER_HOME=/gradle-cache
+      - ANDROID_HOME=/android-sdk
+      - ANDROID_NDK_HOME=/android-ndk
+      - GRADLE_OPTS=-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true
+      # Optional: Add proxy settings if needed
+      # - HTTP_PROXY=http://proxy.company.com:8080
+      # - HTTPS_PROXY=http://proxy.company.com:8080
+      # - NO_PROXY=localhost,127.0.0.1
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null
 
   # ===========================================================================
   # Additional Volume Mounts
@@ -64,3 +73,10 @@ services:
   #   volumes:
   #     - ~/.ssh:/root/.ssh:ro
   #     - ~/.gitconfig:/root/.gitconfig:ro
+
+volumes:
+  # Android-specific volumes
+  android-sdk:
+    driver: local
+  android-ndk:
+    driver: local

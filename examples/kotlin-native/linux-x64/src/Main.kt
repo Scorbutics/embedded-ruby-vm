@@ -7,13 +7,11 @@ import platform.posix.sleep
 import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
- * Simple test application for Linux x64 native Ruby VM.
- *
- * Run with: ./gradlew :ruby-vm-kmp:runDebugExecutableLinuxX64
+ * Simple test application for native Ruby VM.
  */
 @OptIn(ExperimentalForeignApi::class)
 fun main() {
-    println("=== Ruby VM Native Test (Linux x64) ===")
+    println("=== Ruby VM Native Test ===")
     println()
 
     val sleepTime = 5u

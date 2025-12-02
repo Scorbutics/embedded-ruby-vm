@@ -24,4 +24,4 @@ ruby_vm_test.log
 # Docker local overrides and outputs
 docker-compose.override.yml
 /docker-output/
-/docker-certs/
+/docker-certs/*

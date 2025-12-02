@@ -11,23 +11,26 @@ RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ]; then \
         mkdir -p /tmp/certs; \
     fi
 
-# Copy certificates if they exist (requires 'certs' build context)
-# This will be skipped if certs context is not provided
-COPY --from=certs . /tmp/certs/ 2>/dev/null || true
+# Copy certificates from local docker-certs/ directory
+# This directory exists as a placeholder - populate it with your certs if needed
+COPY docker-certs /tmp/certs-source/
 
 # Install certificates if custom certs were provided
-RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ -d /tmp/certs ] && [ "$(ls -A /tmp/certs)" ]; then \
+RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ "$(ls -A /tmp/certs-source 2>/dev/null | grep -v README)" ]; then \
         echo "Installing custom CA certificates..." && \
         openssl version && \
-        chmod +x /tmp/certs/*.sh 2>/dev/null || true && \
-        cd /tmp/certs && \
+        chmod +x /tmp/certs-source/*.sh 2>/dev/null || true && \
+        cd /tmp/certs-source && \
         ./install_certs.sh && \
-        mv splitted/*.crt /usr/local/share/ca-certificates/ && \
+        mv splitted/*.crt /usr/local/share/ca-certificates/ 2>/dev/null || true && \
         update-ca-certificates && \
         echo "Custom certificates installed successfully"; \
     else \
-        echo "Skipping custom certificate installation"; \
+        echo "Skipping custom certificate installation (no certificates found or not enabled)"; \
     fi
+
+# Clean up temporary cert files
+RUN rm -rf /tmp/certs-source
 
 # Install CMake and build essentials
 RUN apt-get update && apt-get install -y \

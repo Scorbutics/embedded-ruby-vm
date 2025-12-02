@@ -71,7 +71,7 @@ case "$CMD" in
 
     clean)
         echo "🧹 Cleaning build artifacts..."
-        docker-compose exec dev bash -c "./gradlew clean && rm -rf build kmp/build"
+        docker-compose exec dev bash -c "./gradlew clean && rm -rf build kmp/build && rm CMakeCache.txt && rm -rf CMakeFiles"
         docker volume rm embedded-ruby-vm_build-artifacts embedded-ruby-vm_kmp-artifacts || true
         echo "✅ Build artifacts cleaned!"
         ;;
