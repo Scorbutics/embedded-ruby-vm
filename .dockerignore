@@ -1,0 +1,38 @@
+# Build outputs
+build/
+kmp/build/
+.gradle/
+*.class
+*.jar
+*.so
+*.dylib
+*.dll
+*.a
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-output/
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

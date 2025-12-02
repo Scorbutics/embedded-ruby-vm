@@ -1,0 +1,67 @@
+# Extended Dockerfile with Android NDK support
+FROM eclipse-temurin:17-jdk
+
+# Build argument to control custom certificate installation
+ARG INSTALL_CUSTOM_CERTS=false
+
+# Optional: Install custom CA certificates for corporate environments
+RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ]; then \
+        apt-get update && apt-get install -y openssl ca-certificates && \
+        mkdir -p /tmp/certs; \
+    fi
+
+# Copy certificates if they exist (requires 'certs' build context)
+COPY --from=certs . /tmp/certs/ 2>/dev/null || true
+
+# Install certificates if custom certs were provided
+RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ -d /tmp/certs ] && [ "$(ls -A /tmp/certs)" ]; then \
+        echo "Installing custom CA certificates..." && \
+        openssl version && \
+        chmod +x /tmp/certs/*.sh 2>/dev/null || true && \
+        cd /tmp/certs && \
+        ./install_certs.sh && \
+        mv splitted/*.crt /usr/local/share/ca-certificates/ && \
+        update-ca-certificates && \
+        echo "Custom certificates installed successfully"; \
+    else \
+        echo "Skipping custom certificate installation"; \
+    fi
+
+# Install build tools
+RUN apt-get update && apt-get install -y \
+    cmake \
+    build-essential \
+    git \
+    curl \
+    wget \
+    unzip \
+    libz-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Android SDK and NDK
+ENV ANDROID_HOME=/android-sdk
+ENV ANDROID_NDK_HOME=/android-ndk
+ENV PATH=${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools
+
+# Download and install Android SDK command-line tools
+RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
+    cd ${ANDROID_HOME}/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
+    unzip commandlinetools-linux-9477386_latest.zip && \
+    rm commandlinetools-linux-9477386_latest.zip && \
+    mv cmdline-tools latest
+
+# Accept licenses and install NDK
+RUN yes | sdkmanager --licenses || true && \
+    sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
+
+# Link NDK to expected location
+RUN ln -s ${ANDROID_HOME}/ndk/25.2.9519653 ${ANDROID_NDK_HOME}
+
+# Set environment variables for Gradle
+ENV GRADLE_USER_HOME=/gradle-cache
+ENV GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
+
+WORKDIR /workspace
+
+CMD ["tail", "-f", "/dev/null"]

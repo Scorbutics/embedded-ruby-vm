@@ -70,7 +70,7 @@ This project uses a **three-layer architecture** for maximum platform compatibil
   - x86_64 architecture
   - JVM-free native executable
   - Direct C function calls through Kotlin/Native
-  - Gradle targets: `:ruby-vm-kmp:linuxX64MainBinaries`, `:ruby-vm-kmp:linuxX64TestBinaries`
+  - Gradle targets: `:ruby-vm-kmp:linuxX64MainBinaries`
 - **iOS** (via cinterop) - ⚠️ Currently Disabled
   - arm64 (device), x64/arm64 (simulator)
   - Can be re-enabled on supported build hosts
@@ -177,7 +177,6 @@ The project uses an automated two-tier build system where **Gradle automatically
 
 # Linux Native x64 (JVM-free executable via cinterop)
 ./gradlew :ruby-vm-kmp:linuxX64MainBinaries
-./gradlew :ruby-vm-kmp:linuxX64TestBinaries
 
 # iOS (when enabled)
 ./gradlew :ruby-vm-kmp:linkDebugFrameworkIosArm64
@@ -592,7 +591,7 @@ embedded-ruby-vm/
 - **Android**: API 24+ (arm64-v8a, armeabi-v7a, x86, x86_64)
 - **JVM Desktop**: Java 11+ (Windows, macOS, Linux - x86_64, arm64)
 - **Linux Native x64**: JVM-free executable via cinterop
-  - Gradle targets: `:ruby-vm-kmp:linuxX64MainBinaries`, `:ruby-vm-kmp:linuxX64TestBinaries`
+  - Gradle targets: `:ruby-vm-kmp:linuxX64MainBinaries`
   - Direct C function calls through Kotlin/Native
   - No JVM dependency required
 

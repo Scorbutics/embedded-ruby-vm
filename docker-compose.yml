@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Main development environment
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      # Optional: uncomment and configure in docker-compose.override.yml for custom certs
+      # additional_contexts:
+      #   certs: ./docker-certs
+      args:
+        - INSTALL_CUSTOM_CERTS=false
+    container_name: embedded-ruby-vm-dev
+    volumes:
+      # Named volume for source code (better performance than bind mounts on Windows)
+      - source-code:/workspace
+      # Named volume for Gradle cache (speeds up builds)
+      - gradle-cache:/gradle-cache
+      # Named volume for build artifacts
+      - build-artifacts:/workspace/build
+      # Named volume for kmp build artifacts
+      - kmp-artifacts:/workspace/kmp/build
+    environment:
+      - GRADLE_USER_HOME=/gradle-cache
+      - GRADLE_OPTS=-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null
+
+  # Helper service to copy source code INTO the volume
+  # Usage: docker-compose run --rm source-sync-in
+  source-sync-in:
+    image: alpine:latest
+    volumes:
+      - ./:/host-source:ro
+      - source-code:/workspace
+    command: sh -c "rm -rf /workspace/* /workspace/.* 2>/dev/null || true && cp -a /host-source/. /workspace/ && echo 'Source code synced to volume'"
+
+  # Helper service to export build artifacts OUT of the volume
+  # Usage: docker-compose run --rm artifact-export
+  artifact-export:
+    image: alpine:latest
+    volumes:
+      - build-artifacts:/build
+      - kmp-artifacts:/kmp-build
+      - ./docker-output:/output
+    command: sh -c "
+      mkdir -p /output/build /output/kmp-build &&
+      cp -r /build/* /output/build/ 2>/dev/null || echo 'No root build artifacts' &&
+      cp -r /kmp-build/* /output/kmp-build/ 2>/dev/null || echo 'No KMP build artifacts' &&
+      echo 'Artifacts exported to ./docker-output directory' &&
+      ls -lah /output/"
+
+volumes:
+  # Named volume for source code
+  source-code:
+    driver: local
+
+  # Named volume for Gradle cache (persists between builds)
+  gradle-cache:
+    driver: local
+
+  # Named volume for build outputs
+  build-artifacts:
+    driver: local
+
+  # Named volume for KMP module build outputs
+  kmp-artifacts:
+    driver: local

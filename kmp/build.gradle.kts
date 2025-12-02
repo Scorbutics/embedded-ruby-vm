@@ -317,18 +317,12 @@ fun Project.runCMake(
     // Only run configure if cache doesn't exist or CMakeLists.txt changed
     val cmakeCache = File(cmakeBuildDir, "CMakeCache.txt")
     val rootCMakeLists = file("../CMakeLists.txt")
-    val needsReconfigure = !cmakeCache.exists() ||
-                          cmakeCache.lastModified() < rootCMakeLists.lastModified()
-
-    if (needsReconfigure) {
-        println("  Configuring CMake...")
-        exec {
-            workingDir = cmakeBuildDir
-            commandLine("cmake", *allCMakeArgs.toTypedArray(), file("..").absolutePath)
-        }
-    } else {
-        println("  CMake cache is up-to-date, skipping configure")
+    println("  Configuring CMake...")
+    exec {
+        workingDir = cmakeBuildDir
+        commandLine("cmake", *allCMakeArgs.toTypedArray(), file("..").absolutePath)
     }
+
 
     // Always run build (CMake handles incremental builds)
     exec {

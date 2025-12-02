@@ -244,9 +244,6 @@ embedded-ruby-vm/
 # Build native executable (no JVM required)
 ./gradlew :ruby-vm-kmp:linuxX64MainBinaries
 
-# Build and run tests
-./gradlew :ruby-vm-kmp:linuxX64TestBinaries
-
 # Build native C library for Linux
 ./gradlew buildNativeLibsLinux
 ```

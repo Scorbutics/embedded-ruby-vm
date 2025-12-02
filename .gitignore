@@ -20,3 +20,8 @@ ruby_vm_test.log
 # By default the assets files are loaded in./ruby
 /ruby/
 /META-INF/
+
+# Docker local overrides and outputs
+docker-compose.override.yml
+/docker-output/
+/docker-certs/

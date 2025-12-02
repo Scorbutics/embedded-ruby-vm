@@ -1,0 +1,66 @@
+# docker-compose.override.yml.example
+#
+# This is a template for local Docker Compose overrides.
+# Copy this file to 'docker-compose.override.yml' and customize for your environment.
+#
+# NOTE: docker-compose.override.yml is gitignored and will not be committed.
+#
+# Usage:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   # Edit docker-compose.override.yml with your settings
+#   docker-compose up -d dev
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Corporate/Enterprise Environment Configuration
+  # ===========================================================================
+  # Uncomment and configure this section if you need custom CA certificates
+  # for corporate proxies or internal certificate authorities.
+
+  # dev:
+  #   build:
+  #     additional_contexts:
+  #       # Path to your certificate directory
+  #       # This directory should contain:
+  #       #   - install_certs.sh (script to process certificates)
+  #       #   - Your .crt, .pem, or other certificate files
+  #       certs: /path/to/your/certs
+  #       # OR use a relative path:
+  #       # certs: ./docker-certs
+  #     args:
+  #       - INSTALL_CUSTOM_CERTS=true
+
+  # ===========================================================================
+  # Android Development Configuration
+  # ===========================================================================
+  # Uncomment this section if you need Android NDK support with custom certs
+
+  # dev-android:
+  #   build:
+  #     additional_contexts:
+  #       certs: /path/to/your/certs
+  #     args:
+  #       - INSTALL_CUSTOM_CERTS=true
+
+  # ===========================================================================
+  # Custom Environment Variables
+  # ===========================================================================
+  # Add any environment-specific variables here
+
+  # dev:
+  #   environment:
+  #     - HTTP_PROXY=http://proxy.company.com:8080
+  #     - HTTPS_PROXY=http://proxy.company.com:8080
+  #     - NO_PROXY=localhost,127.0.0.1
+
+  # ===========================================================================
+  # Additional Volume Mounts
+  # ===========================================================================
+  # Mount additional directories if needed (e.g., SSH keys, config files)
+
+  # dev:
+  #   volumes:
+  #     - ~/.ssh:/root/.ssh:ro
+  #     - ~/.gitconfig:/root/.gitconfig:ro
