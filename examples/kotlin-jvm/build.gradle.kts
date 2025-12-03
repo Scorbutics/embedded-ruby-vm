@@ -91,6 +91,65 @@ tasks.register("runExample") {
     dependsOn("run")
 }
 
+// Custom task to run the example with AddressSanitizer (ASAN)
+tasks.register<JavaExec>("runExampleWithASAN") {
+    group = "application"
+    description = "Build and run the Kotlin/JVM Ruby VM example with AddressSanitizer for debugging"
+
+    // Note: Build the native library with ASAN first using:
+    // ./gradlew :ruby-vm-kmp:desktopJar -PbuildType=Debug -PenableASAN=true -PforceRebuild=true
+
+    mainClass.set("examples.JvmExampleKt")
+    classpath = sourceSets.main.get().runtimeClasspath
+    workingDir = projectRoot
+
+    // Find libasan.so path
+    val asanLibPath = providers.exec {
+        commandLine("gcc", "-print-file-name=libasan.so")
+    }.standardOutput.asText.get().trim()
+
+    // ASAN configuration
+    environment("LD_PRELOAD", asanLibPath)
+    environment("ASAN_OPTIONS", "detect_leaks=0:abort_on_error=1:fast_unwind_on_malloc=0:symbolize=1")
+
+    // Try to find symbolizer
+    val symbolizerPath = providers.exec {
+        commandLine("sh", "-c", "which llvm-symbolizer 2>/dev/null || which addr2line 2>/dev/null || echo ''")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim()
+
+    if (symbolizerPath.isNotEmpty()) {
+        environment("ASAN_SYMBOLIZER_PATH", symbolizerPath)
+    }
+
+    // Set java.library.path
+    jvmArgs = listOf("-Djava.library.path=${projectRoot}/lib")
+
+    doFirst {
+        println("============================================")
+        println("Running with AddressSanitizer (ASAN)")
+        println("============================================")
+        println("ASAN library: $asanLibPath")
+        println("Symbolizer: ${if (symbolizerPath.isNotEmpty()) symbolizerPath else "Not found (stack traces may be limited)"}")
+        println("")
+        println("ASAN will detect:")
+        println("  - Use-after-free")
+        println("  - Heap/stack buffer overflows")
+        println("  - Memory access violations")
+        println("")
+        println("Starting example...")
+        println("============================================")
+        println("")
+    }
+
+    doLast {
+        println("")
+        println("============================================")
+        println("Example completed")
+        println("============================================")
+    }
+}
+
 // Set working directory for the run task to project root
 tasks.named<JavaExec>("run") {
     workingDir = projectRoot

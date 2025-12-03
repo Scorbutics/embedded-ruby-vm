@@ -55,7 +55,7 @@ case "$CMD" in
 
     desktop-jar)
         echo "📦 Building desktop JAR... (no cache)"
-        docker-compose exec dev ./gradlew :ruby-vm-kmp:clean :ruby-vm-kmp:desktopJar -PbuildType=Debug --no-build-cache
+        docker-compose exec dev ./gradlew :ruby-vm-kmp:clean :ruby-vm-kmp:desktopJar -PbuildType=Debug -PenableASAN=true --no-build-cache
         ;;
 
     test)

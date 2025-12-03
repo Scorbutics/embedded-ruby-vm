@@ -310,12 +310,16 @@ val targetArch: String = findProperty("targetArch")?.toString() ?: run {
 
 val buildType: String = findProperty("buildType")?.toString() ?: "Release"
 val forceRebuild: Boolean = findProperty("forceRebuild")?.toString()?.toBoolean() ?: false
+val enableASAN: Boolean = findProperty("enableASAN")?.toString()?.toBoolean() ?: false
 
 println("CMake Build Configuration:")
 println("  Target Architecture: $targetArch")
 println("  Build Type: $buildType")
 if (forceRebuild) {
     println("  Force Rebuild: ENABLED (will clean before building)")
+}
+if (enableASAN) {
+    println("  AddressSanitizer: ENABLED (memory error detection)")
 }
 
 // Helper function to run CMake
@@ -330,10 +334,21 @@ fun Project.runCMake(
 
     println("Building native library for $targetPlatform-$architecture")
 
-    val allCMakeArgs = mutableListOf(
+    val allCMakeArgs = (mutableListOf(
         "-DCMAKE_BUILD_TYPE=$buildType",
         "-DBUILD_TESTS=OFF"
-    ) + cmakeArgs
+    ) + cmakeArgs).toMutableList()
+
+    // Add AddressSanitizer flags if enabled
+    if (enableASAN) {
+        println("  → Enabling AddressSanitizer instrumentation")
+        allCMakeArgs.addAll(listOf(
+            "-DCMAKE_C_FLAGS=-fsanitize=address -fno-omit-frame-pointer -g -O1",
+            "-DCMAKE_CXX_FLAGS=-fsanitize=address -fno-omit-frame-pointer -g -O1",
+            "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address",
+            "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address"
+        ))
+    }
 
     // Only run configure if cache doesn't exist or CMakeLists.txt changed
     val cmakeCache = File(cmakeBuildDir, "CMakeCache.txt")

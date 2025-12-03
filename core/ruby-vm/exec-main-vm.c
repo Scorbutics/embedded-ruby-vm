@@ -5,7 +5,10 @@
 #include <stdarg.h>
 #include <dirent.h>
 #include <unistd.h>
+// TODO: add a way to enable/disable this via CMake
+#ifdef RUBY_REDIRECT_SIGNALS
 #include <signal.h>
+#endif
 #include <sys/stat.h>
 #include <errno.h>
 
@@ -116,6 +119,7 @@ static void free_ruby_argv(char** argv, int argc) {
     free(argv);
 }
 
+#ifdef RUBY_REDIRECT_SIGNALS
 // Store original signal handlers
 static struct sigaction original_sigpipe;
 static struct sigaction original_sigchld;
@@ -181,6 +185,7 @@ static void SetupCompromiseSignalHandlers(void) {
         fprintf(stderr, "Failed to setup chained SIGCHLD handler\n");
     }
 }
+#endif
 
 static int run_main_vm_node(const char* baseDirectory,
                             const char* rubyExtraLoadPath,
@@ -190,8 +195,10 @@ static int run_main_vm_node(const char* baseDirectory,
 {
     SetupRubyEnv(baseDirectory, rubyExtraLoadPath);
 
+#ifdef RUBY_REDIRECT_SIGNALS
     // Step 1: Save Android's original signal handlers
     SaveOriginalSignalHandlers();
+#endif
 
     char socket_fd_str[32];
     snprintf(socket_fd_str, sizeof(socket_fd_str), "%d", socket_fd);
@@ -207,6 +214,7 @@ static int run_main_vm_node(const char* baseDirectory,
         RUBY_INIT_STACK;
         ruby_init();
 
+#ifdef RUBY_REDIRECT_SIGNALS
         // Step 3: Restore critical handlers that Android needs
         RestoreCriticalSignalHandlers();
 
@@ -218,6 +226,7 @@ static int run_main_vm_node(const char* baseDirectory,
         rb_eval_string(
                 "Signal.trap('PIPE', 'SYSTEM_DEFAULT')\n"  // Let system handle SIGPIPE
         );
+#endif
 
         void* options = ruby_options(argc, argv);
         const int result = ruby_run_node(options);
