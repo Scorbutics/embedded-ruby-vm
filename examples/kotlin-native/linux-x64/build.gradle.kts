@@ -14,6 +14,12 @@ repositories {
 kotlin {
     // Linux x64 target
     linuxX64 {
+        compilations.all {
+            kotlinOptions {
+                freeCompilerArgs += listOf("-opt-in=kotlin.ExperimentalStdlibApi")
+            }
+        }
+
         binaries {
             executable {
                 entryPoint = "main"

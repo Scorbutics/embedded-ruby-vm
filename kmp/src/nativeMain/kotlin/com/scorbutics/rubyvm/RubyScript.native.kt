@@ -15,7 +15,7 @@ internal typealias CRubyScript = com.scorbutics.rubyvm.native.RubyScript
 @OptIn(ExperimentalForeignApi::class)
 actual class RubyScript internal constructor(
     internal val scriptPtr: CPointer<CRubyScript>?
-) : Closeable, AutoCloseable {
+) : AutoCloseable {
     private var isDestroyed = false
 
     actual fun destroy() {
