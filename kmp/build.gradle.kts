@@ -224,7 +224,7 @@ if (isAndroidAvailable) {
  * Package native libraries into the JAR for self-contained distribution.
  * This allows users to use the JAR without setting java.library.path.
  */
-tasks.register<Copy>("packageNativeLibraries") {
+tasks.register("packageNativeLibraries") {
     description = "Copy native libraries into JAR resources"
     group = "build"
     dependsOn("buildNativeLibsDesktop")
@@ -238,34 +238,41 @@ tasks.register<Copy>("packageNativeLibraries") {
         "windows-x64" to Pair("libs/windows_x64/embedded-ruby.dll", "../core/external/lib/x86_64-windows-mingw")
     )
 
-    // Copy each platform's library to resources
-    nativeLibsSource.forEach { (platform, paths) ->
-        val (libPath, rubyLibDir) = paths
-        val sourceFile = file(libPath)
-        val rubyDir = file(rubyLibDir)
+    // Configure outputs for proper up-to-date checking
+    outputs.dir(layout.buildDirectory.dir("generated/natives"))
 
-        println("Checking Ruby lib dir: ${rubyDir.absolutePath} - exists: ${rubyDir.exists()}")
+    doLast {
+        val outputDir = layout.buildDirectory.dir("generated/natives").get().asFile
 
-        if (sourceFile.exists()) {
-            // Copy our embedded-ruby library
-            from(sourceFile) {
-                into("natives/$platform")
-            }
+        // Copy each platform's library to resources
+        nativeLibsSource.forEach { (platform, paths) ->
+            val (libPath, rubyLibDir) = paths
+            val sourceFile = file(libPath)
+            val rubyDir = file(rubyLibDir)
 
-            // Copy Ruby runtime library (libruby.so, libruby.dylib, etc.)
-            if (rubyDir.exists()) {
-                from(fileTree(rubyDir) {
-                    include("*.so*")      // Linux
-                    include("*.dylib")   // macOS
-                    include("*.dll")             // Windows
-                }) {
-                    into("natives/$platform")
+            println("Checking Ruby lib dir: ${rubyDir.absolutePath} - exists: ${rubyDir.exists()}")
+
+            if (sourceFile.exists()) {
+                // Copy our embedded-ruby library
+                copy {
+                    from(sourceFile)
+                    into("$outputDir/natives/$platform")
+                }
+
+                // Copy Ruby runtime library (libruby.so, libruby.dylib, etc.)
+                if (rubyDir.exists()) {
+                    copy {
+                        from(fileTree(rubyDir) {
+                            include("*.so*")      // Linux
+                            include("*.dylib")   // macOS
+                            include("*.dll")             // Windows
+                        })
+                        into("$outputDir/natives/$platform")
+                    }
                 }
             }
         }
     }
-
-    into(layout.buildDirectory.dir("generated/natives"))
 }
 
 // Ensure resources are processed after native libs are packaged
