@@ -12,6 +12,7 @@ static volatile char finished = 0;
 
 static void OnScriptCompleted(void* context, int result) {
     (void)context;
+    sleep(5); // Simulate some processing delay
     const char* msg = "Script completed with exit code: ";
     
     if (g_log_file != NULL) {

@@ -335,8 +335,7 @@ fun Project.runCMake(
     println("Building native library for $targetPlatform-$architecture")
 
     val allCMakeArgs = (mutableListOf(
-        "-DCMAKE_BUILD_TYPE=$buildType",
-        "-DBUILD_TESTS=OFF"
+        "-DCMAKE_BUILD_TYPE=$buildType"
     ) + cmakeArgs).toMutableList()
 
     // Add AddressSanitizer flags if enabled

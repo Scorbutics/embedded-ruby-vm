@@ -49,8 +49,13 @@ fun main() {
         """.trimIndent()).use { script ->
 
             interpreter.enqueue(script) { exitCode ->
+                Thread.sleep(2000) // Wait
+
                 println("\nScript completed with exit code: $exitCode")
                 scriptCount.incrementAndGet()
+                Thread.sleep(1000) // Wait
+
+                println("\nTest no crash after callback")
             }
 
             /*RubyScript.fromContent("""
@@ -68,9 +73,10 @@ fun main() {
 
             // Wait for scripts to complete
             // AtomicInteger provides memory barriers, so busy-wait is now safe
-            while (scriptCount.get() < 2) {
+            while (scriptCount.get() < 1) {
                 // Empty loop - atomic operations provide proper memory synchronization
             }
+            println("\nAll scripts completed.")
 
         }
 
