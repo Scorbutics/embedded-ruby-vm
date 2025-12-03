@@ -36,7 +36,7 @@ fi
 # 1. Build the KMP desktop JAR if needed
 # 2. Compile the Java example
 # 3. Run the example with proper classpath and java.library.path
-$GRADLE_CMD runExample
+$GRADLE_CMD runExample -PbuildType=Debug --no-build-cache
 
 echo
 echo "✓ Example completed successfully!"

@@ -24,14 +24,127 @@ typedef struct {
 } RubyVMStartArgs;
 
 /**
- * Helper structure for thread communication
+ * Initialize the script queue
+ *
+ * @param queue Pointer to the script queue to initialize
  */
-typedef struct {
-    RubyVM* vm;
-    RubyScript* script;
-    RubyCompletionTask on_complete;
-} RubyScriptEnqueueArgs;
+static void script_queue_init(ScriptQueue* queue) {
+    queue->head = NULL;
+    queue->tail = NULL;
+    queue->shutdown = 0;
+    pthread_mutex_init(&queue->mutex, NULL);
+    pthread_cond_init(&queue->cond, NULL);
+}
 
+/**
+ * Destroy the script queue and free all resources
+ *
+ * @param queue Pointer to the script queue to destroy
+ */
+static void script_queue_destroy(ScriptQueue* queue) {
+    pthread_mutex_lock(&queue->mutex);
+
+    // Free all remaining nodes
+    ScriptQueueNode* current = queue->head;
+    while (current != NULL) {
+        ScriptQueueNode* next = current->next;
+        free(current);
+        current = next;
+    }
+
+    queue->head = NULL;
+    queue->tail = NULL;
+
+    pthread_mutex_unlock(&queue->mutex);
+    pthread_mutex_destroy(&queue->mutex);
+    pthread_cond_destroy(&queue->cond);
+}
+
+/**
+ * Push a script to the queue
+ *
+ * @param queue Pointer to the script queue
+ * @param script Script to enqueue
+ * @param on_complete Completion callback
+ */
+static void script_queue_push(ScriptQueue* queue, RubyScript* script, RubyCompletionTask on_complete) {
+    ScriptQueueNode* node = malloc(sizeof(ScriptQueueNode));
+    if (!node) {
+        fprintf(stderr, "Failed to allocate queue node\n");
+        ruby_completion_task_invoke(&on_complete, 1);
+        return;
+    }
+
+    node->script = script;
+    node->on_complete = on_complete;
+    node->next = NULL;
+
+    pthread_mutex_lock(&queue->mutex);
+
+    if (queue->tail == NULL) {
+        // Queue is empty
+        queue->head = node;
+        queue->tail = node;
+    } else {
+        // Add to tail
+        queue->tail->next = node;
+        queue->tail = node;
+    }
+
+    // Signal worker thread that new work is available
+    pthread_cond_signal(&queue->cond);
+    pthread_mutex_unlock(&queue->mutex);
+}
+
+/**
+ * Pop a script from the queue (blocking)
+ *
+ * @param queue Pointer to the script queue
+ * @param script Output pointer for the script
+ * @param on_complete Output pointer for the completion callback
+ * @return 1 if a script was popped, 0 if queue is shutting down
+ */
+static int script_queue_pop(ScriptQueue* queue, RubyScript** script, RubyCompletionTask* on_complete) {
+    pthread_mutex_lock(&queue->mutex);
+
+    // Wait for work or shutdown signal
+    while (queue->head == NULL && !queue->shutdown) {
+        pthread_cond_wait(&queue->cond, &queue->mutex);
+    }
+
+    // Check if we're shutting down
+    if (queue->shutdown && queue->head == NULL) {
+        pthread_mutex_unlock(&queue->mutex);
+        return 0;
+    }
+
+    // Pop from head
+    ScriptQueueNode* node = queue->head;
+    queue->head = node->next;
+    if (queue->head == NULL) {
+        queue->tail = NULL;
+    }
+
+    *script = node->script;
+    *on_complete = node->on_complete;
+
+    pthread_mutex_unlock(&queue->mutex);
+
+    free(node);
+    return 1;
+}
+
+/**
+ * Signal the queue to shutdown
+ *
+ * @param queue Pointer to the script queue
+ */
+static void script_queue_shutdown(ScriptQueue* queue) {
+    pthread_mutex_lock(&queue->mutex);
+    queue->shutdown = 1;
+    pthread_cond_broadcast(&queue->cond);
+    pthread_mutex_unlock(&queue->mutex);
+}
 
 
 /**
@@ -62,14 +175,6 @@ static void* main_thread_func(void* arg) {
 }
 
 /**
- * Cleanup function - ALWAYS called on thread exit
- */
-static void cleanup_script_args(void* arg) {
-    RubyScriptEnqueueArgs* args = (RubyScriptEnqueueArgs*)arg;
-    free(args);
-}
-
-/**
  * Send a script to the Ruby VM
  *
  * @param socket_fd Socket file descriptor
@@ -96,46 +201,51 @@ static int send_script_to_ruby(int socket_fd, const char* script_content) {
 }
 
 /**
- * Script thread function for the Ruby VM
+ * Worker thread function that processes scripts from the async queue
  *
  * @param arg Pointer to the Ruby VM instance
  * @return NULL
  */
-static void* script_thread_func(void* arg) {
-    RubyScriptEnqueueArgs* args = (RubyScriptEnqueueArgs*)arg;
+static void* worker_thread_func(void* arg) {
+    RubyVM* vm = (RubyVM*)arg;
+    RubyScript* script;
+    RubyCompletionTask on_complete;
 
-    pthread_cleanup_push(cleanup_script_args, args);
+    DEBUG_LOG("Worker thread started");
 
-    RubyVM* vm = args->vm;
-    RubyCompletionTask on_complete = args->on_complete;
-    char result = 1; // Default to error
-    const char* content = ruby_script_get_content(args->script);
+    // Process scripts until shutdown
+    while (script_queue_pop(&vm->script_queue, &script, &on_complete)) {
+        char result = 1; // Default to error
+        const char* content = ruby_script_get_content(script);
 
-    // Lock for entire transaction
-    pthread_mutex_lock(&vm->socket_lock);
+        DEBUG_LOG("Worker thread processing script");
 
-    // Write commands as VM socket input
-    send_script_to_ruby(vm->commands_channel.main_fd, content);
+        // Lock for entire transaction
+        pthread_mutex_lock(&vm->socket_lock);
 
-    // Read exit code + newline as confirmation
-    char read_buffer[2] = {0};
-    ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
+        // Write commands as VM socket input
+        send_script_to_ruby(vm->commands_channel.main_fd, content);
 
-    if (bytes_read == 2 && read_buffer[1] == '\n') {
-        result = read_buffer[0] - '0';
-    } else {
-        fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
+        // Read exit code + newline as confirmation
+        char read_buffer[2] = {0};
+        ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
+
+        if (bytes_read == 2 && read_buffer[1] == '\n') {
+            result = read_buffer[0] - '0';
+        } else {
+            fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
+        }
+
+        // Now command is executed and return code queried, let the place to the next script
+        pthread_mutex_unlock(&vm->socket_lock);
+
+        // Invoke completion callback
+        ruby_completion_task_invoke(&on_complete, result);
+
+        DEBUG_LOG("Worker thread finished processing script");
     }
 
-    // Now command is executed and return code queried, let the place to the next script
-    pthread_mutex_unlock(&vm->socket_lock);
-
-    ruby_completion_task_invoke(&on_complete, result);
-
-    // Pop and execute cleanup handler
-    // NOTE: argument '1' means EXECUTE the cleanup
-    pthread_cleanup_pop(1);
-
+    DEBUG_LOG("Worker thread shutting down");
     return NULL;
 }
 
@@ -160,17 +270,34 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
     vm->vm_started = 0;
     pthread_mutex_init(&vm->socket_lock, NULL);
     ruby_vm_error_init(&vm->last_error);
+    script_queue_init(&vm->script_queue);
     return vm;
 }
 
 void ruby_vm_destroy(RubyVM* vm) {
     if (!vm) return;
 
+    // Shutdown the script queue and wait for worker thread to finish
+    if (vm->vm_started) {
+        DEBUG_LOG("ruby_vm_destroy: Shutting down script queue");
+        script_queue_shutdown(&vm->script_queue);
+
+        DEBUG_LOG("ruby_vm_destroy: Waiting for worker thread to finish");
+        pthread_join(vm->worker_thread, NULL);
+        DEBUG_LOG("ruby_vm_destroy: Worker thread finished");
+    }
+
+    // Destroy the queue
+    script_queue_destroy(&vm->script_queue);
+
     // Stop the logging thread
     ruby_vm_disable_logging(vm);
 
     // Close communication channels
     close_comm_channel(&vm->commands_channel);
+
+    // Destroy mutex
+    pthread_mutex_destroy(&vm->socket_lock);
 
     free(vm->application_path);
     free(vm);
@@ -228,6 +355,18 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     }
     DEBUG_LOG("ruby_vm_start: Main VM thread created");
 
+    // Start worker thread for async script execution
+    DEBUG_LOG("ruby_vm_start: Creating worker thread");
+    thread_result = pthread_create(&vm->worker_thread, NULL, worker_thread_func, vm);
+    if (thread_result != 0) {
+        DEBUG_LOG("ruby_vm_start: Failed to create worker thread");
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_THREAD_CREATE,
+                          "Failed to create worker thread (error code: %d)", thread_result);
+        // Note: main thread is already running, but we can't handle scripts without worker
+        return RUBY_VM_ERROR_THREAD_CREATE;
+    }
+    DEBUG_LOG("ruby_vm_start: Worker thread created");
+
     vm->vm_started = 1;
     DEBUG_LOG("ruby_vm_start: VM started successfully, returning");
     return RUBY_VM_OK;
@@ -269,16 +408,8 @@ int ruby_vm_disable_logging(RubyVM* vm) {
 }
 
 void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_complete) {
-    RubyScriptEnqueueArgs* transferredMemoryArgs = malloc(sizeof(RubyScriptEnqueueArgs));
-    transferredMemoryArgs->vm = vm;
-    transferredMemoryArgs->script = script;
-    transferredMemoryArgs->on_complete = on_complete;
-
-    pthread_t script_thread;
-    // "transferredMemoryArgs" is consumed and freed by the thread
-    // TODO: implement an Async queue instead
-    pthread_create(&script_thread, NULL, script_thread_func, transferredMemoryArgs);
-    pthread_detach(script_thread);
+    // Push script to async queue - worker thread will process it
+    script_queue_push(&vm->script_queue, script, on_complete);
 }
 
 const RubyVMError* ruby_vm_get_last_error(const RubyVM* vm) {

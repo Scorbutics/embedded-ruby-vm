@@ -54,7 +54,7 @@ tasks.register<Exec>("buildDesktopJar") {
     }
 
     workingDir = projectRoot
-    commandLine("./gradlew", ":ruby-vm-kmp:desktopJar")
+    commandLine("./gradlew", ":ruby-vm-kmp:desktopJar", "-PbuildType=Debug")
 }
 
 // Make compilation depend on the desktop JAR being built

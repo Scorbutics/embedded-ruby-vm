@@ -18,15 +18,37 @@ struct RubyScriptCurrentLocation;
 typedef struct RubyScript RubyScript;
 typedef struct RubyScriptCurrentLocation RubyScriptCurrentLocation;
 
+/**
+ * Queue node for async script execution
+ */
+typedef struct ScriptQueueNode {
+    RubyScript* script;
+    RubyCompletionTask on_complete;
+    struct ScriptQueueNode* next;
+} ScriptQueueNode;
+
+/**
+ * Async queue for script execution
+ */
+typedef struct {
+    ScriptQueueNode* head;
+    ScriptQueueNode* tail;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int shutdown;
+} ScriptQueue;
+
 struct RubyVM {
     char* application_path;
     RubyScript* main_script;
     pthread_t main_thread;
+    pthread_t worker_thread;
     CommChannel commands_channel;
     LogListener log_listener;
     int vm_started;
     pthread_mutex_t socket_lock;
     RubyVMError last_error;
+    ScriptQueue script_queue;
 };
 typedef struct RubyVM RubyVM;
 

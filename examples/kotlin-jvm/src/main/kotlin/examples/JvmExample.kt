@@ -53,9 +53,22 @@ fun main() {
                 scriptCount.incrementAndGet()
             }
 
-            // Wait for script to complete
+            /*RubyScript.fromContent("""
+                puts "LOL MDR!"
+                puts "This is another Ruby script running via JVM."
+                puts "3 * 3 = #{3 * 3}"
+                puts "Goodbye!"
+            """.trimIndent()).use { script2 ->
+
+                interpreter.enqueue(script2) { exitCode ->
+                    println("\nScript completed with exit code: $exitCode")
+                    scriptCount.incrementAndGet()
+                }
+            }*/
+
+            // Wait for scripts to complete
             // AtomicInteger provides memory barriers, so busy-wait is now safe
-            while (scriptCount.get() < 1) {
+            while (scriptCount.get() < 2) {
                 // Empty loop - atomic operations provide proper memory synchronization
             }
 
