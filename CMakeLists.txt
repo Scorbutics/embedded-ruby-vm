@@ -6,6 +6,10 @@ project("embedded-ruby-vm")
 # Required when linking static libraries into shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Add NDEBUG for Release builds (applies to all targets)
+# This is needed because COMPILE_FLAGS in subdirectories override CMake's defaults
+add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
+
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_CXX_PLATFORM_ID}-${CMAKE_SYSTEM_NAME}" HOST)
 message(NOTICE "Configuring for host: ${HOST}")
 

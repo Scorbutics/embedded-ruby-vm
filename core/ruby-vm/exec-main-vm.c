@@ -44,6 +44,13 @@ static void SetupRubyEnv(const char* baseDirectory, const char* extraLoadPath)
     snprintf(rubyBufferDir, maxRubyDirBufferSize, "%s:%s/ruby/%s/:%s/ruby/%s/"RUBY_PLATFORM"/:%s", baseDirectory, baseDirectory, rubyVersion, baseDirectory, rubyVersion, extraLoadPath);
     setenv("RUBYLIB", rubyBufferDir, 1);
 
+    // Set NDEBUG environment variable for Ruby VM logging control
+#ifdef NDEBUG
+    setenv("NDEBUG", "1", 1);  // Release build
+#else
+    setenv("NDEBUG", "0", 1);  // Debug build
+#endif
+
 #ifndef NDEBUG
     snprintf(mess, sizeof(mess), "Ruby VM env. variables :\nGEM_HOME = '%s'\nGEM_PATH = '%s'\nGEM_SPEC_CACHE = '%s'\nRUBYLIB = '%s'",
              getenv("GEM_HOME"), getenv("GEM_PATH"), getenv("GEM_SPEC_CACHE"), getenv("RUBYLIB"));

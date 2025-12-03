@@ -12,21 +12,21 @@
  * - ERROR: Error messages (always enabled, goes to stderr)
  */
 
-// Debug logging - can be disabled by defining NDEBUG
+// Debug & Info logging - can be disabled by defining NDEBUG
 #ifdef NDEBUG
     #define ASSETS_DEBUG_LOG(fmt, ...) ((void)0)
+    #define ASSETS_INFO_LOG(fmt, ...) ((void)0)
 #else
     #define ASSETS_DEBUG_LOG(fmt, ...) do { \
         fprintf(stderr, "[ASSETS_DEBUG] " fmt "\n", ##__VA_ARGS__); \
         fflush(stderr); \
     } while(0)
-#endif
 
-// Info logging - always enabled, goes to stdout
-#define ASSETS_INFO_LOG(fmt, ...) do { \
-    fprintf(stdout, "[ASSETS] " fmt "\n", ##__VA_ARGS__); \
-    fflush(stdout); \
-} while(0)
+    #define ASSETS_INFO_LOG(fmt, ...) do { \
+        fprintf(stdout, "[ASSETS] " fmt "\n", ##__VA_ARGS__); \
+        fflush(stdout); \
+    } while(0)
+#endif
 
 // Error logging - always enabled, goes to stderr
 #define ASSETS_ERROR_LOG(fmt, ...) do { \
