@@ -5,12 +5,18 @@ package com.scorbutics.rubyvm
  *
  * Platform-specific implementations handle the actual script creation and lifecycle.
  */
-expect class RubyScript {
+expect class RubyScript : AutoCloseable {
     /**
      * Destroy the script and free associated resources.
      * Must be called when the script is no longer needed.
      */
     fun destroy()
+
+    /**
+     * Close the script, equivalent to destroy().
+     * Needed for AutoCloseable and Closeable interfaces and for try-with-resources / .use{} calls.
+     */
+    override fun close()
 
     companion object {
         /**

@@ -2,8 +2,6 @@ import com.scorbutics.rubyvm.LogListener
 import com.scorbutics.rubyvm.RubyInterpreter
 import com.scorbutics.rubyvm.RubyScript
 
-import platform.posix.sleep
-
 import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
@@ -14,7 +12,7 @@ fun main() {
     println("=== Ruby VM Native Test ===")
     println()
 
-    val sleepTime = 5u
+    var step = 0u
 
     // Create a log listener
     val listener = object : LogListener {
@@ -43,8 +41,10 @@ fun main() {
     val script1 = RubyScript.fromContent("puts 'Hello from Ruby via cinterop!'")
     interpreter.enqueue(script1) { exitCode ->
         println("✓ Script completed with exit code: $exitCode")
+        step++
     }
-    sleep(sleepTime) // Give it time to execute
+
+    do while(step < 1u)
 
     // Test 2: Ruby code with variables
     println("\nTest 2: Ruby variables and math")
@@ -55,8 +55,10 @@ fun main() {
     """.trimIndent())
     interpreter.enqueue(script2) { exitCode ->
         println("✓ Math script completed with exit code: $exitCode")
+        step++
     }
-    sleep(sleepTime)
+
+    do while(step < 2u)
 
     // Test 3: Ruby array operations
     println("\nTest 3: Ruby arrays")
@@ -67,8 +69,10 @@ fun main() {
     """.trimIndent())
     interpreter.enqueue(script3) { exitCode ->
         println("✓ Array script completed with exit code: $exitCode")
+        step++
     }
-    sleep(sleepTime * 10u)
+
+    do while(step < 3u)
 
     // Cleanup
     println("\nCleaning up...")

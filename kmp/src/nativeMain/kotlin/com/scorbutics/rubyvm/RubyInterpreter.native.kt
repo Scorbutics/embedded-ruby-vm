@@ -25,7 +25,7 @@ actual class RubyInterpreter private constructor(
     private val interpreterPtr: CPointer<CRubyInterpreter>?,
     private val listener: com.scorbutics.rubyvm.LogListener,
     private val stableRefHolder: StableRefHolder
-) {
+) : Closeable, AutoCloseable {
     private var isDestroyed = false
 
     actual fun enqueue(script: RubyScript, onComplete: (exitCode: Int) -> Unit) {
@@ -71,6 +71,10 @@ actual class RubyInterpreter private constructor(
             // Dispose stable references
             stableRefHolder.dispose()
         }
+    }
+
+    actual override fun close() {
+        destroy()
     }
 
     actual companion object {

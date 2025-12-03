@@ -5,7 +5,7 @@ package com.scorbutics.rubyvm
  */
 actual class RubyScript internal constructor(
     internal val scriptPtr: Long
-) {
+) : AutoCloseable {
     private var isDestroyed = false
 
     actual fun destroy() {
@@ -13,6 +13,10 @@ actual class RubyScript internal constructor(
             RubyVMNative.destroyScript(scriptPtr)
             isDestroyed = true
         }
+    }
+
+    actual override fun close() {
+        destroy()
     }
 
     actual companion object {

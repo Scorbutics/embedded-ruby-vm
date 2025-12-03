@@ -34,7 +34,7 @@ package com.scorbutics.rubyvm
  * interpreter.destroy()
  * ```
  */
-expect class RubyInterpreter {
+expect class RubyInterpreter : AutoCloseable {
     /**
      * Enqueue a script for execution on the Ruby VM.
      *
@@ -68,6 +68,12 @@ expect class RubyInterpreter {
      * After calling destroy(), this interpreter instance cannot be used.
      */
     fun destroy()
+
+    /**
+     * Close the interpreter, equivalent to destroy().
+     * Needed for AutoCloseable and Closeable interfaces and for try-with-resources / .use{} calls.
+     */
+    override fun close()
 
     companion object {
         /**

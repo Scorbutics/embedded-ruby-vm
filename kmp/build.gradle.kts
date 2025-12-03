@@ -231,26 +231,36 @@ tasks.register<Copy>("packageNativeLibraries") {
 
     // Define where native libraries are built
     val nativeLibsSource = mapOf(
-        "linux-x64" to "libs/linux_x86_64/libembedded-ruby.so",
-        "linux-arm64" to "libs/linux_arm64/libembedded-ruby.so",
-        "macos-x64" to "libs/macos_x64/libembedded-ruby.dylib",
-        "macos-arm64" to "libs/macos_arm64/libembedded-ruby.dylib",
-        "windows-x64" to "libs/windows_x64/embedded-ruby.dll"
+        "linux-x64" to Pair("libs/linux_x86_64/libembedded-ruby.so", "../core/external/lib/x86_64-linux-linux"),
+        "linux-arm64" to Pair("libs/linux_arm64/libembedded-ruby.so", "../core/external/lib/aarch64-linux-linux"),
+        "macos-x64" to Pair("libs/macos_x64/libembedded-ruby.dylib", "../core/external/lib/x86_64-macos-darwin"),
+        "macos-arm64" to Pair("libs/macos_arm64/libembedded-ruby.dylib", "../core/external/lib/aarch64-macos-darwin"),
+        "windows-x64" to Pair("libs/windows_x64/embedded-ruby.dll", "../core/external/lib/x86_64-windows-mingw")
     )
 
     // Copy each platform's library to resources
-    nativeLibsSource.forEach { (platform, sourcePath) ->
-        val sourceFile = file(sourcePath)
-        // We don't check for existence here so it fails if the lib is missing (which is good)
-        // But since we might be building on a specific host, we should only copy what exists
-        // OR we rely on the fact that we only build for the current host usually?
-        // The user wants the JAR to carry everything needed.
-        // But we can only build for the current host (mostly).
-        // Let's keep the existence check but log a warning?
-        // Actually, for now, let's just copy what we have.
+    nativeLibsSource.forEach { (platform, paths) ->
+        val (libPath, rubyLibDir) = paths
+        val sourceFile = file(libPath)
+        val rubyDir = file(rubyLibDir)
+
+        println("Checking Ruby lib dir: ${rubyDir.absolutePath} - exists: ${rubyDir.exists()}")
+
         if (sourceFile.exists()) {
+            // Copy our embedded-ruby library
             from(sourceFile) {
                 into("natives/$platform")
+            }
+
+            // Copy Ruby runtime library (libruby.so, libruby.dylib, etc.)
+            if (rubyDir.exists()) {
+                from(fileTree(rubyDir) {
+                    include("*.so*")      // Linux
+                    include("*.dylib")   // macOS
+                    include("*.dll")             // Windows
+                }) {
+                    into("natives/$platform")
+                }
             }
         }
     }

@@ -1,0 +1,11 @@
+# Gradle build directory
+build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Compiled class files
+*.class

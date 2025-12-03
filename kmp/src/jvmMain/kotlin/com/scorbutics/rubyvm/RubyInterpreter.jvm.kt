@@ -9,7 +9,7 @@ package com.scorbutics.rubyvm
 actual class RubyInterpreter private constructor(
     private val interpreterPtr: Long,
     private val listener: LogListener
-) {
+) : AutoCloseable {
     private var isDestroyed = false
 
     actual fun enqueue(script: RubyScript, onComplete: (exitCode: Int) -> Unit) {
@@ -41,6 +41,10 @@ actual class RubyInterpreter private constructor(
             RubyVMNative.destroyInterpreter(interpreterPtr)
             isDestroyed = true
         }
+    }
+
+    actual override fun close() {
+        destroy()
     }
 
     actual companion object {

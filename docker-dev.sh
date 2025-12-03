@@ -54,8 +54,8 @@ case "$CMD" in
         ;;
 
     desktop-jar)
-        echo "📦 Building desktop JAR..."
-        docker-compose exec dev ./gradlew :ruby-vm-kmp:desktopJar
+        echo "📦 Building desktop JAR... (no cache)"
+        docker-compose exec dev ./gradlew :ruby-vm-kmp:clean :ruby-vm-kmp:desktopJar --no-build-cache
         ;;
 
     test)
@@ -71,7 +71,7 @@ case "$CMD" in
 
     clean)
         echo "🧹 Cleaning build artifacts..."
-        docker-compose exec dev bash -c "./gradlew clean && rm -rf build kmp/build && rm CMakeCache.txt && rm -rf CMakeFiles"
+        docker-compose exec dev bash -c " rm CMakeCache.txt && rm -rf CMakeFiles && ./gradlew clean && rm -rf build kmp/build"
         docker volume rm embedded-ruby-vm_build-artifacts embedded-ruby-vm_kmp-artifacts || true
         echo "✅ Build artifacts cleaned!"
         ;;
