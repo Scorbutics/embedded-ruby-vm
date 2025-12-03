@@ -13,7 +13,9 @@ add_library(ruby-vm STATIC
     ruby-vm-error.c
 )
 
-set_target_properties(ruby-vm PROPERTIES 
+set_target_properties(ruby-vm PROPERTIES
+    C_STANDARD 11
+    C_STANDARD_REQUIRED ON
     COMPILE_FLAGS "-Wall -Wextra -Werror"
     POSITION_INDEPENDENT_CODE ON
 )

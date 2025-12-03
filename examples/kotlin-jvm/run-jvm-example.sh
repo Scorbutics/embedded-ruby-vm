@@ -11,42 +11,26 @@ echo ""
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
 
-cd "$PROJECT_ROOT"
+cd "$SCRIPT_DIR"
 
-echo "Project root: $PROJECT_ROOT"
-
-JAR_PATH="kmp/build/libs/ruby-vm-kmp-desktop-1.0.0-SNAPSHOT.jar"
-EXAMPLE_FILE="$SCRIPT_DIR/JvmExample.kt"
-
-if kotlinc -version &> /dev/null; then
-    echo "✓ Kotlin compiler found"
+# Use gradlew if available, otherwise gradle
+if [ -f "./gradlew" ]; then
+    GRADLE_CMD="./gradlew"
+elif [ -f "$PROJECT_ROOT/gradlew" ]; then
+    # Create a symlink to project root's gradlew
+    ln -sf "$PROJECT_ROOT/gradlew" ./gradlew
+    ln -sf "$PROJECT_ROOT/gradle" ./gradle
+    GRADLE_CMD="./gradlew"
 else
-    echo "Error: Kotlin compiler (kotlinc) not found. Please install it to proceed."
-    exit 1
+    GRADLE_CMD="gradle"
 fi
 
-# Check if JAR exists
-if [ ! -f "$JAR_PATH" ]; then
-    echo "Error: JAR not found at $JAR_PATH"
-    echo "Run: ./gradlew :ruby-vm-kmp:desktopJar"
-    exit 1
-fi
+# Run the example using Gradle
+# This will:
+# 1. Build the KMP desktop JAR if needed
+# 2. Compile the Java example
+# 3. Run the example with proper classpath and java.library.path
+$GRADLE_CMD runExample -PbuildType=Debug --no-build-cache
 
-
-# Check if example file exists
-if [ ! -f "$EXAMPLE_FILE" ]; then
-    echo "Error: Example file not found at $EXAMPLE_FILE"
-    exit 1
-fi
-
-echo "Step 1: Compiling Kotlin example..."
-kotlinc "$EXAMPLE_FILE" -cp "$JAR_PATH" -include-runtime -d "$SCRIPT_DIR/JvmExample.jar"
-echo "✓ Compiled successfully"
-echo ""
-
-echo "Step 2: Running example..."
-echo "----------------------------------------"
-java -cp "$SCRIPT_DIR/JvmExample.jar:$JAR_PATH" examples.JvmExampleKt
-echo "----------------------------------------"
-echo ""
-echo "✓ Example completed!"
+echo
+echo "✓ Example completed successfully!"

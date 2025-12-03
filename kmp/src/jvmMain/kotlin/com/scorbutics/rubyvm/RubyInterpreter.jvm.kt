@@ -1,5 +1,8 @@
 package com.scorbutics.rubyvm
 
+import java.io.Closeable
+import java.util.concurrent.atomic.AtomicBoolean
+
 /**
  * JVM implementation of RubyInterpreter using JNI.
  *
@@ -9,11 +12,12 @@ package com.scorbutics.rubyvm
 actual class RubyInterpreter private constructor(
     private val interpreterPtr: Long,
     private val listener: LogListener
-) : AutoCloseable {
-    private var isDestroyed = false
+) : Closeable, AutoCloseable {
+    private val isDestroyed = AtomicBoolean(false)
+    private val destroyLock = Any()
 
     actual fun enqueue(script: RubyScript, onComplete: (exitCode: Int) -> Unit) {
-        check(!isDestroyed) { "Interpreter has been destroyed" }
+        check(!isDestroyed.get()) { "Interpreter has been destroyed" }
 
         val callback = object : CompletionCallback {
             override fun complete(exitCode: Int) {
@@ -25,21 +29,23 @@ actual class RubyInterpreter private constructor(
     }
 
     actual fun enableLogging() {
-        check(!isDestroyed) { "Interpreter has been destroyed" }
+        check(!isDestroyed.get()) { "Interpreter has been destroyed" }
 
         RubyVMNative.enableLogging(interpreterPtr)
     }
 
     actual fun disableLogging() {
-        check(!isDestroyed) { "Interpreter has been destroyed" }
+        check(!isDestroyed.get()) { "Interpreter has been destroyed" }
 
         RubyVMNative.disableLogging(interpreterPtr)
     }
 
     actual fun destroy() {
-        if (!isDestroyed) {
-            RubyVMNative.destroyInterpreter(interpreterPtr)
-            isDestroyed = true
+        // Use compareAndSet to atomically check and set the flag
+        if (isDestroyed.compareAndSet(false, true)) {
+            synchronized(destroyLock) {
+                RubyVMNative.destroyInterpreter(interpreterPtr)
+            }
         }
     }
 

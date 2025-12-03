@@ -1,17 +1,23 @@
 package com.scorbutics.rubyvm
 
+import java.io.Closeable
+import java.util.concurrent.atomic.AtomicBoolean
+
 /**
  * JVM implementation of RubyScript using JNI.
  */
 actual class RubyScript internal constructor(
     internal val scriptPtr: Long
-) : AutoCloseable {
-    private var isDestroyed = false
+) : Closeable, AutoCloseable {
+    private val isDestroyed = AtomicBoolean(false)
+    private val destroyLock = Any()
 
     actual fun destroy() {
-        if (!isDestroyed) {
-            RubyVMNative.destroyScript(scriptPtr)
-            isDestroyed = true
+        // Use compareAndSet to atomically check and set the flag
+        if (isDestroyed.compareAndSet(false, true)) {
+            synchronized(destroyLock) {
+                RubyVMNative.destroyScript(scriptPtr)
+            }
         }
     }
 
