@@ -33,7 +33,10 @@ dependencies {
 }
 
 application {
-    mainClass.set("examples.JvmExampleKt")
+    // Default to running the improved API example
+    // Can be overridden with: -PexampleClass=JvmExample or -PexampleClass=ImprovedApiExample
+    val exampleClass = project.findProperty("exampleClass")?.toString() ?: "ImprovedApiExample"
+    mainClass.set("examples.${exampleClass}Kt")
 
     // Set java.library.path to find native libraries
     applicationDefaultJvmArgs = listOf(
@@ -86,9 +89,63 @@ tasks.named("compileKotlin") {
 // Custom task to run the example
 tasks.register("runExample") {
     group = "application"
-    description = "Build and run the Kotlin/JVM Ruby VM example"
+    description = "Build and run the Kotlin/JVM Ruby VM example (default: ImprovedApiExample)"
+
+    doFirst {
+        val exampleClass = project.findProperty("exampleClass")?.toString() ?: "ImprovedApiExample"
+        println("==============================================")
+        println("Running example: $exampleClass")
+        println("==============================================")
+        println()
+        println("Available examples:")
+        println("  1. ImprovedApiExample (default) - Shows new batch execution, builder pattern, metrics")
+        println("  2. JvmExample - Original manual CountDownLatch example")
+        println()
+        println("To run a specific example:")
+        println("  ./gradlew runExample -PexampleClass=JvmExample")
+        println("  ./gradlew runExample -PexampleClass=ImprovedApiExample")
+        println()
+        println("==============================================")
+        println()
+    }
 
     dependsOn("run")
+}
+
+// Task to run both examples sequentially
+tasks.register("runAllExamples") {
+    group = "application"
+    description = "Run all available examples sequentially"
+
+    doLast {
+        println()
+        println("==============================================")
+        println("Running JvmExample...")
+        println("==============================================")
+        println()
+
+        javaexec {
+            mainClass.set("examples.JvmExampleKt")
+            classpath = sourceSets.main.get().runtimeClasspath
+            workingDir = projectRoot
+            jvmArgs = listOf("-Djava.library.path=${projectRoot}/lib")
+        }
+
+        println()
+        println("==============================================")
+        println("Running ImprovedApiExample...")
+        println("==============================================")
+        println()
+
+        javaexec {
+            mainClass.set("examples.ImprovedApiExampleKt")
+            classpath = sourceSets.main.get().runtimeClasspath
+            workingDir = projectRoot
+            jvmArgs = listOf("-Djava.library.path=${projectRoot}/lib")
+        }
+    }
+
+    dependsOn("classes")
 }
 
 // Custom task to run the example with AddressSanitizer (ASAN)
