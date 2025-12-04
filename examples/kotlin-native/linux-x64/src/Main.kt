@@ -1,7 +1,4 @@
-import com.scorbutics.rubyvm.LogListener
-import com.scorbutics.rubyvm.RubyInterpreter
-import com.scorbutics.rubyvm.RubyScript
-
+import com.scorbutics.rubyvm.*
 import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
@@ -32,51 +29,26 @@ fun main() {
         rubyBaseDir = "./ruby",
         nativeLibsDir = "./ruby/lib",
         listener = listener
-    ).use { 
-        interpreter -> 
+    ).use { interpreter ->
         println("✓ Interpreter created successfully!")
-        println()
 
-        // Test 1: Simple output
-        println("Test 1: Simple puts statement")
-        RubyScript.fromContent("puts 'Hello from Ruby via cinterop!'").use { 
-            script1 ->
-            interpreter.enqueue(script1) { exitCode ->
-                println("✓ Script completed with exit code: $exitCode")
-                step++
-            }
-            do while(step < 1u)
-        }
-
-        // Test 2: Ruby code with variables
-        println("\nTest 2: Ruby variables and math")
-        RubyScript.fromContent("""
+        val results = interpreter.batch()
+        .addScript("puts 'Hello from Ruby via cinterop!'", name = "greeting")
+        .addScript("""
             x = 10
             y = 20
             puts "x + y = #{x + y}"
-        """.trimIndent()).use { 
-            script2 ->
-            interpreter.enqueue(script2) { exitCode ->
-                println("✓ Math script completed with exit code: $exitCode")
-                step++
-            }
-            do while(step < 2u)
-        }
-
-        // Test 3: Ruby array operations
-        println("\nTest 3: Ruby arrays")
-        RubyScript.fromContent("""
+        """.trimIndent(), name = "calculate")
+        .addScript("""
             numbers = [1, 2, 3, 4, 5]
             puts "Numbers: #{numbers.join(', ')}"
             puts "Sum: #{numbers.sum}"
-        """.trimIndent()).use { 
-            script3 ->
-            interpreter.enqueue(script3) { exitCode ->
-                println("✓ Array script completed with exit code: $exitCode")
-                step++
-            }
-            do while(step < 3u)
+        """.trimIndent(), name = "join_and_sum")
+        .timeout(60)
+        .onEachComplete { index, result ->
+            println("${result.name}: ${if (result.success) "✓" else "✗"} (${result.durationMs}ms)")
         }
+        .execute()
 
     }
 

@@ -46,10 +46,21 @@ case "$CMD" in
         TARGET_ARCH=${2:-}
         if [ -z "$TARGET_ARCH" ]; then
             echo "🔨 Building project (auto-detect architecture)..."
-            docker-compose exec dev ./gradlew build
+            docker-compose exec dev ./gradlew build -PbuildType=Debug
         else
             echo "🔨 Building project for $TARGET_ARCH..."
-            docker-compose exec dev ./gradlew build -PtargetArch="$TARGET_ARCH"
+            docker-compose exec dev ./gradlew build -PbuildType=Debug -PtargetArch="$TARGET_ARCH"
+        fi
+        ;;
+
+    release)
+        TARGET_ARCH=${2:-}
+        if [ -z "$TARGET_ARCH" ]; then
+            echo "🔨 Building project (auto-detect architecture)..."
+            docker-compose exec dev ./gradlew build -PbuildType=Release
+        else
+            echo "🔨 Building project for $TARGET_ARCH..."
+            docker-compose exec dev ./gradlew build -PbuildType=Release -PtargetArch="$TARGET_ARCH"
         fi
         ;;
 

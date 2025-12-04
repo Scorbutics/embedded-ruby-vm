@@ -29,7 +29,7 @@ else
     GRADLE_CMD="gradle"
 fi
 
-$GRADLE_CMD runExample --no-build-cache
+$GRADLE_CMD runExample -PbuildType=Debug --no-build-cache
 
 echo
 echo "================================================"

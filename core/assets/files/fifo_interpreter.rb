@@ -114,6 +114,11 @@ begin
       # Use TOPLEVEL_BINDING so code has access to top-level context
       result = eval(script_content, TOPLEVEL_BINDING, "<socket-script>")
 
+      # Flush stdout and stderr to ensure all output is visible
+      # Ruby buffers stdout when not connected to a TTY, so we flush explicitly
+      $stdout.flush
+      $stderr.flush
+
       # Send success exit code
       socket.write("0\n")
       VMLogger.debug "[Ruby VM] Script executed successfully"
@@ -122,6 +127,10 @@ begin
       # Log the error to stderr (visible in logcat on Android)
       VMLogger.error "[Ruby Error] #{error.class}: #{error.message}"
       error.backtrace.each { |line| VMLogger.error "  #{line}" }
+
+      # Flush stdout and stderr to ensure all error output is visible
+      $stdout.flush
+      $stderr.flush
 
       # Send failure exit code
       socket.write("1\n")

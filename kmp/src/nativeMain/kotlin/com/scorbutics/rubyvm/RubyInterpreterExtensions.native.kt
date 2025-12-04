@@ -2,10 +2,13 @@ package com.scorbutics.rubyvm
 
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.update
-import kotlinx.cinterop.usleep
-import platform.posix.clock_gettime
-import platform.posix.CLOCK_MONOTONIC
-import platform.posix.timespec
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.usePinned
+import kotlinx.cinterop.addressOf
+import platform.posix.*
 
 /**
  * Native-specific extension functions for RubyInterpreter.
@@ -61,10 +64,13 @@ class NativeCountDownLatch(private val count: Int) {
 /**
  * Get current time in milliseconds using platform-specific clock.
  */
+@OptIn(ExperimentalForeignApi::class)
 private fun getTimeMillis(): Long {
-    val ts = timespec()
-    clock_gettime(CLOCK_MONOTONIC, ts.ptr)
-    return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L
+    return memScoped {
+        val ts = alloc<timespec>()
+        clock_gettime(CLOCK_MONOTONIC, ts.ptr)
+        ts.tv_sec * 1000L + ts.tv_nsec / 1000000L
+    }
 }
 
 /**
@@ -244,11 +250,47 @@ fun RubyInterpreter.executeWithResult(
  *
  * @param filePath Path to the Ruby script file
  * @param onComplete Callback invoked when script completes (receives exit code)
- * @throws kotlin.io.FileNotFoundException if the file doesn't exist
+ * @throws IllegalArgumentException if the file doesn't exist or cannot be read
  */
+@OptIn(ExperimentalForeignApi::class)
 fun RubyInterpreter.executeFile(filePath: String, onComplete: (Int) -> Unit) {
-    val content = kotlin.io.path.Path(filePath).readText()
+    val content = readFileContent(filePath)
     execute(content, onComplete)
+}
+
+/**
+ * Read file content using POSIX APIs.
+ */
+@OptIn(ExperimentalForeignApi::class)
+private fun readFileContent(filePath: String): String {
+    return memScoped {
+        val file = fopen(filePath, "r")
+            ?: throw IllegalArgumentException("Cannot open file: $filePath")
+
+        try {
+            // Get file size
+            fseek(file, 0, SEEK_END)
+            val size = ftell(file)
+            rewind(file)
+
+            if (size <= 0) {
+                return ""
+            }
+
+            // Read content
+            val buffer = ByteArray(size.toInt())
+            buffer.usePinned { pinned ->
+                val read = fread(pinned.addressOf(0), 1u, size.toULong(), file)
+                if (read.toLong() != size) {
+                    throw IllegalArgumentException("Failed to read file: $filePath")
+                }
+            }
+
+            buffer.decodeToString()
+        } finally {
+            fclose(file)
+        }
+    }
 }
 
 /**
