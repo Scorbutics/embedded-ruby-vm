@@ -38,8 +38,14 @@ void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
     free(interpreter);
 }
 
-int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, RubyCompletionTask on_complete) {
-
+/**
+ * Ensure the global VM is initialized and ready.
+ * This is shared initialization logic for both sync and async execution.
+ *
+ * @param interpreter Interpreter instance with configuration
+ * @return 0 on success, error code on failure
+ */
+static int ensure_vm_initialized(RubyInterpreter* interpreter) {
     if (g_global_vm == NULL) {
         DEBUG_LOG("Creating VM for first time");
 
@@ -51,7 +57,6 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
         );
         if (!main_script) {
             DEBUG_LOG("Failed to create main script");
-            ruby_completion_task_invoke(&on_complete, 1);
             return 1;
         }
 
@@ -60,7 +65,6 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
         if (!g_global_vm) {
             DEBUG_LOG("ruby_vm_create() failed");
             ruby_script_destroy(main_script);
-            ruby_completion_task_invoke(&on_complete, 2);
             return 2;
         }
 
@@ -72,7 +76,6 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
         if (start_result != 0) {
             DEBUG_LOG("ruby_vm_start() failed with code: %d", start_result);
             DEBUG_LOG("Error message: %s", ruby_vm_get_error_message(g_global_vm));
-            ruby_completion_task_invoke(&on_complete, 3);
             return start_result;
         }
         DEBUG_LOG("VM started successfully");
@@ -82,10 +85,32 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
         interpreter->vm = g_global_vm;
     }
 
+    return 0;
+}
+
+int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, RubyCompletionTask on_complete) {
+    int init_result = ensure_vm_initialized(interpreter);
+    if (init_result != 0) {
+        ruby_completion_task_invoke(&on_complete, init_result);
+        return init_result;
+    }
+
     DEBUG_LOG("Enqueueing script");
     ruby_vm_enqueue(g_global_vm, script, on_complete);
     DEBUG_LOG("Script enqueued");
     return 0;
+}
+
+int ruby_interpreter_execute_sync(RubyInterpreter* interpreter, RubyScript* script) {
+    int init_result = ensure_vm_initialized(interpreter);
+    if (init_result != 0) {
+        return init_result;
+    }
+
+    DEBUG_LOG("Executing script synchronously");
+    int result = ruby_vm_execute_sync(g_global_vm, script);
+    DEBUG_LOG("Script execution completed with result: %d", result);
+    return result;
 }
 
 int ruby_interpreter_enable_logging(RubyInterpreter* interpreter) {

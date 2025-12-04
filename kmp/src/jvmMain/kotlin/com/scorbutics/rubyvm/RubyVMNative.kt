@@ -24,6 +24,17 @@ internal object RubyVMNative {
         callback: CompletionCallback
     )
 
+    /**
+     * Execute a script synchronously (blocking call).
+     * This should be called from a JVM thread, not from the main thread.
+     *
+     * @return 0 on success, non-zero error code on failure
+     */
+    external fun executeScriptSync(
+        interpreterPtr: Long,
+        scriptPtr: Long
+    ): Int
+
     external fun enableLogging(interpreterPtr: Long)
 
     external fun disableLogging(interpreterPtr: Long)

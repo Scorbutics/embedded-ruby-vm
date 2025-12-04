@@ -63,6 +63,8 @@ begin
 
   # Main REPL loop
   loop do
+    VMLogger.debug "[Ruby VM] Waiting for script length prefix..."
+
     # Read the length prefix (format: "<bytes>\n")
     length_line = socket.gets
 

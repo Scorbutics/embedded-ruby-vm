@@ -87,6 +87,41 @@ static int send_script_to_ruby(int socket_fd, const char* script_content) {
 }
 
 /**
+ * Execute a script and return the exit code.
+ * This is the core execution logic shared between sync and async execution.
+ * Caller is responsible for signal masking if needed.
+ *
+ * @param vm Ruby VM instance
+ * @param script Script to execute
+ * @return Exit code (0 = success, non-zero = error)
+ */
+static int execute_script_internal(RubyVM* vm, RubyScript* script) {
+    char result = 1; // Default to error
+    const char* content = ruby_script_get_content(script);
+
+    // Lock for entire transaction
+    pthread_mutex_lock(&vm->socket_lock);
+
+    // Write commands as VM socket input
+    send_script_to_ruby(vm->commands_channel.main_fd, content);
+
+    // Read exit code + newline as confirmation
+    char read_buffer[2] = {0};
+    ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
+
+    if (bytes_read == 2 && read_buffer[1] == '\n') {
+        result = read_buffer[0] - '0';
+    } else {
+        fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
+    }
+
+    // Unlock for next script
+    pthread_mutex_unlock(&vm->socket_lock);
+
+    return (int)result;
+}
+
+/**
  * Script execution thread function - executes a single script and terminates
  *
  * @param arg Pointer to ScriptExecutionArgs
@@ -109,29 +144,10 @@ static void* script_execution_thread_func(void* arg) {
 
     DEBUG_LOG("Script execution thread started");
 
-    char result = 1; // Default to error
-    const char* content = ruby_script_get_content(script);
+    // Execute the script
+    const int result = execute_script_internal(vm, script);
 
-    DEBUG_LOG("Script execution thread processing script");
-
-    // Lock for entire transaction
-    pthread_mutex_lock(&vm->socket_lock);
-
-    // Write commands as VM socket input
-    send_script_to_ruby(vm->commands_channel.main_fd, content);
-
-    // Read exit code + newline as confirmation
-    char read_buffer[2] = {0};
-    ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
-
-    if (bytes_read == 2 && read_buffer[1] == '\n') {
-        result = read_buffer[0] - '0';
-    } else {
-        fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
-    }
-
-    // Now command is executed and return code queried, unlock for next script
-    pthread_mutex_unlock(&vm->socket_lock);
+    DEBUG_LOG("Script execution thread finished - invoking completion callback");
 
     // Invoke completion callback
     ruby_completion_task_invoke(&on_complete, result);
@@ -305,6 +321,41 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
     pthread_detach(execution_thread);
 
     DEBUG_LOG("ruby_vm_enqueue: Script execution thread created and detached");
+}
+
+int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
+    if (!vm || !script) {
+        DEBUG_LOG("ruby_vm_execute_sync: Invalid parameters");
+        return 1;
+    }
+
+    DEBUG_LOG("ruby_vm_execute_sync: Executing script synchronously on calling thread");
+
+    // Block all signals before entering Ruby execution context
+    // This prevents Ruby's GC signals (SIGPROF/SIGALRM) from hitting JVM threads
+    // which can cause segmentation faults when Ruby's signal handler tries to
+    // interact with JVM-managed memory.
+    // 
+    // Context: Ruby's GC uses signals to coordinate thread pausing during the
+    // marking phase. When a JVM thread calls this function and Ruby's GC runs,
+    // the signal can be delivered to the JVM thread. Ruby's signal handler may
+    // attempt to scan the thread's stack for Ruby objects, but the JVM thread
+    // has a JVM-managed stack, not a Ruby thread stack. This mismatch causes
+    // a segmentation fault, typically manifesting AFTER the native call returns
+    // and the JVM thread continues execution.
+    sigset_t new_set, old_set;
+    sigfillset(&new_set);
+    pthread_sigmask(SIG_BLOCK, &new_set, &old_set);
+
+    // Execute the script using shared internal implementation
+    const int result = execute_script_internal(vm, script);
+
+    // Restore original signal mask before returning to JVM context
+    pthread_sigmask(SIG_SETMASK, &old_set, NULL);
+
+    DEBUG_LOG("ruby_vm_execute_sync: Script execution completed with result: %d", result);
+
+    return result;
 }
 
 const RubyVMError* ruby_vm_get_last_error(const RubyVM* vm) {

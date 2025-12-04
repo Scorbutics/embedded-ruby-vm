@@ -75,13 +75,26 @@ int ruby_vm_enable_logging(RubyVM* vm);
 int ruby_vm_disable_logging(RubyVM* vm);
 
 /**
- * Enqueue a Ruby script to be executed
+ * Enqueue a Ruby script to be executed (asynchronously via native pthread)
  *
  * @param vm Pointer to the Ruby VM instance
  * @param script Ruby script to enqueue
  * @param on_complete Completion callback
  */
 void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_complete);
+
+/**
+ * Execute a Ruby script synchronously on the calling thread.
+ * This function BLOCKS until the script completes.
+ *
+ * IMPORTANT: Call this from a JVM thread, NOT from main thread or other critical threads.
+ * This avoids native pthreads attaching to JVM.
+ *
+ * @param vm Pointer to the Ruby VM instance
+ * @param script Ruby script to execute
+ * @return 0 on success, non-zero on error
+ */
+int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script);
 
 /**
  * Get the last error that occurred in the Ruby VM

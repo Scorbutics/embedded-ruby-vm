@@ -30,6 +30,7 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
                                        LogListener listener);
 void ruby_interpreter_destroy(RubyInterpreter* interpreter);
 int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, RubyCompletionTask on_complete );
+int ruby_interpreter_execute_sync(RubyInterpreter* interpreter, RubyScript* script);
 int ruby_interpreter_enable_logging(RubyInterpreter* interpreter);
 int ruby_interpreter_disable_logging(RubyInterpreter* interpreter);
 // Error handling - delegates to underlying VM

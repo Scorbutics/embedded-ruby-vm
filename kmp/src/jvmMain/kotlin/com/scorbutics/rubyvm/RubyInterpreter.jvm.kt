@@ -2,12 +2,16 @@ package com.scorbutics.rubyvm
 
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 
 /**
  * JVM implementation of RubyInterpreter using JNI.
  *
  * This implementation wraps the existing JNI layer (RubyVMNative)
  * to provide a Kotlin-friendly API for both Android and Desktop platforms.
+ *
+ * IMPORTANT: Uses synchronous execution on JVM threads to avoid native pthreads
+ * from attaching to the JVM, which would cause JVM GC to crash.
  */
 actual class RubyInterpreter private constructor(
     private val interpreterPtr: Long,
@@ -19,13 +23,20 @@ actual class RubyInterpreter private constructor(
     actual fun enqueue(script: RubyScript, onComplete: (exitCode: Int) -> Unit) {
         check(!isDestroyed.get()) { "Interpreter has been destroyed" }
 
-        val callback = object : CompletionCallback {
-            override fun complete(exitCode: Int) {
+        // Spawn a JVM thread (NOT a native pthread!) to execute the script
+        // This thread will block in native code, but since it's a JVM thread,
+        // the JVM GC only scans its JVM stack, not native pthread stacks
+        thread(name = "RubyVM-ScriptExecution", isDaemon = false) {
+            try {
+                // Call the synchronous native method - this BLOCKS until script completes
+                val exitCode = RubyVMNative.executeScriptSync(interpreterPtr, script.scriptPtr)
                 onComplete(exitCode)
+            } catch (e: Exception) {
+                System.err.println("[RubyVM] Error executing script: ${e.message}")
+                e.printStackTrace()
+                onComplete(1)  // Error
             }
         }
-
-        RubyVMNative.enqueueScript(interpreterPtr, script.scriptPtr, callback)
     }
 
     actual fun enableLogging() {

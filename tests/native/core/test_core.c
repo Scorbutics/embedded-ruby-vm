@@ -154,6 +154,8 @@ int main(int argc, char* argv[]) {
     
     while (!finished);
 
+    ruby_script_destroy(script);
+
     printf("=== End of Output ===\n");
 
 cleanup:

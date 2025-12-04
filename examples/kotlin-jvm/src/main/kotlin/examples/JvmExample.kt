@@ -2,8 +2,9 @@ package examples
 
 import com.scorbutics.rubyvm.LogListener
 import com.scorbutics.rubyvm.RubyInterpreter
-import com.scorbutics.rubyvm.RubyScript
-import java.util.concurrent.atomic.AtomicInteger
+import com.scorbutics.rubyvm.execute
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Example of using the Ruby VM from JVM/Kotlin
@@ -27,8 +28,10 @@ fun main() {
         }
     }
 
-    // Use AtomicInteger for thread-safe counter with proper memory barriers
-    val scriptCount = AtomicInteger(0)
+    // Use CountDownLatch for proper thread synchronization
+    // We have 2 scripts, so we need to wait for both
+    val latch = CountDownLatch(2)
+    
     // Create interpreter
     println("Creating Ruby interpreter...")
     RubyInterpreter.create(
@@ -39,46 +42,38 @@ fun main() {
     ).use { interpreter -> 
         println("Interpreter created!\n")
 
-        // Create and execute a simple script
-        println("Executing Ruby script...")
-        RubyScript.fromContent("""
-            puts "Hello from Ruby via JVM!"
-            puts "Ruby version: #{RUBY_VERSION}"
-            puts "2 + 2 = #{2 + 2}"
-            puts "Current time: #{Time.now}"
-        """.trimIndent()).use { script ->
+        // Execute scripts with automatic memory management
+        println("Executing script 1...")
+        interpreter.execute(
+            scriptContent = """
+                puts "Hello from Ruby via JVM!"
+                puts "Ruby version: #{RUBY_VERSION}"
+                puts "2 + 2 = #{2 + 2}"
+                puts "Current time: #{Time.now}"
+            """.trimIndent(),
+            latch = latch
+        ) { exitCode ->
+            Thread.sleep(5000) // Simulate some work
+            println("\nScript 1 completed with exit code: $exitCode")
+        }
 
-            interpreter.enqueue(script) { exitCode ->
-                Thread.sleep(2000) // Wait
-
-                println("\nScript completed with exit code: $exitCode")
-                scriptCount.incrementAndGet()
-                Thread.sleep(1000) // Wait
-
-                println("\nTest no crash after callback")
-            }
-
-            /*RubyScript.fromContent("""
+        println("Executing script 2...")
+        interpreter.execute(
+            scriptContent = """
                 puts "LOL MDR!"
                 puts "This is another Ruby script running via JVM."
                 puts "3 * 3 = #{3 * 3}"
                 puts "Goodbye!"
-            """.trimIndent()).use { script2 ->
-
-                interpreter.enqueue(script2) { exitCode ->
-                    println("\nScript completed with exit code: $exitCode")
-                    scriptCount.incrementAndGet()
-                }
-            }*/
-
-            // Wait for scripts to complete
-            // AtomicInteger provides memory barriers, so busy-wait is now safe
-            while (scriptCount.get() < 1) {
-                // Empty loop - atomic operations provide proper memory synchronization
-            }
-            println("\nAll scripts completed.")
-
+            """.trimIndent(),
+            latch = latch
+        ) { exitCode ->
+            println("\nScript 2 completed with exit code: $exitCode")
         }
+
+        // Wait for both scripts to complete
+        println("Waiting for all scripts to complete...")
+        latch.await(30, TimeUnit.SECONDS)
+        println("\nAll scripts completed.")
 
     }
 

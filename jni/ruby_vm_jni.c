@@ -600,6 +600,46 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enqueueScript(JNIEnv *env, jclass clazz,
     // after the Ruby VM calls it
 }
 
+/**
+ * Execute a script synchronously and return the result.
+ * This method BLOCKS until the script completes.
+ *
+ * IMPORTANT: This should be called from a JVM thread (e.g., Kotlin's thread{}), NOT from
+ * a native pthread. This avoids the JVM GC scanning native pthread stacks.
+ *
+ * @param interpreterPtr Pointer to the RubyInterpreter
+ * @param scriptPtr Pointer to the RubyScript
+ * @return 0 on success, non-zero error code on failure
+ */
+JNIEXPORT jint JNICALL
+Java_com_scorbutics_rubyvm_RubyVMNative_executeScriptSync(JNIEnv *env, jclass clazz,
+                                                           jlong interpreter_ptr,
+                                                           jlong script_ptr) {
+    (void) env;
+    (void) clazz;
+
+    RubyInterpreter* interpreter = (RubyInterpreter*)interpreter_ptr;
+    RubyScript* script = (RubyScript*)script_ptr;
+
+    // Validate inputs
+    if (!interpreter || !script) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Invalid interpreter or script pointer in executeScriptSync");
+        return 1;  // Error
+    }
+
+    DEBUG_LOG("executeScriptSync: Executing script synchronously on JVM thread");
+
+    // Execute the script synchronously on the calling (JVM) thread
+    // This BLOCKS until the script completes and returns the result directly
+    // No native pthread is created, so JVM GC won't scan native stacks!
+    // This also handles VM initialization if needed
+    const int result = ruby_interpreter_execute_sync(interpreter, script);
+
+    DEBUG_LOG("executeScriptSync: Script execution completed with result: %d", result);
+
+    return (jint)result;
+}
+
 JNIEXPORT jint JNICALL
 Java_com_scorbutics_rubyvm_RubyVMNative_updateEnvLocations(JNIEnv *env, jclass clazz,
                                                            jstring current_directory,
