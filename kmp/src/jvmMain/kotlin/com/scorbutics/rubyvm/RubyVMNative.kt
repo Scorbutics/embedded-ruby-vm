@@ -39,6 +39,35 @@ internal object RubyVMNative {
 
     external fun disableLogging(interpreterPtr: Long)
 
+    // ========================================================================
+    // Asset Layout Query (Phase 2)
+    // ========================================================================
+
+    /**
+     * Get the native library directory path from the C-managed asset layout.
+     *
+     * @param installDir The installation directory
+     * @return Path to the native libs directory, or null on error
+     */
+    external fun getNativeLibsPath(installDir: String): String?
+
+    /**
+     * Get the count of embedded native libraries.
+     *
+     * @param installDir The installation directory
+     * @return Number of native libraries, or -1 on error
+     */
+    external fun getNativeLibCount(installDir: String): Int
+
+    /**
+     * Get a specific native library full path by index.
+     *
+     * @param installDir The installation directory
+     * @param index The library index (0 to count-1)
+     * @return Full path to the library file, or null if invalid
+     */
+    external fun getNativeLibPath(installDir: String, index: Int): String?
+
     init {
         // Load native library using platform-specific loader
         NativeLibraryLoader.loadLibrary()

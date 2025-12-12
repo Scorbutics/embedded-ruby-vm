@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.19.2)
 
+# Disable RUNPATH BEFORE project() - native libraries will be extracted and loaded at runtime
+# instead of using hardcoded paths from the build environment
+set(CMAKE_SKIP_RPATH ON)
+set(CMAKE_SKIP_BUILD_RPATH ON)
+
 project("embedded-ruby-vm")
 
 # Enable Position Independent Code for all targets
@@ -22,6 +27,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 add_subdirectory(core)
+add_subdirectory(assets)
 
 if(BUILD_JNI)
     set(JNI_DIR ${CMAKE_SOURCE_DIR}/jni)

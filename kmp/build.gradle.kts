@@ -93,10 +93,7 @@ kotlin {
     //                 // Ruby interpreter
     //                 "-lruby",
     //                 // System libraries (math and crypt for Ruby)
-    //                 "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt",
-    //                 // Set RPATH so executable can find Ruby library in same directory
-    //                 "-Wl,-rpath,\$ORIGIN",
-    //                 "-Wl,-rpath,${rubyLibDir.absolutePath}"
+    //                 "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt"
     //             )
     //         }
     //     }
@@ -230,12 +227,33 @@ tasks.register("packageNativeLibraries") {
     dependsOn("buildNativeLibsDesktop")
 
     // Define where native libraries are built
+    // We now have TWO libraries: libassets.so and libembedded-ruby.so
     val nativeLibsSource = mapOf(
-        "linux-x64" to Pair("libs/linux_x86_64/libembedded-ruby.so", "../core/external/lib/x86_64-linux-linux"),
-        "linux-arm64" to Pair("libs/linux_arm64/libembedded-ruby.so", "../core/external/lib/aarch64-linux-linux"),
-        "macos-x64" to Pair("libs/macos_x64/libembedded-ruby.dylib", "../core/external/lib/x86_64-macos-darwin"),
-        "macos-arm64" to Pair("libs/macos_arm64/libembedded-ruby.dylib", "../core/external/lib/aarch64-macos-darwin"),
-        "windows-x64" to Pair("libs/windows_x64/embedded-ruby.dll", "../core/external/lib/x86_64-windows-mingw")
+        "linux-x64" to Triple(
+            "libs/linux_x86_64/libassets.so",
+            "libs/linux_x86_64/libembedded-ruby.so",
+            "../core/external/lib/x86_64-linux-linux"
+        ),
+        "linux-arm64" to Triple(
+            "libs/linux_arm64/libassets.so",
+            "libs/linux_arm64/libembedded-ruby.so",
+            "../core/external/lib/aarch64-linux-linux"
+        ),
+        "macos-x64" to Triple(
+            "libs/macos_x64/libassets.dylib",
+            "libs/macos_x64/libembedded-ruby.dylib",
+            "../core/external/lib/x86_64-macos-darwin"
+        ),
+        "macos-arm64" to Triple(
+            "libs/macos_arm64/libassets.dylib",
+            "libs/macos_arm64/libembedded-ruby.dylib",
+            "../core/external/lib/aarch64-macos-darwin"
+        ),
+        "windows-x64" to Triple(
+            "libs/windows_x64/assets.dll",
+            "libs/windows_x64/embedded-ruby.dll",
+            "../core/external/lib/x86_64-windows-mingw"
+        )
     )
 
     // Configure outputs for proper up-to-date checking
@@ -244,33 +262,43 @@ tasks.register("packageNativeLibraries") {
     doLast {
         val outputDir = layout.buildDirectory.dir("generated/natives").get().asFile
 
-        // Copy each platform's library to resources
+        // Copy each platform's libraries to resources
         nativeLibsSource.forEach { (platform, paths) ->
-            val (libPath, rubyLibDir) = paths
-            val sourceFile = file(libPath)
+            val (assetsLibPath, embeddedRubyLibPath, rubyLibDir) = paths
+            val assetsFile = file(assetsLibPath)
+            val embeddedRubyFile = file(embeddedRubyLibPath)
             val rubyDir = file(rubyLibDir)
 
-            println("Checking Ruby lib dir: ${rubyDir.absolutePath} - exists: ${rubyDir.exists()}")
+            println("Packaging libraries for $platform:")
+            println("  - Assets lib: ${assetsFile.absolutePath} - exists: ${assetsFile.exists()}")
+            println("  - Main lib: ${embeddedRubyFile.absolutePath} - exists: ${embeddedRubyFile.exists()}")
 
-            if (sourceFile.exists()) {
-                // Copy our embedded-ruby library
+            // Copy libassets.so (or .dylib, .dll)
+            if (assetsFile.exists()) {
                 copy {
-                    from(sourceFile)
+                    from(assetsFile)
                     into("$outputDir/natives/$platform")
                 }
-
-                // Copy Ruby runtime library (libruby.so, libruby.dylib, etc.)
-                if (rubyDir.exists()) {
-                    copy {
-                        from(fileTree(rubyDir) {
-                            include("*.so*")      // Linux
-                            include("*.dylib")   // macOS
-                            include("*.dll")             // Windows
-                        })
-                        into("$outputDir/natives/$platform")
-                    }
-                }
+                println("  ✓ Copied assets library")
+            } else {
+                println("  ⚠ Assets library not found - will be built during CMake")
             }
+
+            // Copy libembedded-ruby.so (or .dylib, .dll)
+            if (embeddedRubyFile.exists()) {
+                copy {
+                    from(embeddedRubyFile)
+                    into("$outputDir/natives/$platform")
+                }
+                println("  ✓ Copied embedded-ruby library")
+            } else {
+                println("  ⚠ Embedded-ruby library not found - will be built during CMake")
+            }
+
+            // NOTE: Ruby runtime libraries (libruby.so, libssl.so, etc.) are now
+            // embedded in libassets.so and extracted at runtime. We no longer
+            // package them in the JAR to reduce binary bloat.
+            // The C asset extraction code handles them.
         }
     }
 }

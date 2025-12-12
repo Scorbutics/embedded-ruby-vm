@@ -65,6 +65,13 @@ The project uses a **three-layer architecture** for maximum platform compatibili
 - **Gradle** (wrapper included)
 - **Android NDK** (for Android builds only)
 
+> WARNING: Please note that ideally (and while building on host directly is supported), ALL of your commands must be executed INSIDE the docker container!
+>
+> That means you will have to prefix every exposed command down here with `docker exec <container_name>` (the container name should be `embedded-ruby-vm-dev`).
+>
+> The docker container stack mounted using docker-compose.yml is using a named volume and not a bind mount. In order to sync the sources, each time you are doing a source code modification, you have to remove the `source-sync-in` (`docker-compose run --rm source-sync-in`) container which will trigger a resync next build.
+> Alternatively, you can also use the `docker-dev.sh` script for convenient usage.
+
 ### Build Everything
 
 ```bash
@@ -99,50 +106,6 @@ cd examples/kotlin-jvm
 # Run all examples
 ../../gradlew runAllExamples
 ```
-
-## 🎨 What's New - Improved API
-
-The Kotlin API now includes ergonomic convenience methods that eliminate boilerplate while maintaining full compatibility with the low-level C API:
-
-### Before: Manual Synchronization
-```kotlin
-val latch = CountDownLatch(3)
-interpreter.execute(script1, latch) { ... }
-interpreter.execute(script2, latch) { ... }
-interpreter.execute(script3, latch) { ... }
-latch.await(30, TimeUnit.SECONDS)
-```
-
-### After: Automatic Batch Execution
-```kotlin
-// Simple batch
-interpreter.executeBatch(listOf(script1, script2, script3), timeoutSeconds = 30)
-
-// Or with builder pattern
-interpreter.batch()
-    .addScript(script1, name = "init")
-    .addScript(script2, name = "process")
-    .addScript(script3, name = "cleanup")
-    .timeout(30)
-    .execute()
-```
-
-**New APIs:**
-- `executeBatch()` - Execute multiple scripts without manual latch management
-- `executeSync()` - Simple blocking execution
-- `executeWithResult()` - Structured error handling with sealed classes
-- `batch()` - Fluent builder pattern with named scripts and callbacks
-- `executeFile()` - Execute Ruby scripts from files
-- `toMetrics()` - Analyze execution performance
-
-**Benefits:**
-- ✅ 70% less boilerplate code
-- ✅ Type-safe result handling
-- ✅ Built-in timeout management
-- ✅ Execution duration tracking
-- ✅ Named scripts for debugging
-- ✅ 100% multi-platform compatible (JVM & Native)
-
 
 ## 📖 Usage
 

@@ -45,10 +45,7 @@ kotlin {
                     // Ruby interpreter
                     "-lruby",
                     // System libraries (math and crypt for Ruby)
-                    "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt",
-                    // Set RPATH so executable can find Ruby library
-                    "-Wl,-rpath,\$ORIGIN",
-                    "-Wl,-rpath,${rubyLibDir.absolutePath}"
+                    "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt"
                 )
             }
         }

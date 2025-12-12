@@ -19,5 +19,5 @@ set_target_properties(ruby-vm PROPERTIES
     COMPILE_FLAGS "-Wall -Wextra -Werror"
     POSITION_INDEPENDENT_CODE ON
 )
-target_include_directories(ruby-vm PRIVATE ${IMPORT_DIR} ${LOGGING_DIR} ${ASSETS_DIR})
+target_include_directories(ruby-vm PRIVATE ${IMPORT_DIR} ${LOGGING_DIR})
 target_link_libraries(ruby-vm logging assets ruby)

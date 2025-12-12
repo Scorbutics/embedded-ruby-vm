@@ -97,66 +97,21 @@ latch.await()
 ruby_vm_enqueue(vm, script, callback)
 ```
 
----
-
-## Recent Improvements
-
-### December 2024 - Kotlin API Improvements
-
-**Problem:** Original API required manual `CountDownLatch` management for batch execution.
-
-**Solution:** Added Layer 3 convenience APIs that wrap the existing C core.
-
-**Implementation Approach:**
-- ✅ Zero C code changes (all improvements in Kotlin)
-- ✅ Backward compatible (Layer 2 APIs unchanged)
-- ✅ Multi-platform (JVM uses `CountDownLatch`, Native uses `AtomicInt`)
-- ✅ Type-safe with Kotlin sealed classes
-
-**New APIs Added:**
-
-1. **`executeBatch()`** - Execute multiple scripts without manual synchronization
-   - Location: `RubyInterpreterExtensions.jvm.kt:72`, `RubyInterpreterExtensions.native.kt:130`
-   - Replaces manual `CountDownLatch` creation
-   - Returns `List<Int>` exit codes
-
-2. **`executeSync()`** - Simple blocking execution
-   - Location: `RubyInterpreterExtensions.jvm.kt:115`, `RubyInterpreterExtensions.native.kt:171`
-   - For single scripts where you need immediate results
-   - Returns exit code directly
-
-3. **`executeWithResult()`** - Structured error handling
-   - Location: `RubyInterpreterExtensions.jvm.kt:150`, `RubyInterpreterExtensions.native.kt:206`
-   - Returns `ExecutionResult` sealed class
-   - Includes duration tracking
-
-4. **`batch()` Builder** - Fluent API for complex scenarios
-   - Common interface: `ScriptBatch.kt`
-   - JVM impl: `ScriptBatch.jvm.kt`
-   - Native impl: `ScriptBatch.native.kt`
-   - Supports named scripts, callbacks, metrics
-
-5. **`executeFile()`** - Execute scripts from files
-   - Location: `RubyInterpreterExtensions.jvm.kt:193`, `RubyInterpreterExtensions.native.kt:249`
-   - Reads file content and executes
-
-**Data Types:**
-- `ScriptResult` - Metadata about script execution
-- `ExecutionResult` - Sealed class for structured error handling
-- `ExecutionMetrics` - Aggregated statistics
-
-**See [API_IMPROVEMENTS.md](API_IMPROVEMENTS.md) for complete documentation.**
-
----
-
 ## Development Guidelines
+
+> WARNING: Please note that ALL of your commands must be executed INSIDE the docker container!
+>
+> That means you will have to prefix every exposed command down here with `docker exec <container_name>` (the container name should be `embedded-ruby-vm-dev`).
+>
+> The docker container stack mounted using docker-compose.yml is using a named volume and not a bind mount. In order to sync the sources, each time you are doing a source code modification, you have to remove the `source-sync-in` (`docker-compose run --rm source-sync-in`) container which will trigger a resync next build.
+> Alternatively, you can also use the `docker-dev.sh` script for convenient usage.
 
 ### Adding New Features
 
 #### Decision Tree: Where to Add?
 
 ```
-Does it require new Ruby VM functionality?
+Does it require new Ruby VM functionality, or can it be beneficial to be included in the C API?
 ├─ YES → Add to Layer 1 (C Core)
 │   ├─ Update ruby-vm.h
 │   ├─ Implement in ruby-vm.c
@@ -203,40 +158,6 @@ fun RubyInterpreter.warmup(initScripts: List<String>) {
 - Error handling via `RubyVMError`
 
 ---
-
-## Multi-Platform Considerations
-
-### Platform-Specific Implementations
-
-The project supports multiple platforms with different bridge mechanisms:
-
-| Platform | Bridge | Synchronization | File I/O |
-|----------|--------|----------------|----------|
-| JVM Desktop | JNI | `CountDownLatch` | `java.io.File` |
-| Android | JNI | `CountDownLatch` | `java.io.File` |
-| Native (iOS/macOS/Linux) | cinterop | `AtomicInt` | `kotlin.io.path` |
-
-### Synchronization Patterns
-
-**JVM (jvmMain):**
-```kotlin
-import java.util.concurrent.CountDownLatch
-
-val latch = CountDownLatch(count)
-latch.await(timeout, TimeUnit.SECONDS)
-```
-
-**Native (nativeMain):**
-```kotlin
-import kotlinx.atomicfu.atomic
-
-class NativeCountDownLatch(count: Int) {
-    private val current = atomic(count)
-
-    fun countDown() { current.update { it - 1 } }
-    fun await() { while (current.value > 0) { usleep(1000u) } }
-}
-```
 
 ### Cross-Platform Time APIs
 
