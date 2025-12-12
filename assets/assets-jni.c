@@ -172,3 +172,156 @@ Java_com_scorbutics_rubyvm_AssetsNative_bootstrap(
     // Convert to Java string
     return (*env)->NewStringUTF(env, json_buffer);
 }
+
+/**
+ * Get the native libraries directory path from the installation.
+ *
+ * This function retrieves the path to the directory containing extracted
+ * native libraries (.so files). The path is managed by the C layer.
+ *
+ * @param env JNI environment
+ * @param obj Object reference (unused)
+ * @param installDir Installation directory path
+ * @return String path to native libs directory, or NULL on error
+ */
+JNIEXPORT jstring JNICALL
+Java_com_scorbutics_rubyvm_AssetsNative_getNativeLibsPath(
+    JNIEnv *env,
+    jobject obj,
+    jstring installDir
+) {
+    (void)obj; // Unused parameter
+
+    if (!installDir) {
+        return NULL;
+    }
+
+    // Convert Java string to C string
+    const char *install_dir_str = (*env)->GetStringUTFChars(env, installDir, NULL);
+    if (!install_dir_str) {
+        return NULL;
+    }
+
+    // Get asset layout from C
+    AssetsError error = {0};
+    AssetsLayout* layout = assets_get_layout(install_dir_str, &error);
+
+    // Release the input string
+    (*env)->ReleaseStringUTFChars(env, installDir, install_dir_str);
+
+    if (!layout) {
+        return NULL;
+    }
+
+    // Create Java string from native libs directory
+    jstring result = (*env)->NewStringUTF(env, layout->native_libs_dir);
+
+    // Cleanup
+    assets_free_layout(layout);
+
+    return result;
+}
+
+/**
+ * Get the count of extracted native libraries.
+ *
+ * @param env JNI environment
+ * @param obj Object reference (unused)
+ * @param installDir Installation directory path
+ * @return Number of native libraries, or -1 on error
+ */
+JNIEXPORT jint JNICALL
+Java_com_scorbutics_rubyvm_AssetsNative_getNativeLibCount(
+    JNIEnv *env,
+    jobject obj,
+    jstring installDir
+) {
+    (void)obj; // Unused parameter
+
+    if (!installDir) {
+        return -1;
+    }
+
+    // Convert Java string to C string
+    const char *install_dir_str = (*env)->GetStringUTFChars(env, installDir, NULL);
+    if (!install_dir_str) {
+        return -1;
+    }
+
+    // Get asset layout
+    AssetsError error = {0};
+    AssetsLayout* layout = assets_get_layout(install_dir_str, &error);
+
+    // Release the input string
+    (*env)->ReleaseStringUTFChars(env, installDir, install_dir_str);
+
+    if (!layout) {
+        return -1;
+    }
+
+    jint count = layout->native_lib_count;
+
+    // Cleanup
+    assets_free_layout(layout);
+
+    return count;
+}
+
+/**
+ * Get the full path to a specific native library by index.
+ *
+ * @param env JNI environment
+ * @param obj Object reference (unused)
+ * @param installDir Installation directory path
+ * @param index Index of the library to get (0-based)
+ * @return Full path to the library file, or NULL if index is invalid
+ */
+JNIEXPORT jstring JNICALL
+Java_com_scorbutics_rubyvm_AssetsNative_getNativeLibPath(
+    JNIEnv *env,
+    jobject obj,
+    jstring installDir,
+    jint index
+) {
+    (void)obj; // Unused parameter
+
+    if (!installDir || index < 0) {
+        return NULL;
+    }
+
+    // Convert Java string to C string
+    const char *install_dir_str = (*env)->GetStringUTFChars(env, installDir, NULL);
+    if (!install_dir_str) {
+        return NULL;
+    }
+
+    // Get asset layout
+    AssetsError error = {0};
+    AssetsLayout* layout = assets_get_layout(install_dir_str, &error);
+
+    // Release the input string
+    (*env)->ReleaseStringUTFChars(env, installDir, install_dir_str);
+
+    if (!layout) {
+        return NULL;
+    }
+
+    // Check if index is valid
+    if (index >= layout->native_lib_count) {
+        assets_free_layout(layout);
+        return NULL;
+    }
+
+    // Build full path: native_libs_dir + "/" + relative_path
+    char full_path[2048];
+    snprintf(full_path, sizeof(full_path), "%s/%s",
+             layout->native_libs_dir,
+             layout->native_libs[index].relative_path);
+
+    jstring result = (*env)->NewStringUTF(env, full_path);
+
+    // Cleanup
+    assets_free_layout(layout);
+
+    return result;
+}

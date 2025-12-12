@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <use_direct_memory.h>
 
 #include "constants.h"
+#include "embedded_scripts.h"
 #include "ruby-script-location.h"
 #include "ruby-vm.h"
 #include "ruby-script.h"
@@ -52,8 +52,8 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
         // Build main script
         DEBUG_LOG("Creating FIFO interpreter script");
         RubyScript* main_script = ruby_script_create_from_content(
-                get_in_memory_file_content(FIFO_INTERPRETER_SCRIPT),
-                get_in_memory_file_size(FIFO_INTERPRETER_SCRIPT)
+                embedded_script_get_content(FIFO_INTERPRETER_SCRIPT),
+                embedded_script_get_size(FIFO_INTERPRETER_SCRIPT)
         );
         if (!main_script) {
             DEBUG_LOG("Failed to create main script");

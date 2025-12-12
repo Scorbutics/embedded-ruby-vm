@@ -27,8 +27,7 @@ extern const char _binary_ruby_stdlib_zip_start[];
 extern const char _binary_ruby_stdlib_zip_end[];
 extern const char _binary_ruby_stdlib_ext_zip_start[];
 extern const char _binary_ruby_stdlib_ext_zip_end[];
-extern const char _binary_fifo_interpreter_rb_start[];
-extern const char _binary_fifo_interpreter_rb_end[];
+// Note: fifo_interpreter.rb has been moved to libembedded-ruby.so
 
 // External symbols for embedded native libraries (Phase 2)
 #ifdef HAS_EMBEDDED_NATIVE_LIBS
@@ -69,10 +68,8 @@ typedef struct {
     char version[128];           // Auto-generated version from CRC32 hash
     uint32_t ruby_stdlib_zip_crc32;
     uint32_t ruby_stdlib_ext_zip_crc32;
-    uint32_t fifo_interpreter_rb_crc32;
     size_t ruby_stdlib_zip_size;
     size_t ruby_stdlib_ext_zip_size;
-    size_t fifo_interpreter_rb_size;
 
     // Native library tracking
     char platform[64];
@@ -119,9 +116,9 @@ static uint32_t compute_crc32(const void *data, size_t size) {
 // Generate auto-version string from CRC32 hashes
 // Format: "3.1.0-auto-XXXXXXXX" where XXXXXXXX is XOR of all CRC32 values
 static void generate_auto_version(char *version_buf, size_t buf_size,
-                                   uint32_t crc1, uint32_t crc2, uint32_t crc3) {
+                                   uint32_t crc1, uint32_t crc2) {
     // Combine all CRC32 values using XOR
-    uint32_t composite_hash = crc1 ^ crc2 ^ crc3;
+    uint32_t composite_hash = crc1 ^ crc2;
 
     // Format as version string
     snprintf(version_buf, buf_size, "%s-auto-%08X", RUBY_VERSION, composite_hash);
@@ -165,14 +162,10 @@ static int read_manifest(const char *install_dir, Manifest *manifest) {
             manifest->ruby_stdlib_zip_crc32 = (uint32_t)strtoul(value, NULL, 16);
         } else if (strcmp(key, "ruby_stdlib_ext_zip_crc32") == 0) {
             manifest->ruby_stdlib_ext_zip_crc32 = (uint32_t)strtoul(value, NULL, 16);
-        } else if (strcmp(key, "fifo_interpreter_rb_crc32") == 0) {
-            manifest->fifo_interpreter_rb_crc32 = (uint32_t)strtoul(value, NULL, 16);
         } else if (strcmp(key, "ruby_stdlib_zip_size") == 0) {
             manifest->ruby_stdlib_zip_size = (size_t)strtoull(value, NULL, 10);
         } else if (strcmp(key, "ruby_stdlib_ext_zip_size") == 0) {
             manifest->ruby_stdlib_ext_zip_size = (size_t)strtoull(value, NULL, 10);
-        } else if (strcmp(key, "fifo_interpreter_rb_size") == 0) {
-            manifest->fifo_interpreter_rb_size = (size_t)strtoull(value, NULL, 10);
         }
     }
 
@@ -203,10 +196,6 @@ static int write_manifest_json(const char *install_dir, const Manifest *manifest
     fprintf(file, "    \"ruby_stdlib_ext_zip\": {\n");
     fprintf(file, "      \"crc32\": \"%08X\",\n", manifest->ruby_stdlib_ext_zip_crc32);
     fprintf(file, "      \"size\": %zu\n", manifest->ruby_stdlib_ext_zip_size);
-    fprintf(file, "    },\n");
-    fprintf(file, "    \"fifo_interpreter_rb\": {\n");
-    fprintf(file, "      \"crc32\": \"%08X\",\n", manifest->fifo_interpreter_rb_crc32);
-    fprintf(file, "      \"size\": %zu\n", manifest->fifo_interpreter_rb_size);
     fprintf(file, "    }\n");
     fprintf(file, "  },\n");
     fprintf(file, "  \"native_libs\": {\n");
@@ -307,8 +296,6 @@ static int read_manifest_json(const char *install_dir, Manifest *manifest) {
                     manifest->ruby_stdlib_zip_size = size_val;
                 } else if (manifest->ruby_stdlib_ext_zip_size == 0) {
                     manifest->ruby_stdlib_ext_zip_size = size_val;
-                } else if (manifest->fifo_interpreter_rb_size == 0) {
-                    manifest->fifo_interpreter_rb_size = size_val;
                 }
             }
         }
@@ -335,10 +322,8 @@ static int write_manifest(const char *install_dir, const Manifest *manifest) {
     fprintf(file, "version=%s\n", manifest->version);
     fprintf(file, "ruby_stdlib_zip_crc32=%08X\n", manifest->ruby_stdlib_zip_crc32);
     fprintf(file, "ruby_stdlib_ext_zip_crc32=%08X\n", manifest->ruby_stdlib_ext_zip_crc32);
-    fprintf(file, "fifo_interpreter_rb_crc32=%08X\n", manifest->fifo_interpreter_rb_crc32);
     fprintf(file, "ruby_stdlib_zip_size=%zu\n", manifest->ruby_stdlib_zip_size);
     fprintf(file, "ruby_stdlib_ext_zip_size=%zu\n", manifest->ruby_stdlib_ext_zip_size);
-    fprintf(file, "fifo_interpreter_rb_size=%zu\n", manifest->fifo_interpreter_rb_size);
 
     fclose(file);
     ASSETS_INFO_LOG("Manifest written: %s", manifest_path);
@@ -346,21 +331,9 @@ static int write_manifest(const char *install_dir, const Manifest *manifest) {
 }
 
 // Verify that extracted files exist and have correct sizes
-static int verify_installation(const char *install_dir, const Manifest *manifest) {
+static int verify_installation(const char *install_dir) {
     char file_path[1024];
     struct stat st;
-
-    // Check fifo_interpreter.rb
-    snprintf(file_path, sizeof(file_path), "%s/fifo_interpreter.rb", install_dir);
-    if (stat(file_path, &st) != 0) {
-        ASSETS_DEBUG_LOG("Verification failed: %s not found", file_path);
-        return -1;
-    }
-    if ((size_t)st.st_size != manifest->fifo_interpreter_rb_size) {
-        ASSETS_DEBUG_LOG("Verification failed: %s size mismatch (expected %zu, got %lld)",
-                         file_path, manifest->fifo_interpreter_rb_size, (long long)st.st_size);
-        return -1;
-    }
 
     // Check that ruby directory exists (we extract zips, so just check directory)
     snprintf(file_path, sizeof(file_path), "%s/ruby", install_dir);
@@ -502,31 +475,6 @@ cleanup:
     mz_stream_mem_delete(&stream);
 
     return (err == MZ_OK) ? 0 : -1;
-}
-
-// Write binary data to a file
-static int write_binary_file(const char *filename, const char *data, size_t size) {
-    // Create parent directories
-    if (create_directories(filename) != 0) {
-        return -1;
-    }
-
-    FILE *file = fopen(filename, "wb");
-    if (!file) {
-        ASSETS_ERROR_LOG("Failed to create file %s: %s", filename, strerror(errno));
-        return -1;
-    }
-
-    size_t written = fwrite(data, 1, size, file);
-    fclose(file);
-
-    if (written != size) {
-        ASSETS_ERROR_LOG("Failed to write complete data to %s", filename);
-        return -1;
-    }
-
-    ASSETS_DEBUG_LOG("Created: %s (%zu bytes)", filename, size);
-    return 0;
 }
 
 #ifdef HAS_EMBEDDED_NATIVE_LIBS
@@ -702,7 +650,6 @@ static void create_library_version_symlinks(const char* lib_dir) {
 
 // Main installation function
 int install_embedded_files(const char *install_dir, AssetsError* error) {
-    char full_path[1024];
     int result = 0;
 
     if (!install_dir) {
@@ -743,16 +690,6 @@ int install_embedded_files(const char *install_dir, AssetsError* error) {
         result = ASSETS_ERROR_ZIP_EXTRACT;
     }
 
-    // Write FIFO interpreter Ruby file
-    ASSETS_INFO_LOG("Installing FIFO interpreter...");
-    size_t fifo_interpreter_size = _binary_fifo_interpreter_rb_end - _binary_fifo_interpreter_rb_start;
-    snprintf(full_path, sizeof(full_path), "%s/fifo_interpreter.rb", install_dir);
-    if (write_binary_file(full_path, _binary_fifo_interpreter_rb_start, fifo_interpreter_size) != 0) {
-        assets_error_set(error, ASSETS_ERROR_FILE_WRITE, full_path,
-                       "Failed to install FIFO interpreter");
-        result = ASSETS_ERROR_FILE_WRITE;
-    }
-
     if (result == 0) {
         // Write manifest file after successful installation
         ASSETS_INFO_LOG("Writing installation manifest...");
@@ -762,11 +699,9 @@ int install_embedded_files(const char *install_dir, AssetsError* error) {
         // Compute CRC32 checksums of embedded data
         manifest.ruby_stdlib_zip_crc32 = compute_crc32(_binary_ruby_stdlib_zip_start, ruby_stdlib_size);
         manifest.ruby_stdlib_ext_zip_crc32 = compute_crc32(_binary_ruby_stdlib_ext_zip_start, ruby_stdlib_ext_size);
-        manifest.fifo_interpreter_rb_crc32 = compute_crc32(_binary_fifo_interpreter_rb_start, fifo_interpreter_size);
 
         manifest.ruby_stdlib_zip_size = ruby_stdlib_size;
         manifest.ruby_stdlib_ext_zip_size = ruby_stdlib_ext_size;
-        manifest.fifo_interpreter_rb_size = fifo_interpreter_size;
 
         // Platform detection
 #if defined(__x86_64__) || defined(_M_X64)
@@ -807,8 +742,7 @@ int install_embedded_files(const char *install_dir, AssetsError* error) {
         // Generate auto-version from CRC32 hashes
         generate_auto_version(manifest.version, sizeof(manifest.version),
                               manifest.ruby_stdlib_zip_crc32,
-                              manifest.ruby_stdlib_ext_zip_crc32,
-                              manifest.fifo_interpreter_rb_crc32);
+                              manifest.ruby_stdlib_ext_zip_crc32);
 
         // Write both INI format (backward compat) and JSON format (new)
         if (write_manifest(install_dir, &manifest) != 0) {
@@ -868,22 +802,18 @@ int installation_needed(const char *install_dir, AssetsError* error) {
     // Build expected manifest from embedded data
     size_t ruby_stdlib_size = _binary_ruby_stdlib_zip_end - _binary_ruby_stdlib_zip_start;
     size_t ruby_stdlib_ext_size = _binary_ruby_stdlib_ext_zip_end - _binary_ruby_stdlib_ext_zip_start;
-    size_t fifo_interpreter_size = _binary_fifo_interpreter_rb_end - _binary_fifo_interpreter_rb_start;
 
     ASSETS_DEBUG_LOG("Computing CRC32 checksums of embedded files...");
     embedded_manifest.ruby_stdlib_zip_crc32 = compute_crc32(_binary_ruby_stdlib_zip_start, ruby_stdlib_size);
     embedded_manifest.ruby_stdlib_ext_zip_crc32 = compute_crc32(_binary_ruby_stdlib_ext_zip_start, ruby_stdlib_ext_size);
-    embedded_manifest.fifo_interpreter_rb_crc32 = compute_crc32(_binary_fifo_interpreter_rb_start, fifo_interpreter_size);
 
     embedded_manifest.ruby_stdlib_zip_size = ruby_stdlib_size;
     embedded_manifest.ruby_stdlib_ext_zip_size = ruby_stdlib_ext_size;
-    embedded_manifest.fifo_interpreter_rb_size = fifo_interpreter_size;
 
     // Generate auto-version from CRC32 hashes
     generate_auto_version(embedded_manifest.version, sizeof(embedded_manifest.version),
                           embedded_manifest.ruby_stdlib_zip_crc32,
-                          embedded_manifest.ruby_stdlib_ext_zip_crc32,
-                          embedded_manifest.fifo_interpreter_rb_crc32);
+                          embedded_manifest.ruby_stdlib_ext_zip_crc32);
 
     ASSETS_INFO_LOG("Embedded data version: %s", embedded_manifest.version);
 
@@ -905,15 +835,14 @@ int installation_needed(const char *install_dir, AssetsError* error) {
 
     // Version matches - verify CRC32 values match (belt and suspenders)
     if (current_manifest.ruby_stdlib_zip_crc32 != embedded_manifest.ruby_stdlib_zip_crc32 ||
-        current_manifest.ruby_stdlib_ext_zip_crc32 != embedded_manifest.ruby_stdlib_ext_zip_crc32 ||
-        current_manifest.fifo_interpreter_rb_crc32 != embedded_manifest.fifo_interpreter_rb_crc32) {
+        current_manifest.ruby_stdlib_ext_zip_crc32 != embedded_manifest.ruby_stdlib_ext_zip_crc32) {
         ASSETS_INFO_LOG("CRC32 mismatch detected - installation needed");
         return 1;
     }
 
     // Verify extracted files still exist and have correct sizes
     ASSETS_DEBUG_LOG("Verifying installation integrity...");
-    if (verify_installation(install_dir, &current_manifest) != 0) {
+    if (verify_installation(install_dir) != 0) {
         ASSETS_INFO_LOG("Installation verification failed - reinstallation needed");
         return 1;
     }
@@ -966,9 +895,6 @@ AssetsLayout* assets_get_layout(const char* install_dir, AssetsError* error) {
     snprintf(layout->ruby_stdlib_ext_path, sizeof(layout->ruby_stdlib_ext_path),
              "%s/ruby/%s", install_dir, RUBY_VERSION);
 
-    snprintf(layout->fifo_interpreter_path, sizeof(layout->fifo_interpreter_path),
-             "%s/fifo_interpreter.rb", install_dir);
-
     // Build native libs directory path (ensuring no truncation)
     int needed = snprintf(layout->native_libs_dir, sizeof(layout->native_libs_dir),
                           "%s/%s", install_dir, manifest.native_libs_dir);
@@ -1015,13 +941,6 @@ int assets_validate_layout(const AssetsLayout* layout, int verify_checksums, Ass
     }
 
     struct stat st;
-
-    // Check FIFO interpreter
-    if (stat(layout->fifo_interpreter_path, &st) != 0) {
-        assets_error_set_errno(error, ASSETS_ERROR_FILE_READ, layout->fifo_interpreter_path,
-                              "FIFO interpreter file not found");
-        return ASSETS_ERROR_FILE_READ;
-    }
 
     // Check Ruby stdlib directory
     if (stat(layout->ruby_stdlib_path, &st) != 0 || !S_ISDIR(st.st_mode)) {

@@ -47,6 +47,31 @@ internal object AssetsNative {
     external fun bootstrap(installDir: String): String?
 
     /**
+     * Get the native library directory path from the C-managed asset layout.
+     *
+     * @param installDir The installation directory
+     * @return Path to the native libs directory, or null on error
+     */
+    external fun getNativeLibsPath(installDir: String): String?
+
+    /**
+     * Get the count of extracted native libraries.
+     *
+     * @param installDir The installation directory
+     * @return Number of native libraries, or -1 on error
+     */
+    external fun getNativeLibCount(installDir: String): Int
+
+    /**
+     * Get the full path to a specific native library by index.
+     *
+     * @param installDir The installation directory
+     * @param index The library index (0-based, from 0 to count-1)
+     * @return Full path to the library file, or null if index is invalid
+     */
+    external fun getNativeLibPath(installDir: String, index: Int): String?
+
+    /**
      * Flag to track if the assets library has been loaded
      */
     @Volatile

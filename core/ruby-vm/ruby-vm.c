@@ -43,9 +43,7 @@ static void* main_thread_func(void* arg) {
     RubyVMStartArgs* args = (RubyVMStartArgs*)arg;
     RubyVM* vm = args->vm;
 
-    const int exitCode = ExecMainRubyVM(
-        ruby_script_get_content(vm->main_script),
-        vm->commands_channel.second_fd,
+    const int exitCode = ExecMainRubyVM(vm,
         args->ruby_base_directory,
         args->native_libs_location
     );

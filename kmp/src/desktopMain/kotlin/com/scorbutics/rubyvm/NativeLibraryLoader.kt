@@ -13,7 +13,7 @@ import java.nio.file.Files
  *          Extract embedded native libraries (libruby.so, etc.)
  *          Load extracted libruby.so
  *
- * Phase 2: Load libembedded-ruby.so (depends on libassets.so and libruby.so)
+ * Phase 2: Load libembedded-ruby.so (depends on libruby.so)
  *
  * This solves the bootstrap problem where libembedded-ruby.so requires libruby.so,
  * but libruby.so is embedded in libassets.so.

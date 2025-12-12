@@ -31,7 +31,6 @@ typedef struct {
 typedef struct {
     char ruby_stdlib_path[512];       /**< Path to Ruby 3.1.0 stdlib directory */
     char ruby_stdlib_ext_path[512];   /**< Path to platform-specific extensions */
-    char fifo_interpreter_path[512];  /**< Full path to fifo_interpreter.rb */
     char native_libs_dir[512];        /**< Directory containing native .so files */
     int native_lib_count;             /**< Number of native libraries */
     NativeLibInfo native_libs[MAX_NATIVE_LIBS]; /**< Array of native library info */
@@ -45,9 +44,11 @@ typedef struct {
  * This function will:
  * 1. Extract the Ruby standard library ZIP to <install_dir>/ruby/
  * 2. Extract platform-specific Ruby extensions
- * 3. Write fifo_interpreter.rb to <install_dir>/fifo_interpreter.rb
- * 4. Extract native libraries (if embedded) to <install_dir>/native-libs/{platform}/
- * 5. Write a manifest file with version and CRC32 checksums
+ * 3. Extract native libraries (if embedded) to <install_dir>/native-libs/{platform}/
+ * 4. Write a manifest file with version and CRC32 checksums
+ *
+ * Note: fifo_interpreter.rb is now embedded in libembedded-ruby.so and
+ * is no longer extracted to disk.
  *
  * @param install_dir The directory where files should be installed
  * @param error Optional error structure to populate on failure (can be NULL)

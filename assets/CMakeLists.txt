@@ -30,9 +30,6 @@ embed_binary("${CMAKE_CURRENT_SOURCE_DIR}/files" ${RUBY_STDLIB_ZIP_PATH} EMBEDDE
 set(RUBY_STDLIB_EXT_ZIP_PATH  "ruby-stdlib-ext.zip")
 embed_binary("${CMAKE_CURRENT_SOURCE_DIR}/files/${HOST}" ${RUBY_STDLIB_EXT_ZIP_PATH} EMBEDDED_RUBY_STDLIB_EXT)
 
-set(FIFO_INTERPRETER_RB_PATH "fifo_interpreter.rb")
-embed_binary("${CMAKE_CURRENT_SOURCE_DIR}/files" ${FIFO_INTERPRETER_RB_PATH} EMBEDDED_FIFO_INTERPRETER)
-
 # Embed platform-specific native libraries (Phase 2)
 # Only embed libraries matching the current build platform to avoid binary bloat
 set(NATIVE_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/lib/${HOST}")
@@ -119,13 +116,11 @@ target_compile_options(minizip PRIVATE -UHAVE_GETRANDOM -UHAVE_ARC4RANDOM_BUF)
 
 # Build list of source files
 set(ASSETS_SOURCES
-        ${EMBEDDED_FIFO_INTERPRETER}
         ${EMBEDDED_RUBY_STDLIB}
         ${EMBEDDED_RUBY_STDLIB_EXT}
         ${EMBEDDED_NATIVE_LIBS_LIST}
         assets-error.c
         install.c
-        use_direct_memory.c
 )
 
 # Add JNI bindings if available

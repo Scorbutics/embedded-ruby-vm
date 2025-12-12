@@ -5,8 +5,9 @@
 extern "C" {
 #endif
 
-int ExecMainRubyVM(const char* scriptContent, int commandsFd,
-                   const char* rubyDirectoryPath, const char* nativeLibsDirLocation);
+#include "ruby-vm.h"
+
+int ExecMainRubyVM(RubyVM* vm, const char* rubyDirectoryPath, const char* nativeLibsDirLocation);
 
 #ifdef __cplusplus
 }
