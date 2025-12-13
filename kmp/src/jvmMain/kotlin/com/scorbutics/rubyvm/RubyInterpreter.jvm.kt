@@ -13,6 +13,7 @@ import kotlin.concurrent.thread
  * IMPORTANT: Uses synchronous execution on JVM threads to avoid native pthreads
  * from attaching to the JVM, which would cause JVM GC to crash.
  */
+@OptIn(ExperimentalStdlibApi::class)
 actual class RubyInterpreter private constructor(
     private val interpreterPtr: Long,
     private val listener: LogListener
@@ -60,6 +61,7 @@ actual class RubyInterpreter private constructor(
         }
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     actual override fun close() {
         destroy()
     }

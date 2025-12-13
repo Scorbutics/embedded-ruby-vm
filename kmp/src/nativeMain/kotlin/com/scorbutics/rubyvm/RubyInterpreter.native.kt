@@ -11,7 +11,7 @@ import kotlin.experimental.ExperimentalNativeApi
  * This implementation uses dynamic library loading (dlopen) to load the Ruby VM at runtime.
  * The library is extracted by libassets.a and then loaded via ruby_api_load().
  */
-@OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class)
+@OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class, ExperimentalStdlibApi::class)
 actual class RubyInterpreter private constructor(
     private val api: RubyAPI,
     private val interpreterPtr: COpaquePointer?,
@@ -27,24 +27,22 @@ actual class RubyInterpreter private constructor(
         // Create stable reference for the callback
         val callbackRef = StableRef.create(onComplete)
 
-        // Create completion task with callback
-        memScoped {
-            val completionTask = alloc<RubyCompletionTask>().apply {
-                this.callback = staticCFunction { userData, exitCode ->
-                    val callback = userData?.asStableRef<(Int) -> Unit>()?.get()
-                    callback?.invoke(exitCode)
-                    // Dispose the stable reference
-                    userData?.asStableRef<(Int) -> Unit>()?.dispose()
-                }
-                this.user_data = callbackRef.asCPointer()
-            }
+        // Create completion task using the helper from the C API
+        val completionTask = ruby_completion_task_create(
+            callback = staticCFunction { userData, exitCode ->
+                val callback = userData?.asStableRef<(Int) -> Unit>()?.get()
+                callback?.invoke(exitCode)
+                // Dispose the stable reference
+                userData?.asStableRef<(Int) -> Unit>()?.dispose()
+            },
+            user_data = callbackRef.asCPointer()
+        )
 
-            // Use the API function pointer from dynamically loaded library
-            val enqueueFunc = api.interpreter.enqueue
-            requireNotNull(enqueueFunc) { "enqueue function not loaded from API" }
+        // Use the API function pointer from dynamically loaded library
+        val enqueueFunc = api.interpreter.enqueue
+        requireNotNull(enqueueFunc) { "enqueue function not loaded from API" }
 
-            enqueueFunc(interpreterPtr?.reinterpret(), script.scriptPtr?.reinterpret(), completionTask.readValue())
-        }
+        enqueueFunc(interpreterPtr?.reinterpret(), script.scriptPtr?.reinterpret(), completionTask)
     }
 
     actual fun enableLogging() {
@@ -78,6 +76,7 @@ actual class RubyInterpreter private constructor(
         }
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     actual override fun close() {
         destroy()
     }
@@ -99,7 +98,15 @@ actual class RubyInterpreter private constructor(
                     else -> error("Unsupported platform: ${Platform.osFamily}")
                 }
 
+                val depsFile = "$nativeLibsDir/libembedded-ruby.deps"
                 val libPath = "$nativeLibsDir/libembedded-ruby.$libExtension"
+
+                // Load dependencies first (preload libruby.so etc.)
+                println("Loading library dependencies from $depsFile...")
+                val depsResult = load_dependencies_from_file(depsFile, nativeLibsDir)
+                require(depsResult == 0) {
+                    "Failed to load library dependencies from $depsFile"
+                }
 
                 memScoped {
                     // Allocate API structure
@@ -133,24 +140,24 @@ actual class RubyInterpreter private constructor(
             val listenerRef = StableRef.create(listener)
             val holder = StableRefHolder(listenerRef, listenerRef) // Same ref for both
 
+            // Create log listener structure manually using memScoped
             memScoped {
-                // Create log listener structure
-                val logListener = alloc<LogListener>().apply {
-                    // Store the listener reference in context
-                    this.context = listenerRef.asCPointer()
-                    this.user_data = null
+                val logListener = alloc<com.scorbutics.rubyvm.native.LogListener>()
 
-                    // Set callback function pointers
-                    this.accept = staticCFunction { listenerPtr, message ->
-                        val listener = listenerPtr?.pointed?.context
-                            ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
-                        listener?.onLog(message?.toKString() ?: "")
-                    }
-                    this.on_log_error = staticCFunction { listenerPtr, message ->
-                        val listener = listenerPtr?.pointed?.context
-                            ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
-                        listener?.onError(message?.toKString() ?: "")
-                    }
+                // Store the listener reference in context
+                logListener.context = listenerRef.asCPointer()
+                logListener.user_data = null
+
+                // Set callback function pointers
+                logListener.accept = staticCFunction { listenerPtr, message ->
+                    val listener = listenerPtr?.pointed?.context
+                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
+                    listener?.onLog(message?.toKString() ?: "")
+                }
+                logListener.on_log_error = staticCFunction { listenerPtr, message ->
+                    val listener = listenerPtr?.pointed?.context
+                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
+                    listener?.onError(message?.toKString() ?: "")
                 }
 
                 // Use API function pointer to create interpreter

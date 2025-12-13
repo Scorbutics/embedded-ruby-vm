@@ -4,12 +4,15 @@
 package = com.scorbutics.rubyvm.native
 
 # C headers to expose to Kotlin
-# We only expose the API loader - NOT the actual Ruby VM implementation headers
-# This allows dynamic loading via dlopen/dlsym at runtime
-headers = ruby-api-loader.h
+# We expose:
+#  - ruby-api-loader.h: For dynamic library loading (includes RubyCompletionTask helpers)
+#  - deps-loader.h: For loading library dependencies from .deps file
+#  - install.h: For assets extraction and path management
+#  - assets-error.h: For error handling in assets operations
+headers = ruby-api-loader.h deps-loader.h install.h assets-error.h
 
 # Filter which headers are processed
-headerFilter = ruby-api-loader.h
+headerFilter = ruby-api-loader.h deps-loader.h install.h assets-error.h
 
 # Compiler options for finding headers
 # NOTE: Include paths are configured in build.gradle.kts via includeDirs.headerFilterOnly()

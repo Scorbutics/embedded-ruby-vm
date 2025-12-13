@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * JVM implementation of RubyScript using JNI.
  */
+@OptIn(ExperimentalStdlibApi::class)
 actual class RubyScript internal constructor(
     internal val scriptPtr: Long
 ) : Closeable, AutoCloseable {
@@ -21,6 +22,7 @@ actual class RubyScript internal constructor(
         }
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     actual override fun close() {
         destroy()
     }

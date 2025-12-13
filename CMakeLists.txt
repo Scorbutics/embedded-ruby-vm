@@ -38,10 +38,22 @@ endif()
 
 add_library(embedded-ruby SHARED dummy.c)
 
-target_link_libraries(embedded-ruby PRIVATE
-        core
-        $<$<BOOL:${BUILD_JNI}>:jni>
-)
+# Use whole-archive to export all symbols from static libraries into the shared library
+# This is needed for Kotlin/Native dlopen() approach
+if(UNIX AND NOT APPLE)
+    target_link_libraries(embedded-ruby PRIVATE
+            -Wl,--whole-archive
+            logging
+            ruby-vm
+            -Wl,--no-whole-archive
+            $<$<BOOL:${BUILD_JNI}>:jni>
+    )
+else()
+    target_link_libraries(embedded-ruby PRIVATE
+            core
+            $<$<BOOL:${BUILD_JNI}>:jni>
+    )
+endif()
 
 # Post-build: Extract dependencies and regenerate library-dependencies.c
 # This ensures the embedded dependency list is always up-to-date

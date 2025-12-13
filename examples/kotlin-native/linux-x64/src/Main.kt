@@ -22,12 +22,19 @@ fun main() {
         }
     }
 
+    // Get the default paths where Ruby VM runtime is extracted
+    println("Getting Ruby VM paths...")
+    val paths = RubyVMPaths.getDefaultPaths()
+    println("  Install directory: ${paths.installDir}")
+    println("  Ruby base directory: ${paths.rubyBaseDir}")
+    println("  Native libs directory: ${paths.nativeLibsDir}\n")
+
     // Create interpreter
     println("Creating Ruby interpreter...")
     RubyInterpreter.create(
         appPath = ".",
-        rubyBaseDir = "./ruby",
-        nativeLibsDir = "./ruby/lib",
+        rubyBaseDir = paths.rubyBaseDir,
+        nativeLibsDir = paths.nativeLibsDir,
         listener = listener
     ).use { interpreter ->
         println("✓ Interpreter created successfully!")

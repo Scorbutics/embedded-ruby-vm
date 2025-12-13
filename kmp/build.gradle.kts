@@ -65,40 +65,8 @@ kotlin {
     //     }
     // }
 
-    // Linux targets (uses cinterop) - DISABLED (moved to examples/kotlin-native/linux-x64)
-    // The linuxX64 example has been moved to examples/ as it was test/example code, not production.
-    // To run the example: see examples/kotlin-native/linux-x64/README.md
-    //
-    // linuxX64 {
-    //     binaries {
-    //         executable {
-    //             entryPoint = "main"
-    //             baseName = "ruby-vm-test"
-    //
-    //             freeCompilerArgs += listOf("-linker-option", "--allow-shlib-undefined")
-    //
-    //             // Configure linker options with absolute paths
-    //             val libDir = project.file("libs/linux_x64").absoluteFile
-    //             val rubyLibDir = project.file("../external/lib/x86_64-linux-linux").absoluteFile
-    //
-    //             // Link static libraries and Ruby
-    //             linkerOpts(
-    //                 "-L${libDir.absolutePath}",
-    //                 "-L${rubyLibDir.absolutePath}",
-    //                 // Our static libraries (order matters - dependents BEFORE dependencies!)
-    //                 "${libDir.absolutePath}/libruby-vm.a",
-    //                 "${libDir.absolutePath}/liblogging.a",
-    //                 "${libDir.absolutePath}/libassets.a",
-    //                 "${libDir.absolutePath}/libminizip.a",
-    //                 // Ruby interpreter
-    //                 "-lruby",
-    //                 // System libraries (math and crypt for Ruby)
-    //                 "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt"
-    //             )
-    //         }
-    //     }
-    // }
-    // linuxArm64() // Kotlin/Native doesn't support Linux ARM64
+    // Linux targets (uses cinterop)
+    linuxX64()
 
     // Source sets configuration
     sourceSets {
@@ -157,10 +125,9 @@ kotlin {
         //     dependsOn(nativeMain)
         // }
 
-        // linuxX64Main - DISABLED (moved to examples/kotlin-native/linux-x64)
-        // val linuxX64Main by getting {
-        //     dependsOn(nativeMain)
-        // }
+        val linuxX64Main by getting {
+            dependsOn(nativeMain)
+        }
 
         // val linuxArm64Main by getting {
         //     dependsOn(nativeMain)
@@ -175,15 +142,21 @@ kotlin {
                     defFile(project.file("src/nativeInterop/cinterop/ruby_vm.def"))
                     packageName("com.scorbutics.rubyvm.native")
 
-                    // Include directory for ruby-api-loader.h (using absolute paths)
-                    val coreRubyVmDir = project.file("../core/ruby-vm").absoluteFile
+                    // Include directories for headers (using absolute paths)
+                    // Note: Use rootProject.file() since this is a subproject
+                    val coreRubyVmDir = project.rootProject.file("core/ruby-vm").absoluteFile
+                    val assetsDir = project.rootProject.file("assets").absoluteFile
 
-                    includeDirs.allHeaders(coreRubyVmDir)
+                    // Add both directories to ALL include dir categories
+                    includeDirs.apply {
+                        allHeaders(coreRubyVmDir, assetsDir)
+                        headerFilterOnly(coreRubyVmDir, assetsDir)
+                    }
 
-                    // Also add compiler options with absolute paths
-                    compilerOpts("-I${coreRubyVmDir.absolutePath}")
+                    // Also pass as compiler options
+                    compilerOpts("-I${coreRubyVmDir.absolutePath}", "-I${assetsDir.absolutePath}")
 
-                    // IMPORTANT: NO extraOpts("-libraryPath", ...) here!
+                    // IMPORTANT: NO libraryPath options here!
                     // We use dlopen() to load libembedded-ruby at runtime, not at build time.
                     // The library will be extracted by libassets and loaded dynamically.
                 }
@@ -408,7 +381,7 @@ fun Project.runCMake(
     copy {
         from("$cmakeBuildDir/lib")
         into(outputDir)
-        include("*.so", "*.a", "*.dylib", "*.dll")
+        include("*.so", "*.a", "*.dylib", "*.dll", "*.deps")
     }
 
     println("Native library built successfully: ${outputDir.absolutePath}")

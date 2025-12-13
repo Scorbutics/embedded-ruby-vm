@@ -2,10 +2,12 @@
 #define RUBY_API_LOADER_H
 
 #include <stddef.h>
-
-#include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifndef RUBY_STATIC
+#include <dlfcn.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,7 +17,14 @@ extern "C" {
 typedef struct RubyInterpreter RubyInterpreter;
 typedef struct RubyScript RubyScript;
 
-// Required type definitions for function pointers
+#ifdef RUBY_STATIC
+/* Static build - include actual function declarations */
+#include "ruby-interpreter.h"
+#include "ruby-script.h"
+#else
+/* Dynamic build - manually define types needed for API structure */
+/* (In static build, these are already defined in log-listener.h and completion-task.h) */
+
 typedef struct LogListener LogListener;
 typedef void (*LogAcceptFunc)(struct LogListener* listener, const char* lineMessage);
 typedef void (*LogErrorFunc)(struct LogListener* listener, const char* errorMessage);
@@ -33,9 +42,13 @@ typedef struct {
     RubyCompletionCallback callback;
     void* user_data;
 } RubyCompletionTask;
+#endif
 
+/* Helper functions (available in both static and dynamic builds) */
+#ifndef RUBY_STATIC
 /**
  * Helper to create a completion task.
+ * In static builds, this is already defined in completion-task.h
  * @param callback Function to call on completion (can be NULL)
  * @param user_data Context data to pass to callback (can be NULL)
  * @return Initialized RubyCompletionTask
@@ -53,6 +66,7 @@ static inline RubyCompletionTask ruby_completion_task_create(
 
 /**
  * Helper to invoke a completion task.
+ * In static builds, this is already defined in completion-task.h
  * Safe to call even if callback is NULL.
  * @param task The task to invoke
  * @param result The completion result code
@@ -62,6 +76,7 @@ static inline void ruby_completion_task_invoke(RubyCompletionTask* task, int res
         task->callback(task->user_data, result);
     }
 }
+#endif
 
 /**
  * Struct containing all dynamically loaded Ruby API function pointers.
@@ -100,19 +115,25 @@ typedef struct {
     } while(0)
 
 /**
- * Load the Ruby API from libembedded-ruby.so
+ * Load the Ruby API from libembedded-ruby.so (dynamic) or statically-linked functions.
  *
- * @param lib_path Path to libembedded-ruby.so
+ * @param lib_path Path to libembedded-ruby.so (ignored if RUBY_STATIC is defined)
  * @param api Pointer to RubyAPI struct to fill
  * @return 0 on success, -1 on error
  *
- * Usage:
+ * Usage (dynamic build):
  *   RubyAPI api;
  *   if (ruby_api_load("./libembedded-ruby.so", &api) != 0) {
  *       // handle error
  *   }
  *
- *   // Use the API
+ * Usage (static build with -DRUBY_STATIC):
+ *   RubyAPI api;
+ *   if (ruby_api_load(NULL, &api) != 0) {
+ *       // handle error
+ *   }
+ *
+ *   // Use the API (same for both):
  *   RubyInterpreter* interp = api.interpreter.create(...);
  *   api.interpreter.destroy(interp);
  *
@@ -126,6 +147,30 @@ static inline int ruby_api_load(const char* lib_path, RubyAPI* api) {
     }
 
     memset(api, 0, sizeof(RubyAPI));
+
+#ifdef RUBY_STATIC
+    /* Static build - directly assign statically-linked function pointers */
+    (void)lib_path; /* Unused in static build */
+
+    /* No handle for static linking */
+    api->handle = NULL;
+
+    /* Assign interpreter functions */
+    api->interpreter.create = ruby_interpreter_create;
+    api->interpreter.destroy = ruby_interpreter_destroy;
+    api->interpreter.enqueue = ruby_interpreter_enqueue;
+    api->interpreter.execute_sync = ruby_interpreter_execute_sync;
+    api->interpreter.enable_logging = ruby_interpreter_enable_logging;
+    api->interpreter.disable_logging = ruby_interpreter_disable_logging;
+    api->interpreter.get_error_message = ruby_interpreter_get_error_message;
+
+    /* Assign script functions */
+    api->script.create_from_content = ruby_script_create_from_content;
+    api->script.destroy = ruby_script_destroy;
+
+    return 0;
+#else
+    /* Dynamic build - load library via dlopen */
 
     /* Clear any existing dlopen error */
     dlerror();
@@ -151,6 +196,7 @@ static inline int ruby_api_load(const char* lib_path, RubyAPI* api) {
     LOAD_SYM(api->handle, api->script.destroy, "ruby_script_destroy");
 
     return 0;
+#endif
 }
 
 /**
@@ -158,16 +204,12 @@ static inline int ruby_api_load(const char* lib_path, RubyAPI* api) {
  */
 static inline void ruby_api_unload(RubyAPI* api) {
     if (api && api->handle) {
+#ifndef RUBY_STATIC
         dlclose(api->handle);
+#endif
         memset(api, 0, sizeof(RubyAPI));
     }
 }
-
-
-// TODO in case we want a static build with static loading 
-// we could also fill this RubyAPI structure with the real linked function
-// and create a dedicated ruby-api-loader.c containing the private internal includes
-// This way we still expose to public only this header file in all cases.
 
 #ifdef __cplusplus
 }

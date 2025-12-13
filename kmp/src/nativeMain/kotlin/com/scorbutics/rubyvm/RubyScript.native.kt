@@ -10,7 +10,7 @@ import kotlinx.cinterop.*
  * Note: RubyInterpreter.create() must be called at least once before creating scripts
  * to ensure the Ruby API is loaded.
  */
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, ExperimentalStdlibApi::class)
 actual class RubyScript internal constructor(
     internal val scriptPtr: COpaquePointer?
 ) : AutoCloseable {
@@ -27,6 +27,7 @@ actual class RubyScript internal constructor(
         }
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     actual override fun close() {
         destroy()
     }

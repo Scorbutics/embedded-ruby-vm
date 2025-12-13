@@ -33,18 +33,15 @@ kotlin {
                 val libDir = project.file("${projectRoot}/kmp/libs/linux_x64").absoluteFile
                 val rubyLibDir = project.file("${projectRoot}/external/lib/x86_64-linux-linux").absoluteFile
 
-                // Link static libraries and Ruby
+                // Link static libraries for assets and logging
+                // libruby-vm.a functions will be called via dlopen'd libembedded-ruby.so
                 linkerOpts(
                     "-L${libDir.absolutePath}",
-                    "-L${rubyLibDir.absolutePath}",
-                    // Our static libraries (order matters - dependents BEFORE dependencies!)
-                    "${libDir.absolutePath}/libruby-vm.a",
+                    // Static libraries for assets extraction
                     "${libDir.absolutePath}/liblogging.a",
                     "${libDir.absolutePath}/libassets.a",
                     "${libDir.absolutePath}/libminizip.a",
-                    // Ruby interpreter
-                    "-lruby",
-                    // System libraries (math and crypt for Ruby)
+                    // System libraries
                     "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt"
                 )
             }
@@ -61,9 +58,10 @@ kotlin {
                     // Include directories for C headers
                     val coreRubyVm = project.file("${projectRoot}/core/ruby-vm").absoluteFile
                     val coreLogging = project.file("${projectRoot}/core/logging").absoluteFile
+                    val assetsDir = project.file("${projectRoot}/assets").absoluteFile
 
-                    includeDirs.allHeaders(coreRubyVm, coreLogging)
-                    compilerOpts("-I${coreRubyVm.absolutePath}", "-I${coreLogging.absolutePath}")
+                    includeDirs.allHeaders(coreRubyVm, coreLogging, assetsDir)
+                    compilerOpts("-I${coreRubyVm.absolutePath}", "-I${coreLogging.absolutePath}", "-I${assetsDir.absolutePath}")
 
                     // Link against the compiled native library
                     val libDir = project.file("${projectRoot}/kmp/libs/linux_x64").absoluteFile
