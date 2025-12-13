@@ -10,7 +10,9 @@ internal typealias CRubyScript = com.scorbutics.rubyvm.native.RubyScript
 /**
  * Native (iOS/macOS/Linux) implementation of RubyScript using cinterop.
  *
- * This implementation directly calls C functions through Kotlin/Native's cinterop.
+ * This implementation uses dynamic library loading via the RubyAPI.
+ * Note: RubyInterpreter.create() must be called at least once before creating scripts
+ * to ensure the Ruby API is loaded.
  */
 @OptIn(ExperimentalForeignApi::class)
 actual class RubyScript internal constructor(
@@ -20,7 +22,11 @@ actual class RubyScript internal constructor(
 
     actual fun destroy() {
         if (!isDestroyed && scriptPtr != null) {
-            ruby_script_destroy(scriptPtr)
+            val api = RubyAPIHolder.getAPI()
+            val destroyFunc = api.script.destroy
+            requireNotNull(destroyFunc) { "destroy function not loaded from API" }
+
+            destroyFunc(scriptPtr)
             isDestroyed = true
         }
     }
@@ -33,7 +39,11 @@ actual class RubyScript internal constructor(
         actual fun fromContent(content: String): RubyScript {
             require(content.isNotBlank()) { "Script content cannot be blank" }
 
-            val scriptPtr = ruby_script_create_from_content(content, content.length.toULong())
+            val api = RubyAPIHolder.getAPI()
+            val createFunc = api.script.create_from_content
+            requireNotNull(createFunc) { "create_from_content function not loaded from API" }
+
+            val scriptPtr = createFunc(content, content.length.toULong())
             require(scriptPtr != null) { "Failed to create Ruby script" }
 
             return RubyScript(scriptPtr.reinterpret())

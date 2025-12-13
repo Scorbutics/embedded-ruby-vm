@@ -9,13 +9,16 @@ project("test-core")
 #   3. Dynamically load the extracted libraries
 #   4. Create and use the Ruby interpreter
 
-add_executable(test_core test_core.c)
+add_executable(test_core
+    test_core.c
+    ruby-api-loader.c
+)
 
 # Link against static assets library - simpler for testing, no runtime dependencies
-# libembedded-ruby.so will be loaded dynamically at runtime after bootstrap
+# The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
 target_link_libraries(test_core
     assets_static   # For assets_bootstrap() - handles extraction and library loading
-    dl              # For dlopen() to load libembedded-ruby.so at runtime
+    dl              # For dlopen/dlsym in ruby-api-loader
 )
 
 # Include directories for headers
@@ -25,16 +28,11 @@ target_include_directories(test_core PRIVATE
     ${CMAKE_SOURCE_DIR}/core/logging
 )
 
-# Allow undefined symbols in test_core
-# These will be resolved at runtime when libembedded-ruby.so is loaded via dlopen()
-if(UNIX AND NOT APPLE)
-    target_link_options(test_core PRIVATE
-        -Wl,--allow-shlib-undefined
-        -Wl,--unresolved-symbols=ignore-all
-    )
-elseif(APPLE)
-    target_link_options(test_core PRIVATE
-        -Wl,-undefined,dynamic_lookup
+# Set RPATH so the executable can find libembedded-ruby.so at runtime
+if(UNIX)
+    set_target_properties(test_core PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
     )
 endif()
 

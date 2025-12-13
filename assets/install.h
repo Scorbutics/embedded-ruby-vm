@@ -29,7 +29,7 @@ typedef struct {
  * This is the single source of truth for asset paths after installation.
  */
 typedef struct {
-    char ruby_stdlib_path[512];       /**< Path to Ruby 3.1.0 stdlib directory */
+    char ruby_stdlib_path[512];       /**< Base install directory (e.g., "./test-ruby-install") - Ruby VM appends /ruby/<version>/ */
     char ruby_stdlib_ext_path[512];   /**< Path to platform-specific extensions */
     char native_libs_dir[512];        /**< Directory containing native .so files */
     int native_lib_count;             /**< Number of native libraries */

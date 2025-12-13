@@ -2,17 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <dlfcn.h>
 
-#include "ruby-interpreter.h"
-#include "ruby-script.h"
+#include "ruby-api-loader.h"
 #include "install.h"
 #include "assets-error.h"
+#include "deps-loader.h"
 
 /* Global log file pointer */
 static FILE* g_log_file = NULL;
 static volatile char finished = 0;
-static void* embedded_ruby_handle = NULL;
+static RubyAPI ruby_api;
 
 static void OnScriptCompleted(void* context, int result) {
     (void)context;
@@ -111,65 +110,66 @@ int main(int argc, char* argv[]) {
     printf("  Native libs: %s\n\n", native_libs_dir);
 
     /* ========================================================================
-     * Preload Ruby dependencies before loading libembedded-ruby.so
-     * Note: Setting LD_LIBRARY_PATH with setenv() doesn't affect dlopen() in
-     * the current process since the dynamic linker reads it at startup only.
-     * Solution: Explicitly load dependencies with absolute paths first.
+     * Load libembedded-ruby.so dependencies
+     * Strategy: Read dependencies from libembedded-ruby.deps file and preload them
+     *
+     * Note: We cannot use RTLD_LAZY to load libembedded-ruby.so and query its
+     * embedded dependency list because even RTLD_LAZY requires all DT_NEEDED
+     * libraries to be available at dlopen() time. Symbol resolution is lazy,
+     * but dependency loading is not.
+     *
+     * Solution: Use a .deps sidecar file generated at build time.
      * ======================================================================== */
-    printf("Preloading Ruby native dependencies...\n");
-    
-    // Define dependencies in load order (dependencies first)
-    const char* deps[] = {
-        "libembedded-ruby.so",
-        NULL
+    printf("Preloading dependencies from libembedded-ruby.deps...\n");
+
+    /* Try to find and load dependencies file */
+    const char* deps_paths[] = {
+        "../lib/libembedded-ruby.deps",
+        "./libembedded-ruby.deps",
+        "libembedded-ruby.deps"
     };
-    
-    // Load each dependency with absolute path and RTLD_GLOBAL
-    for (int i = 0; deps[i] != NULL; i++) {
-        char lib_path[2048];
-        snprintf(lib_path, sizeof(lib_path), "%s/%s", native_libs_dir, deps[i]);
-        
-        void* handle = dlopen(lib_path, RTLD_NOW | RTLD_GLOBAL);
-        if (handle) {
-            printf("  ✓ Loaded: %s\n", deps[i]);
-        } else {
-            // Not a fatal error - library might not exist or already loaded
-            printf("  ⚠ Skipped: %s (%s)\n", deps[i], dlerror());
-            dlerror(); // Clear error
+
+    int deps_loaded = 0;
+    for (size_t i = 0; i < sizeof(deps_paths) / sizeof(deps_paths[0]); i++) {
+        if (load_dependencies_from_file(deps_paths[i], native_libs_dir) == 0) {
+            deps_loaded = 1;
+            break;
         }
+    }
+
+    if (!deps_loaded) {
+        printf("  ⚠ No .deps file found, proceeding without preloading\n");
     }
     printf("\n");
 
     /* ========================================================================
-     * Load libembedded-ruby.so dynamically
-     * Dependencies should now be available in the global symbol namespace
+     * Load libembedded-ruby.so and resolve all API functions
      * ======================================================================== */
     printf("Loading libembedded-ruby.so...\n");
 
     /* Try multiple paths to find libembedded-ruby.so */
     const char* lib_paths[] = {
-        "libembedded-ruby.so",          /* Current dir or LD_LIBRARY_PATH */
         "../lib/libembedded-ruby.so",   /* Relative to bin/ */
-        "./libembedded-ruby.so"         /* Current directory */
+        "./libembedded-ruby.so",        /* Current directory */
+        "libembedded-ruby.so"           /* LD_LIBRARY_PATH */
     };
 
-    embedded_ruby_handle = NULL;
+    int loaded = 0;
     for (size_t i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
-        embedded_ruby_handle = dlopen(lib_paths[i], RTLD_NOW | RTLD_GLOBAL);
-        if (embedded_ruby_handle) {
-            printf("✓ libembedded-ruby.so loaded from: %s\n\n", lib_paths[i]);
+        if (ruby_api_load(lib_paths[i], &ruby_api) == 0) {
+            printf("  ✓ Loaded from: %s\n\n", lib_paths[i]);
+            loaded = 1;
             break;
         }
     }
 
-    if (!embedded_ruby_handle) {
+    if (!loaded) {
         fprintf(stderr, "Failed to load libembedded-ruby.so. Tried:\n");
         for (size_t i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
             fprintf(stderr, "  - %s\n", lib_paths[i]);
         }
-        fprintf(stderr, "Error: %s\n", dlerror());
         if (g_log_file) {
-            fprintf(g_log_file, "Failed to load libembedded-ruby.so: %s\n", dlerror());
+            fprintf(g_log_file, "Failed to load libembedded-ruby.so\n");
             fflush(g_log_file);
         }
         result = 13;
@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
         fflush(g_log_file);
     }
 
-    interpreter = ruby_interpreter_create(
+    interpreter = ruby_api.interpreter.create(
         execution_location,
         ruby_base_dir,
         native_libs_dir,
@@ -221,8 +221,8 @@ int main(int argc, char* argv[]) {
 
     /* Create script */
     printf("Loading Ruby script...\n");
-    
-    script = ruby_script_create_from_content(script_content, strlen(script_content));
+
+    script = ruby_api.script.create_from_content(script_content, strlen(script_content));
     
     if (script == NULL) {
         const char* error_msg = "Error: Failed to create Ruby script";
@@ -236,7 +236,7 @@ int main(int argc, char* argv[]) {
     /* Execute script */
     printf("=== Script Output ===\n");
 
-    result = ruby_interpreter_enqueue(
+    result = ruby_api.interpreter.enqueue(
         interpreter,
         script,
         ruby_completion_task_create(OnScriptCompleted, NULL)
@@ -247,7 +247,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "%s with code %d\n", error_msg, result);
 
         // Get detailed error message from interpreter
-        const char* detailed_error = ruby_interpreter_get_error_message(interpreter);
+        const char* detailed_error = ruby_api.interpreter.get_error_message(interpreter);
         if (detailed_error) {
             fprintf(stderr, "Details: %s\n", detailed_error);
             if (g_log_file != NULL) {
@@ -262,24 +262,21 @@ int main(int argc, char* argv[]) {
     
     while (!finished);
 
-    ruby_script_destroy(script);
+    ruby_api.script.destroy(script);
 
     printf("=== End of Output ===\n");
 
 cleanup:
     /* Cleanup */
     if (interpreter != NULL) {
-        ruby_interpreter_destroy(interpreter);
+        ruby_api.interpreter.destroy(interpreter);
     }
 
     if (layout != NULL) {
         assets_free_layout(layout);
     }
 
-    if (embedded_ruby_handle != NULL) {
-        dlclose(embedded_ruby_handle);
-        embedded_ruby_handle = NULL;
-    }
+    ruby_api_unload(&ruby_api);
 
     if (g_log_file != NULL) {
         fclose(g_log_file);

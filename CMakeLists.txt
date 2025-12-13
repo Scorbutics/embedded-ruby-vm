@@ -18,6 +18,8 @@ add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_CXX_PLATFORM_ID}-${CMAKE_SYSTEM_NAME}" HOST)
 message(NOTICE "Configuring for host: ${HOST}")
 
+set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST})
+
 option(BUILD_JNI "Build JNI binding" OFF)
 option(BUILD_JNI_ANDROID_LOG "Build Android Logcat output" OFF)
 option(BUILD_TESTS "Build tests" ON)
@@ -39,6 +41,21 @@ add_library(embedded-ruby SHARED dummy.c)
 target_link_libraries(embedded-ruby PRIVATE
         core
         $<$<BOOL:${BUILD_JNI}>:jni>
+)
+
+# Post-build: Extract dependencies and regenerate library-dependencies.c
+# This ensures the embedded dependency list is always up-to-date
+# Also creates a standalone deps.txt file that can be read without loading the library
+add_custom_command(TARGET embedded-ruby POST_BUILD
+    COMMAND bash -c "${CMAKE_SOURCE_DIR}/core/ruby-vm/extract_deps.sh $<TARGET_FILE:embedded-ruby> ${EXTERNAL_LIBS_DIR} ${CMAKE_BINARY_DIR}/deps_list.txt || true"
+    COMMAND ${CMAKE_COMMAND}
+        -DDEPS_LIST_FILE=${CMAKE_BINARY_DIR}/deps_list.txt
+        -DDEPS_C_IN=${CMAKE_SOURCE_DIR}/core/ruby-vm/library-dependencies.c.in
+        -DDEPS_C_OUT=${CMAKE_BINARY_DIR}/core/ruby-vm/library-dependencies.c
+        -P ${CMAKE_SOURCE_DIR}/core/ruby-vm/update_deps.cmake
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/deps_list.txt ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libembedded-ruby.deps
+    COMMENT "Extracting library dependencies from libembedded-ruby.so"
 )
 
 if(BUILD_TESTS)

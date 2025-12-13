@@ -115,10 +115,13 @@ Java_com_scorbutics_rubyvm_AssetsNative_getDefaultInstallDir(
  * Returns a JSON string containing the asset layout paths, or NULL on error.
  * The JSON format is:
  * {
- *   "ruby_stdlib_path": "/path/to/ruby/3.1.0",
+ *   "ruby_stdlib_path": "/path/to/install-dir",
  *   "native_libs_dir": "/path/to/native-libs/x86_64-linux-linux",
  *   "platform": "x86_64-linux-linux"
  * }
+ *
+ * Note: ruby_stdlib_path is the base install directory. The Ruby VM's SetupRubyEnv()
+ * will append /ruby/<version>/ as needed.
  *
  * @param installDir The directory where files should be extracted
  * @return JSON string with layout paths, or NULL on error

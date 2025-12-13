@@ -175,18 +175,17 @@ kotlin {
                     defFile(project.file("src/nativeInterop/cinterop/ruby_vm.def"))
                     packageName("com.scorbutics.rubyvm.native")
 
-                    // Include directories for C headers (using absolute paths)
-                    val coreRubyVm = project.file("../core/ruby-vm").absoluteFile
-                    val coreLogging = project.file("../core/logging").absoluteFile
+                    // Include directory for ruby-api-loader.h (using absolute paths)
+                    val testCoreDir = project.file("../tests/native/core").absoluteFile
 
-                    includeDirs.allHeaders(coreRubyVm, coreLogging)
+                    includeDirs.allHeaders(testCoreDir)
 
                     // Also add compiler options with absolute paths
-                    compilerOpts("-I${coreRubyVm.absolutePath}", "-I${coreLogging.absolutePath}")
+                    compilerOpts("-I${testCoreDir.absolutePath}")
 
-                    // Link against the compiled native library (using absolute paths)
-                    val libDir = project.file("libs/${target.konanTarget.name}").absoluteFile
-                    extraOpts("-libraryPath", libDir.absolutePath)
+                    // IMPORTANT: NO extraOpts("-libraryPath", ...) here!
+                    // We use dlopen() to load libembedded-ruby at runtime, not at build time.
+                    // The library will be extracted by libassets and loaded dynamically.
                 }
             }
         }

@@ -915,8 +915,10 @@ AssetsLayout* assets_get_layout(const char* install_dir, AssetsError* error) {
     }
 
     // Populate paths
+    // NOTE: ruby_stdlib_path should be the base install directory, not including /ruby/3.1.0
+    // The Ruby VM's SetupRubyEnv() function will append /ruby/<version>/ itself
     snprintf(layout->ruby_stdlib_path, sizeof(layout->ruby_stdlib_path),
-             "%s/ruby/%s", install_dir, RUBY_VERSION);
+             "%s", install_dir);
 
     snprintf(layout->ruby_stdlib_ext_path, sizeof(layout->ruby_stdlib_ext_path),
              "%s/ruby/%s", install_dir, RUBY_VERSION);

@@ -1,19 +1,22 @@
 # Kotlin/Native cinterop definition for Ruby VM
-# This file tells K/N which C headers to use and how to link the library
+# This file tells K/N which C headers to use for dynamic library loading
 
 package = com.scorbutics.rubyvm.native
 
 # C headers to expose to Kotlin
-headers = completion-task.h log-listener.h ruby-interpreter.h ruby-script.h ruby-vm.h
+# We only expose the API loader - NOT the actual Ruby VM implementation headers
+# This allows dynamic loading via dlopen/dlsym at runtime
+headers = ruby-api-loader.h
 
-# Filter which headers are processed (include dependencies needed by public API)
-# Note: completion-task.h and log-listener.h are required by ruby-interpreter.h
-headerFilter = ruby-interpreter.h ruby-script.h completion-task.h log-listener.h
+# Filter which headers are processed
+headerFilter = ruby-api-loader.h
 
 # Compiler options for finding headers
 # NOTE: Include paths are configured in build.gradle.kts via includeDirs.headerFilterOnly()
 # This ensures absolute paths are used and avoids path resolution issues
 
-# Note: Linker options are configured in build.gradle.kts with absolute paths
-# This ensures reliable linking across different build environments
+# IMPORTANT: No linker options are specified here!
+# The ruby-api-loader.h approach uses dlopen() to load libembedded-ruby at runtime,
+# so we do NOT link against it at build time. This allows the library to be
+# extracted by libassets.a and loaded dynamically after deployment.
 
