@@ -2,20 +2,8 @@ package com.scorbutics.rubyvm
 
 import com.scorbutics.rubyvm.native.*
 import kotlinx.cinterop.*
-import platform.posix.pthread_self
-
-// Type aliases to avoid naming conflicts between Kotlin classes and C structs
-@OptIn(ExperimentalForeignApi::class)
-internal typealias CRubyInterpreter = com.scorbutics.rubyvm.native.RubyInterpreter
-
-@OptIn(ExperimentalForeignApi::class)
-internal typealias CLogListener = com.scorbutics.rubyvm.native.LogListener
-
-@OptIn(ExperimentalForeignApi::class)
-internal typealias CRubyCompletionTask = com.scorbutics.rubyvm.native.RubyCompletionTask
-
-@OptIn(ExperimentalForeignApi::class)
-internal typealias CRubyAPI = com.scorbutics.rubyvm.native.RubyAPI
+import kotlin.native.Platform
+import kotlin.experimental.ExperimentalNativeApi
 
 /**
  * Native (iOS/macOS/Linux) implementation of RubyInterpreter using cinterop.
@@ -23,10 +11,10 @@ internal typealias CRubyAPI = com.scorbutics.rubyvm.native.RubyAPI
  * This implementation uses dynamic library loading (dlopen) to load the Ruby VM at runtime.
  * The library is extracted by libassets.a and then loaded via ruby_api_load().
  */
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class)
 actual class RubyInterpreter private constructor(
-    private val api: CRubyAPI,
-    private val interpreterPtr: CPointer<CRubyInterpreter>?,
+    private val api: RubyAPI,
+    private val interpreterPtr: COpaquePointer?,
     private val listener: com.scorbutics.rubyvm.LogListener,
     private val stableRefHolder: StableRefHolder
 ) : AutoCloseable {
@@ -40,23 +28,23 @@ actual class RubyInterpreter private constructor(
         val callbackRef = StableRef.create(onComplete)
 
         // Create completion task with callback
-        val completionTask = nativeHeap.alloc<CRubyCompletionTask>().apply {
-            this.callback = staticCFunction { userData, exitCode ->
-                val callback = userData?.asStableRef<(Int) -> Unit>()?.get()
-                callback?.invoke(exitCode)
-                // Dispose the stable reference
-                userData?.asStableRef<(Int) -> Unit>()?.dispose()
+        memScoped {
+            val completionTask = alloc<RubyCompletionTask>().apply {
+                this.callback = staticCFunction { userData, exitCode ->
+                    val callback = userData?.asStableRef<(Int) -> Unit>()?.get()
+                    callback?.invoke(exitCode)
+                    // Dispose the stable reference
+                    userData?.asStableRef<(Int) -> Unit>()?.dispose()
+                }
+                this.user_data = callbackRef.asCPointer()
             }
-            this.user_data = callbackRef.asCPointer()
+
+            // Use the API function pointer from dynamically loaded library
+            val enqueueFunc = api.interpreter.enqueue
+            requireNotNull(enqueueFunc) { "enqueue function not loaded from API" }
+
+            enqueueFunc(interpreterPtr?.reinterpret(), script.scriptPtr?.reinterpret(), completionTask.readValue())
         }
-
-        // Use the API function pointer from dynamically loaded library
-        val enqueueFunc = api.interpreter.enqueue
-        requireNotNull(enqueueFunc) { "enqueue function not loaded from API" }
-
-        enqueueFunc(interpreterPtr, script.scriptPtr?.reinterpret(), completionTask.readValue())
-
-        nativeHeap.free(completionTask)
     }
 
     actual fun enableLogging() {
@@ -65,7 +53,7 @@ actual class RubyInterpreter private constructor(
         val enableLoggingFunc = api.interpreter.enable_logging
         requireNotNull(enableLoggingFunc) { "enable_logging function not loaded from API" }
 
-        enableLoggingFunc(interpreterPtr)
+        enableLoggingFunc(interpreterPtr?.reinterpret())
     }
 
     actual fun disableLogging() {
@@ -74,7 +62,7 @@ actual class RubyInterpreter private constructor(
         val disableLoggingFunc = api.interpreter.disable_logging
         requireNotNull(disableLoggingFunc) { "disable_logging function not loaded from API" }
 
-        disableLoggingFunc(interpreterPtr)
+        disableLoggingFunc(interpreterPtr?.reinterpret())
     }
 
     actual fun destroy() {
@@ -82,7 +70,7 @@ actual class RubyInterpreter private constructor(
             val destroyFunc = api.interpreter.destroy
             requireNotNull(destroyFunc) { "destroy function not loaded from API" }
 
-            destroyFunc(interpreterPtr)
+            destroyFunc(interpreterPtr.reinterpret())
             isDestroyed = true
 
             // Dispose stable references
@@ -96,14 +84,13 @@ actual class RubyInterpreter private constructor(
 
     actual companion object {
         // Global API instance (loaded once, reused for all interpreters)
-        private var loadedAPI: CRubyAPI? = null
-        private var apiStableRef: StableRef<CRubyAPI>? = null
+        private var loadedAPI: RubyAPI? = null
 
         /**
          * Load the Ruby API dynamically using dlopen/dlsym.
          * This is called once and cached for all interpreter instances.
          */
-        private fun ensureAPILoaded(nativeLibsDir: String): CRubyAPI {
+        private fun ensureAPILoaded(nativeLibsDir: String): RubyAPI {
             if (loadedAPI == null) {
                 // Determine library extension based on platform
                 val libExtension = when {
@@ -114,21 +101,21 @@ actual class RubyInterpreter private constructor(
 
                 val libPath = "$nativeLibsDir/libembedded-ruby.$libExtension"
 
-                // Allocate API structure
-                val api = nativeHeap.alloc<CRubyAPI>()
+                memScoped {
+                    // Allocate API structure
+                    val api = alloc<RubyAPI>()
+                    // Load the library and populate function pointers
+                    val result = ruby_api_load(libPath, api.ptr)
+                    require(result == 0) {
+                        "Failed to load Ruby API from $libPath. Make sure libassets has extracted the runtime first."
+                    }
 
-                // Load the library and populate function pointers
-                val result = ruby_api_load(libPath, api.ptr)
-                require(result == 0) {
-                    "Failed to load Ruby API from $libPath. Make sure libassets has extracted the runtime first."
+                    // Cache the loaded API (copy value, not pointer)
+                    loadedAPI = api.ptr.pointed
+
+                    // Also store in global holder for RubyScript access
+                    RubyAPIHolder.setAPI(loadedAPI!!)
                 }
-
-                // Cache the loaded API
-                loadedAPI = api.readValue()
-                apiStableRef = StableRef.create(api.readValue())
-
-                // Also store in global holder for RubyScript access
-                RubyAPIHolder.setAPI(loadedAPI!!)
             }
             return loadedAPI!!
         }
@@ -146,41 +133,41 @@ actual class RubyInterpreter private constructor(
             val listenerRef = StableRef.create(listener)
             val holder = StableRefHolder(listenerRef, listenerRef) // Same ref for both
 
-            // Create log listener structure
-            val logListener = nativeHeap.alloc<CLogListener>().apply {
-                // Store the listener reference in context
-                this.context = listenerRef.asCPointer()
-                this.user_data = null
+            memScoped {
+                // Create log listener structure
+                val logListener = alloc<LogListener>().apply {
+                    // Store the listener reference in context
+                    this.context = listenerRef.asCPointer()
+                    this.user_data = null
 
-                // Set callback function pointers
-                this.accept = staticCFunction { listenerPtr, message ->
-                    val listener = listenerPtr?.pointed?.context
-                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
-                    listener?.onLog(message?.toKString() ?: "")
+                    // Set callback function pointers
+                    this.accept = staticCFunction { listenerPtr, message ->
+                        val listener = listenerPtr?.pointed?.context
+                            ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
+                        listener?.onLog(message?.toKString() ?: "")
+                    }
+                    this.on_log_error = staticCFunction { listenerPtr, message ->
+                        val listener = listenerPtr?.pointed?.context
+                            ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
+                        listener?.onError(message?.toKString() ?: "")
+                    }
                 }
-                this.on_log_error = staticCFunction { listenerPtr, message ->
-                    val listener = listenerPtr?.pointed?.context
-                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
-                    listener?.onError(message?.toKString() ?: "")
-                }
+
+                // Use API function pointer to create interpreter
+                val createFunc = api.interpreter.create
+                requireNotNull(createFunc) { "create function not loaded from API" }
+
+                val interpreterPtr = createFunc(
+                    appPath.cstr.ptr,
+                    rubyBaseDir.cstr.ptr,
+                    nativeLibsDir.cstr.ptr,
+                    logListener.readValue()
+                )
+
+                require(interpreterPtr != null) { "Failed to create Ruby interpreter" }
+
+                return RubyInterpreter(api, interpreterPtr, listener, holder)
             }
-
-            // Use API function pointer to create interpreter
-            val createFunc = api.interpreter.create
-            requireNotNull(createFunc) { "create function not loaded from API" }
-
-            val interpreterPtr = createFunc(
-                appPath,
-                rubyBaseDir,
-                nativeLibsDir,
-                logListener.readValue()
-            )
-
-            nativeHeap.free(logListener)
-
-            require(interpreterPtr != null) { "Failed to create Ruby interpreter" }
-
-            return RubyInterpreter(api, interpreterPtr?.reinterpret(), listener, holder)
         }
     }
 }

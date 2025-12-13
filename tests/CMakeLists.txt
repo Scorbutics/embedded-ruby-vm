@@ -10,6 +10,8 @@ project("tests")
 
 message(STATUS "=== Test Configuration ===")
 
+set(RUBY_VM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../core/ruby-vm)
+
 # Level 1: Core tests (always built)
 message(STATUS "Building core tests")
 add_subdirectory(native/core)

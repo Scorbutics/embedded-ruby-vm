@@ -21,7 +21,20 @@ import java.nio.file.Files
 internal actual object NativeLibraryLoader {
     private var loaded = false
     private val libraryName = "embedded-ruby"
-    private var extractedLibsDir: File? = null
+    private var cachedInstallDir: File? = null
+
+    /**
+     * Get the installation directory where native libraries are extracted.
+     * This must be called AFTER loadLibrary() has been called at least once.
+     *
+     * @return The directory containing extracted native libraries and Ruby runtime
+     */
+    fun getExtractedLibsDirectory(): File {
+        return cachedInstallDir ?: throw IllegalStateException(
+            "Native libraries not yet loaded. Call RubyVMNative initialization first " +
+            "(happens automatically when you import RubyVMNative)."
+        )
+    }
 
     /**
      * Load the native libraries for the current platform.
@@ -39,6 +52,7 @@ internal actual object NativeLibraryLoader {
 
         // Determine install directory for extracted files
         val installDir = getInstallDirectory()
+        cachedInstallDir = installDir
         println("Install directory: $installDir")
 
         // Check if extraction is needed

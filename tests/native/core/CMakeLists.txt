@@ -11,7 +11,6 @@ project("test-core")
 
 add_executable(test_core
     test_core.c
-    ruby-api-loader.c
 )
 
 # Link against static assets library - simpler for testing, no runtime dependencies

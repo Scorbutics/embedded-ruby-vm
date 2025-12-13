@@ -237,38 +237,10 @@ static int run_main_vm_node(const char* baseDirectory,
     }
 }
 
-/**
- * Checks if a directory exists and is a directory.
- * @param path The path to check.
- * @return 1 if the path exists and is a directory, 0 otherwise, 
- *         or -1 if a different error occurred (check errno).
- */
-static int directory_exists(const char* path) {
-    struct stat info;
-    int statRC = stat(path, &info);
-    if (statRC != 0) {
-        if (errno == ENOENT || errno == ENOTDIR) {
-            return 0; // Path does not exist or is not a directory
-        }
-        return -1; // Other error
-    }
-    return (info.st_mode & S_IFDIR) ? 1 : 0; // Check if it is a directory
-    // Alternatively, you can use the S_ISDIR(info.st_mode) macro on POSIX systems
-}
 
 int ExecMainRubyVM(RubyVM* vm, const char* rubyDirectoryPath, const char* nativeLibsDirLocation) {
     const char* scriptContent = ruby_script_get_content(vm->main_script);
     const int commandsFd = vm->commands_channel.second_fd;
-
-    if (!directory_exists(rubyDirectoryPath)) {
-        // Installation incomplete
-        
-        DEBUG_LOG("ExecMainRubyVM: Unable to find a valid ruby directory");
-        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_ASSETS,
-                          "Ruby directory path is invalid: assets not deployed?");
-
-        return RUBY_VM_ERROR_ASSETS;
-    }
 
     return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation, scriptContent, 0, commandsFd);
 }

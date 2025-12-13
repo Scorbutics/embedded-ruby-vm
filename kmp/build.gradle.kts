@@ -176,12 +176,12 @@ kotlin {
                     packageName("com.scorbutics.rubyvm.native")
 
                     // Include directory for ruby-api-loader.h (using absolute paths)
-                    val testCoreDir = project.file("../tests/native/core").absoluteFile
+                    val coreRubyVmDir = project.file("../core/ruby-vm").absoluteFile
 
-                    includeDirs.allHeaders(testCoreDir)
+                    includeDirs.allHeaders(coreRubyVmDir)
 
                     // Also add compiler options with absolute paths
-                    compilerOpts("-I${testCoreDir.absolutePath}")
+                    compilerOpts("-I${coreRubyVmDir.absolutePath}")
 
                     // IMPORTANT: NO extraOpts("-libraryPath", ...) here!
                     // We use dlopen() to load libembedded-ruby at runtime, not at build time.

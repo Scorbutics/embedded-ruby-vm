@@ -641,32 +641,40 @@ static void create_library_version_symlinks(const char* lib_dir) {
     };
     
     ASSETS_INFO_LOG("Creating version symlinks in: %s", lib_dir);
-    
+
     for (int i = 0; lib_versions[i].base != NULL; i++) {
         const char* base_name = lib_versions[i].base;
-        char target_path[1024];
-        snprintf(target_path, sizeof(target_path), "%s/%s", lib_dir, base_name);
-        
+        char target_path[2048];  // Increased buffer size
+        int needed = snprintf(target_path, sizeof(target_path), "%s/%s", lib_dir, base_name);
+        if (needed >= (int)sizeof(target_path)) {
+            ASSETS_DEBUG_LOG("Path too long for %s, skipping", base_name);
+            continue;
+        }
+
         // Check if the base library exists
         if (access(target_path, F_OK) != 0) {
             continue;  // Skip if library doesn't exist
         }
-        
+
         // Create symlinks for each version suffix
         for (int v = 0; v < 3 && lib_versions[i].versions[v] != NULL; v++) {
             const char* version = lib_versions[i].versions[v];
-            char symlink_name[1024];
-            snprintf(symlink_name, sizeof(symlink_name), "%s/%s.%s", 
+            char symlink_name[2048];  // Increased buffer size
+            needed = snprintf(symlink_name, sizeof(symlink_name), "%s/%s.%s",
                     lib_dir, base_name, version);
-            
+            if (needed >= (int)sizeof(symlink_name)) {
+                ASSETS_DEBUG_LOG("Symlink path too long for %s.%s, skipping", base_name, version);
+                continue;
+            }
+
             // Remove existing symlink if present
             unlink(symlink_name);
-            
+
             // Create symlink: libruby.so.3.1 -> libruby.so
             if (symlink(base_name, symlink_name) == 0) {
                 ASSETS_INFO_LOG("  Created symlink: %s.%s -> %s", base_name, version, base_name);
             } else {
-                ASSETS_DEBUG_LOG("  Failed to create symlink %s.%s: %s", 
+                ASSETS_DEBUG_LOG("  Failed to create symlink %s.%s: %s",
                                base_name, version, strerror(errno));
             }
         }
@@ -802,13 +810,13 @@ const char* get_default_install_dir(void) {
     if (!cache_dir) {
         const char *home = getenv("HOME");
         if (home) {
-            snprintf(install_dir, sizeof(install_dir), "%s/.cache/your_app", home);
+            snprintf(install_dir, sizeof(install_dir), "%s/.cache/embedded-ruby-vm", home);
         } else {
             // Fallback for Android or systems without HOME
-            snprintf(install_dir, sizeof(install_dir), "/tmp/your_app_install");
+            snprintf(install_dir, sizeof(install_dir), "/tmp/embedded-ruby-vm");
         }
     } else {
-        snprintf(install_dir, sizeof(install_dir), "%s/your_app", cache_dir);
+        snprintf(install_dir, sizeof(install_dir), "%s/embedded-ruby-vm", cache_dir);
     }
 
     return install_dir;
