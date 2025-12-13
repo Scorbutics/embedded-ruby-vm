@@ -21,7 +21,7 @@ A cross-platform C library that embeds a full Ruby interpreter for use in native
 
 ## 🏗️ Architecture
 
-The project uses a **three-layer architecture** for maximum platform compatibility:
+The project uses a **three-layer architecture** with hybrid static/dynamic library loading for maximum platform compatibility:
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -34,15 +34,36 @@ The project uses a **three-layer architecture** for maximum platform compatibili
 ┌─────────────────────────────────────────────────┐
 │  Native Bridge Layer                            │
 │  - JNI: For Android & JVM Desktop               │
-│  - cinterop: For iOS & Native Desktop           │
+│  - cinterop + dlopen: For Native platforms      │
 └─────────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────────┐
 │  C Core Library - Embedded Ruby VM              │
-│  - Cross-platform Ruby interpreter              │
-│  - Asset management, logging, threading         │
+│  - libembedded-ruby.so (dynamic)                │
+│  - libassets.a (static) - Asset extraction      │
+│  - Ruby VM integration, logging, threading      │
 └─────────────────────────────────────────────────┘
 ```
+
+### Library Loading Architecture
+
+The project supports both **static** and **dynamic** linking approaches through a unified API:
+
+**Dynamic Loading (Kotlin/Native, JNI)**:
+- `libembedded-ruby.so` is loaded at runtime via `dlopen()`
+- Ruby runtime (`libruby.so`) is extracted by the asset system at first run
+- Dependency preloading via `.deps` file ensures all shared libraries are available
+- Uses `--whole-archive` linker flag to export symbols from static libraries
+
+**Static Loading (Optional, via `-DRUBY_STATIC`)**:
+- Function pointers assigned directly to statically-linked functions
+- Same `ruby_api_load()` function signature for both approaches
+- Transparent switching via compile-time define
+
+**Key Design Benefits**:
+- Ruby runtime deployed at runtime, not hardcoded at build time
+- Single unified API regardless of linking approach
+- Clean separation between build-time and runtime dependencies
 
 ### Supported Platforms
 
