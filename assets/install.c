@@ -478,6 +478,32 @@ cleanup:
 }
 
 #ifdef HAS_EMBEDDED_NATIVE_LIBS
+
+// Write binary data to a file
+static int write_binary_file(const char *filename, const char *data, size_t size) {
+    // Create parent directories
+    if (create_directories(filename) != 0) {
+        return -1;
+    }
+
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        ASSETS_ERROR_LOG("Failed to create file %s: %s", filename, strerror(errno));
+        return -1;
+    }
+
+    size_t written = fwrite(data, 1, size, file);
+    fclose(file);
+
+    if (written != size) {
+        ASSETS_ERROR_LOG("Failed to write complete data to %s", filename);
+        return -1;
+    }
+
+    ASSETS_DEBUG_LOG("Created: %s (%zu bytes)", filename, size);
+    return 0;
+}
+
 // Structure mapping library names to their embedded data symbols
 typedef struct {
     const char* name;
@@ -1187,7 +1213,11 @@ AssetsLayout* assets_bootstrap(const char* install_dir, AssetsError* error) {
     // This avoids issues with Ruby's initialization code running prematurely
 
     ASSETS_INFO_LOG("Bootstrap complete - extracted files, returning layout");
+#ifndef HAS_EMBEDDED_NATIVE_LIBS
+    ASSETS_INFO_LOG("No native libraries have been embedded");
+#else    
     ASSETS_INFO_LOG("Native libraries available at: %s", layout->native_libs_dir);
+#endif
     return layout;
 }
 

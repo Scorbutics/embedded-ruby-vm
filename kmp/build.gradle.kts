@@ -79,7 +79,7 @@ kotlin {
     //
     //             // Configure linker options with absolute paths
     //             val libDir = project.file("libs/linux_x64").absoluteFile
-    //             val rubyLibDir = project.file("../core/external/lib/x86_64-linux-linux").absoluteFile
+    //             val rubyLibDir = project.file("../external/lib/x86_64-linux-linux").absoluteFile
     //
     //             // Link static libraries and Ruby
     //             linkerOpts(
@@ -232,27 +232,27 @@ tasks.register("packageNativeLibraries") {
         "linux-x64" to Triple(
             "libs/linux_x86_64/libassets.so",
             "libs/linux_x86_64/libembedded-ruby.so",
-            "../core/external/lib/x86_64-linux-linux"
+            "../external/lib/x86_64-linux-linux"
         ),
         "linux-arm64" to Triple(
             "libs/linux_arm64/libassets.so",
             "libs/linux_arm64/libembedded-ruby.so",
-            "../core/external/lib/aarch64-linux-linux"
+            "../external/lib/aarch64-linux-linux"
         ),
         "macos-x64" to Triple(
             "libs/macos_x64/libassets.dylib",
             "libs/macos_x64/libembedded-ruby.dylib",
-            "../core/external/lib/x86_64-macos-darwin"
+            "../external/lib/x86_64-macos-darwin"
         ),
         "macos-arm64" to Triple(
             "libs/macos_arm64/libassets.dylib",
             "libs/macos_arm64/libembedded-ruby.dylib",
-            "../core/external/lib/aarch64-macos-darwin"
+            "../external/lib/aarch64-macos-darwin"
         ),
         "windows-x64" to Triple(
             "libs/windows_x64/assets.dll",
             "libs/windows_x64/embedded-ruby.dll",
-            "../core/external/lib/x86_64-windows-mingw"
+            "../external/lib/x86_64-windows-mingw"
         )
     )
 

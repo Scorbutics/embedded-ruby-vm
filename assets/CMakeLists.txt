@@ -32,7 +32,7 @@ embed_binary("${CMAKE_CURRENT_SOURCE_DIR}/files/${HOST}" ${RUBY_STDLIB_EXT_ZIP_P
 
 # Embed platform-specific native libraries (Phase 2)
 # Only embed libraries matching the current build platform to avoid binary bloat
-set(NATIVE_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/lib/${HOST}")
+set(NATIVE_LIBS_DIR "${CMAKE_SOURCE_DIR}/external/lib/${HOST}")
 
 # Define the list of native libraries to embed (main .so files, not symlinks)
 set(NATIVE_LIBS_TO_EMBED

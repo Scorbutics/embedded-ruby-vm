@@ -31,7 +31,7 @@ kotlin {
                 // Configure linker options with paths relative to project root
                 val projectRoot = project.file("../../..").absoluteFile
                 val libDir = project.file("${projectRoot}/kmp/libs/linux_x64").absoluteFile
-                val rubyLibDir = project.file("${projectRoot}/core/external/lib/x86_64-linux-linux").absoluteFile
+                val rubyLibDir = project.file("${projectRoot}/external/lib/x86_64-linux-linux").absoluteFile
 
                 // Link static libraries and Ruby
                 linkerOpts(

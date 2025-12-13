@@ -3,12 +3,12 @@ cmake_minimum_required(VERSION 3.19.2)
 project("core")
 
 set(IMPORT_DIR 
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/include 
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/include/${HOST}
+    ${CMAKE_SOURCE_DIR}/external/include 
+    ${CMAKE_SOURCE_DIR}/external/include/${HOST}
 )
 set(LOGGING_DIR ${CMAKE_CURRENT_SOURCE_DIR}/logging)
 set(RUBY_VM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ruby-vm)
-set(EXTERNAL_LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/lib/${HOST})
+set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST})
 
 set(libs_shared_dependencies ruby)
 
