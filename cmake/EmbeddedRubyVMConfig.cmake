@@ -103,8 +103,14 @@ set(EMBEDDED_RUBY_VM_KOTLIN_LIBS
 # Build Mode Detection
 # ============================================================================
 
+# Allow users to explicitly select static or shared linking
+# Usage: cmake -DEMBEDDED_RUBY_VM_USE_STATIC=ON ...
+option(EMBEDDED_RUBY_VM_USE_STATIC "Force static linking of Ruby libraries" OFF)
+
 # Check if static or shared libraries are available
-if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so")
+if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so" OR
+   EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so.3.1" OR
+   EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.dylib")
     set(EMBEDDED_RUBY_VM_SHARED_AVAILABLE TRUE)
 else()
     set(EMBEDDED_RUBY_VM_SHARED_AVAILABLE FALSE)
@@ -117,25 +123,67 @@ else()
     set(EMBEDDED_RUBY_VM_STATIC_AVAILABLE FALSE)
 endif()
 
+# Determine which library type to use based on user preference and availability
+if(EMBEDDED_RUBY_VM_USE_STATIC)
+    if(NOT EMBEDDED_RUBY_VM_STATIC_AVAILABLE)
+        message(FATAL_ERROR "EmbeddedRubyVM: Static libraries requested but not found in ${EMBEDDED_RUBY_VM_NATIVE_LIBS}")
+    endif()
+    set(EMBEDDED_RUBY_VM_LINK_TYPE "STATIC")
+    message(STATUS "EmbeddedRubyVM: Using STATIC libraries (explicitly requested)")
+else()
+    # Default behavior: prefer shared, fallback to static
+    if(EMBEDDED_RUBY_VM_SHARED_AVAILABLE)
+        set(EMBEDDED_RUBY_VM_LINK_TYPE "SHARED")
+        message(STATUS "EmbeddedRubyVM: Using SHARED libraries (default)")
+    elseif(EMBEDDED_RUBY_VM_STATIC_AVAILABLE)
+        set(EMBEDDED_RUBY_VM_LINK_TYPE "STATIC")
+        message(STATUS "EmbeddedRubyVM: Using STATIC libraries (fallback)")
+    else()
+        set(EMBEDDED_RUBY_VM_LINK_TYPE "UNKNOWN")
+        message(WARNING "EmbeddedRubyVM: No libraries found")
+    endif()
+endif()
+
 # ============================================================================
 # Imported Targets
 # ============================================================================
 
 # Create imported target for Ruby library
 if(NOT TARGET EmbeddedRubyVM::ruby)
-    add_library(EmbeddedRubyVM::ruby SHARED IMPORTED)
+    if(EMBEDDED_RUBY_VM_LINK_TYPE STREQUAL "SHARED")
+        add_library(EmbeddedRubyVM::ruby SHARED IMPORTED)
 
-    # Set library location
-    if(EMBEDDED_RUBY_VM_SHARED_AVAILABLE)
+        # Find the shared library (try different naming conventions)
+        if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so")
+            set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so")
+        elseif(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so.3.1")
+            set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so.3.1")
+        elseif(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.dylib")
+            set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.dylib")
+        endif()
+
         set_target_properties(EmbeddedRubyVM::ruby PROPERTIES
-            IMPORTED_LOCATION "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so"
+            IMPORTED_LOCATION "${_ruby_lib}"
             INTERFACE_INCLUDE_DIRECTORIES "${EMBEDDED_RUBY_VM_INCLUDE_DIRS}"
         )
-    elseif(EMBEDDED_RUBY_VM_STATIC_AVAILABLE)
+        message(STATUS "EmbeddedRubyVM: Linked Ruby library: ${_ruby_lib}")
+
+    elseif(EMBEDDED_RUBY_VM_LINK_TYPE STREQUAL "STATIC")
+        add_library(EmbeddedRubyVM::ruby STATIC IMPORTED)
+
+        # Find the static library (try different naming conventions)
+        if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby-static.a")
+            set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby-static.a")
+        elseif(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a")
+            set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a")
+        endif()
+
         set_target_properties(EmbeddedRubyVM::ruby PROPERTIES
-            IMPORTED_LOCATION "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby-static.a"
+            IMPORTED_LOCATION "${_ruby_lib}"
             INTERFACE_INCLUDE_DIRECTORIES "${EMBEDDED_RUBY_VM_INCLUDE_DIRS}"
         )
+        message(STATUS "EmbeddedRubyVM: Linked Ruby library: ${_ruby_lib}")
+
     else()
         message(WARNING "EmbeddedRubyVM: No Ruby libraries found in ${EMBEDDED_RUBY_VM_NATIVE_LIBS}")
     endif()
@@ -178,6 +226,7 @@ message(STATUS "  Native Libraries: ${EMBEDDED_RUBY_VM_NATIVE_LIBS}")
 message(STATUS "  Include Directories: ${EMBEDDED_RUBY_VM_INCLUDE_DIRS}")
 message(STATUS "  Shared Libraries Available: ${EMBEDDED_RUBY_VM_SHARED_AVAILABLE}")
 message(STATUS "  Static Libraries Available: ${EMBEDDED_RUBY_VM_STATIC_AVAILABLE}")
+message(STATUS "  Link Type: ${EMBEDDED_RUBY_VM_LINK_TYPE}")
 message(STATUS "  Kotlin Artifacts: ${EMBEDDED_RUBY_VM_KOTLIN_LIBS}")
 
 # ============================================================================
