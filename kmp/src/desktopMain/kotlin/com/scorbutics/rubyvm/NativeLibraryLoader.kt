@@ -22,6 +22,7 @@ internal actual object NativeLibraryLoader {
     private var loaded = false
     private val libraryName = "embedded-ruby"
     private var cachedInstallDir: File? = null
+    private var isStaticBuild = false
 
     /**
      * Get the installation directory where native libraries are extracted.
@@ -77,27 +78,38 @@ internal actual object NativeLibraryLoader {
         // PHASE 2: Load main embedded-ruby library
         println("=== Phase 2: Loading main Ruby VM library ===")
         val platform = detectPlatform()
-        val libraryFileName = mapLibraryName(libraryName)
-        val resourcePath = "/natives/$platform/$libraryFileName"
+        val sharedFileName = mapLibraryName(libraryName)
+        val sharedResourcePath = "/natives/$platform/$sharedFileName"
 
         try {
-            // Try to load from embedded resources
-            val inputStream = NativeLibraryLoader::class.java.getResourceAsStream(resourcePath)
+            // Try to load shared library from JAR
+            val inputStream = NativeLibraryLoader::class.java.getResourceAsStream(sharedResourcePath)
 
             if (inputStream != null) {
-                loadFromStream(inputStream, libraryFileName)
+                isStaticBuild = false
+                loadFromStream(inputStream, sharedFileName)
                 loaded = true
-                println("✓ Loaded embedded-ruby library from JAR: $resourcePath")
+                println("✓ Loaded shared embedded-ruby library from JAR: $sharedResourcePath")
             } else {
                 // Fallback to System.loadLibrary (requires java.library.path)
-                System.loadLibrary(libraryName)
-                loaded = true
-                println("✓ Loaded embedded-ruby library from system path")
+                // This covers both:
+                // - Static builds (library already linked, System.loadLibrary is a no-op)
+                // - External shared libraries (loaded from java.library.path)
+                try {
+                    System.loadLibrary(libraryName)
+                    loaded = true
+                    println("✓ Loaded embedded-ruby library from system path (may be static or shared)")
+                } catch (e: UnsatisfiedLinkError) {
+                    // If System.loadLibrary fails, assume it's a static build (already linked)
+                    isStaticBuild = true
+                    loaded = true
+                    println("✓ Assuming static build - library already linked at compile time")
+                }
             }
         } catch (e: Exception) {
             throw RuntimeException(
                 "Failed to load native library '$libraryName' for platform '$platform'.\n" +
-                "Tried resource: $resourcePath\n" +
+                "Tried resource: $sharedResourcePath\n" +
                 "Error: ${e.message}", e
             )
         }

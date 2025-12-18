@@ -24,31 +24,49 @@ endif()
 # Your binary embedding logic
 include(${CMAKE_CURRENT_SOURCE_DIR}/embed_binary.cmake)
 
+# Ruby standard library (platform-independent)
+# Note: The stdlib files are the SAME for static and dynamic builds
+# Ruby's require mechanism handles static vs dynamic loading automatically
 set(RUBY_STDLIB_ZIP_PATH  "ruby-stdlib.zip")
+if(BUILD_SHARED_LIBS)
+    set(RUBY_BUILD_TYPE_DIR "shared")
+    message(STATUS "Using shared Ruby libraries")
+else()
+    set(RUBY_BUILD_TYPE_DIR "static")
+    message(STATUS "Using static Ruby libraries")
+endif()
+
 embed_binary("${CMAKE_CURRENT_SOURCE_DIR}/files" ${RUBY_STDLIB_ZIP_PATH} EMBEDDED_RUBY_STDLIB)
 
+# Select Ruby stdlib extension zip based on build type (shared vs static)
+# This allows different Ruby builds with different native extension linking strategies
 set(RUBY_STDLIB_EXT_ZIP_PATH  "ruby-stdlib-ext.zip")
-embed_binary("${CMAKE_CURRENT_SOURCE_DIR}/files/${HOST}" ${RUBY_STDLIB_EXT_ZIP_PATH} EMBEDDED_RUBY_STDLIB_EXT)
+message(STATUS "Using Ruby stdlib extensions from ${HOST}/${RUBY_BUILD_TYPE_DIR}/")
+
+embed_binary("${CMAKE_CURRENT_SOURCE_DIR}/files/${HOST}/${RUBY_BUILD_TYPE_DIR}" ${RUBY_STDLIB_EXT_ZIP_PATH} EMBEDDED_RUBY_STDLIB_EXT)
 
 # Embed platform-specific native libraries (Phase 2)
 # Only embed libraries matching the current build platform to avoid binary bloat
-set(NATIVE_LIBS_DIR "${CMAKE_SOURCE_DIR}/external/lib/${HOST}")
+# Path includes build type (shared/static) to support different linking strategies
+set(NATIVE_LIBS_DIR "${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${RUBY_BUILD_TYPE_DIR}")
 
-# Define the list of native libraries to embed (main .so files, not symlinks)
-set(NATIVE_LIBS_TO_EMBED
-    libruby.so
-    libssl.so
-    libcrypto.so
-    libreadline.so
-    libhistory.so
-    libgdbm.so
-    libgdbm_compat.so
-    libncurses.so
-    libpanel.so
-    libmenu.so
-    libform.so
-    libcurses.so
-)
+if(BUILD_SHARED_LIBS)
+    # Define the list of native libraries to embed (main .so files, not symlinks)
+    set(NATIVE_LIBS_TO_EMBED
+        libruby.so
+        libssl.so
+        libcrypto.so
+        libreadline.so
+        libhistory.so
+        libgdbm.so
+        libgdbm_compat.so
+        libncurses.so
+        libpanel.so
+        libmenu.so
+        libform.so
+        libcurses.so
+    )
+endif()
 
 # List to hold all embedded native library object files
 set(EMBEDDED_NATIVE_LIBS_LIST "")
@@ -129,44 +147,15 @@ if(ENABLE_ASSETS_JNI)
     message(STATUS "Including JNI bindings in assets library")
 endif()
 
-# Build static library (for direct C linking without LD_LIBRARY_PATH hassles)
-add_library(assets_static STATIC ${ASSETS_SOURCES})
-
-set_target_properties(assets_static PROPERTIES
-    COMPILE_FLAGS "-Wall -Wextra -Werror"
-    OUTPUT_NAME "assets"  # Output will be libassets.a
-)
-
-target_link_libraries(assets_static PRIVATE minizip)
-
-if(ENABLE_ASSETS_JNI)
-    target_include_directories(assets_static PRIVATE ${JNI_INCLUDE_DIRS})
-endif()
-
-target_compile_definitions(assets_static PRIVATE HAS_EMBEDDED_DATA)
-
-if(EMBEDDED_NATIVE_LIBS_LIST)
-    target_compile_definitions(assets_static PRIVATE HAS_EMBEDDED_NATIVE_LIBS)
-    target_compile_definitions(assets_static PRIVATE EMBEDDED_PLATFORM="${HOST}")
-endif()
-
-set_target_properties(assets_static PROPERTIES LINKER_LANGUAGE C)
-
-target_include_directories(assets_static PRIVATE
-        $<TARGET_PROPERTY:minizip,INTERFACE_INCLUDE_DIRECTORIES>
-        ${CMAKE_CURRENT_SOURCE_DIR}/../ruby-vm
-)
-
-target_include_directories(assets_static PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-# Build shared library (for JNI/Kotlin usage)
-add_library(assets SHARED ${ASSETS_SOURCES})
+# Build assets library - type determined by BUILD_SHARED_LIBS option
+# When BUILD_SHARED_LIBS=ON: builds libassets.so (or .dylib on macOS)
+# When BUILD_SHARED_LIBS=OFF: builds libassets.a (static library - default)
+add_library(assets ${ASSETS_SOURCES})
 
 set_target_properties(assets PROPERTIES
     COMPILE_FLAGS "-Wall -Wextra -Werror"
-    OUTPUT_NAME "assets"  # Output will be libassets.so
+    OUTPUT_NAME "assets"
+    LINKER_LANGUAGE C
 )
 
 target_link_libraries(assets PRIVATE minizip)
@@ -181,8 +170,6 @@ if(EMBEDDED_NATIVE_LIBS_LIST)
     target_compile_definitions(assets PRIVATE HAS_EMBEDDED_NATIVE_LIBS)
     target_compile_definitions(assets PRIVATE EMBEDDED_PLATFORM="${HOST}")
 endif()
-
-set_target_properties(assets PROPERTIES LINKER_LANGUAGE C)
 
 target_include_directories(assets PRIVATE
         $<TARGET_PROPERTY:minizip,INTERFACE_INCLUDE_DIRECTORIES>

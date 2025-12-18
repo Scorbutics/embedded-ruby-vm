@@ -1,0 +1,17 @@
+#ifndef RUBY_API_LOADER_H
+#define RUBY_API_LOADER_H
+
+/**
+ * Ruby API Loader - Unified interface for static and dynamic builds
+ *
+ * This header automatically includes the correct implementation based on
+ * how the library was built. Users don't need to know whether the library
+ * was built as static or shared - the API is identical.
+ *
+ * Generated at build time by CMake.
+ */
+
+/* Include the appropriate implementation based on build configuration */
+@RUBY_API_LOADER_INCLUDE@
+
+#endif /* RUBY_API_LOADER_H */

@@ -194,44 +194,46 @@ if (isAndroidAvailable) {
  * This allows users to use the JAR without setting java.library.path.
  */
 tasks.register("packageNativeLibraries") {
-    description = "Copy native libraries into JAR resources"
+    description = "Copy native libraries into JAR resources (only for shared builds)"
     group = "build"
     dependsOn("buildNativeLibsDesktop")
 
-    // Define where native libraries are built
-    // We now have TWO libraries: libassets.so and libembedded-ruby.so
-    val nativeLibsSource = mapOf(
-        "linux-x64" to Triple(
-            "libs/linux_x86_64/libassets.so",
-            "libs/linux_x86_64/libembedded-ruby.so",
-            "../external/lib/x86_64-linux-linux"
-        ),
-        "linux-arm64" to Triple(
-            "libs/linux_arm64/libassets.so",
-            "libs/linux_arm64/libembedded-ruby.so",
-            "../external/lib/aarch64-linux-linux"
-        ),
-        "macos-x64" to Triple(
-            "libs/macos_x64/libassets.dylib",
-            "libs/macos_x64/libembedded-ruby.dylib",
-            "../external/lib/x86_64-macos-darwin"
-        ),
-        "macos-arm64" to Triple(
-            "libs/macos_arm64/libassets.dylib",
-            "libs/macos_arm64/libembedded-ruby.dylib",
-            "../external/lib/aarch64-macos-darwin"
-        ),
-        "windows-x64" to Triple(
-            "libs/windows_x64/assets.dll",
-            "libs/windows_x64/embedded-ruby.dll",
-            "../external/lib/x86_64-windows-mingw"
+    // IMPORTANT: Only package shared libraries in JAR
+    // Static libraries (.a) are linked at compile time and should NOT be in JAR
+    if (buildSharedLibs) {
+        // Define where native libraries are built (SHARED versions)
+        val nativeLibsSource = mapOf(
+            "linux-x64" to Triple(
+                "libs/linux_x86_64/libassets.so",
+                "libs/linux_x86_64/libembedded-ruby.so",
+                "../external/lib/x86_64-linux-linux"
+            ),
+            "linux-arm64" to Triple(
+                "libs/linux_arm64/libassets.so",
+                "libs/linux_arm64/libembedded-ruby.so",
+                "../external/lib/aarch64-linux-linux"
+            ),
+            "macos-x64" to Triple(
+                "libs/macos_x64/libassets.dylib",
+                "libs/macos_x64/libembedded-ruby.dylib",
+                "../external/lib/x86_64-macos-darwin"
+            ),
+            "macos-arm64" to Triple(
+                "libs/macos_arm64/libassets.dylib",
+                "libs/macos_arm64/libembedded-ruby.dylib",
+                "../external/lib/aarch64-macos-darwin"
+            ),
+            "windows-x64" to Triple(
+                "libs/windows_x64/assets.dll",
+                "libs/windows_x64/embedded-ruby.dll",
+                "../external/lib/x86_64-windows-mingw"
+            )
         )
-    )
 
-    // Configure outputs for proper up-to-date checking
-    outputs.dir(layout.buildDirectory.dir("generated/natives"))
+        // Configure outputs for proper up-to-date checking
+        outputs.dir(layout.buildDirectory.dir("generated/natives"))
 
-    doLast {
+        doLast {
         val outputDir = layout.buildDirectory.dir("generated/natives").get().asFile
 
         // Copy each platform's libraries to resources
@@ -272,6 +274,9 @@ tasks.register("packageNativeLibraries") {
             // package them in the JAR to reduce binary bloat.
             // The C asset extraction code handles them.
         }
+        }
+    } else {
+        println("Static build detected - skipping JAR packaging (libraries are linked at compile time)")
     }
 }
 
@@ -311,10 +316,12 @@ val targetArch: String = findProperty("targetArch")?.toString() ?: run {
 val buildType: String = findProperty("buildType")?.toString() ?: "Release"
 val forceRebuild: Boolean = findProperty("forceRebuild")?.toString()?.toBoolean() ?: false
 val enableASAN: Boolean = findProperty("enableASAN")?.toString()?.toBoolean() ?: false
+val buildSharedLibs: Boolean = findProperty("buildSharedLibs")?.toString()?.toBoolean() ?: false
 
 println("CMake Build Configuration:")
 println("  Target Architecture: $targetArch")
 println("  Build Type: $buildType")
+println("  Build Shared Libraries: $buildSharedLibs")
 if (forceRebuild) {
     println("  Force Rebuild: ENABLED (will clean before building)")
 }
@@ -335,7 +342,8 @@ fun Project.runCMake(
     println("Building native library for $targetPlatform-$architecture")
 
     val allCMakeArgs = (mutableListOf(
-        "-DCMAKE_BUILD_TYPE=$buildType"
+        "-DCMAKE_BUILD_TYPE=$buildType",
+        "-DBUILD_SHARED_LIBS=${if (buildSharedLibs) "ON" else "OFF"}"
     ) + cmakeArgs).toMutableList()
 
     // Add AddressSanitizer flags if enabled
@@ -377,11 +385,16 @@ fun Project.runCMake(
     }
 
     // Copy built libraries to output directory
+    // Static builds (.a), shared builds (.so/.dylib/.dll), and deps files
     outputDir.mkdirs()
     copy {
         from("$cmakeBuildDir/lib")
         into(outputDir)
-        include("*.so", "*.a", "*.dylib", "*.dll", "*.deps")
+        if (buildSharedLibs) {
+            include("*.so", "*.dylib", "*.dll", "*.deps")
+        } else {
+            include("*.a", "*.deps")
+        }
     }
 
     println("Native library built successfully: ${outputDir.absolutePath}")

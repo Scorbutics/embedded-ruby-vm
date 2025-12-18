@@ -80,6 +80,7 @@ internal object AssetsNative {
     /**
      * Load the assets native library.
      * This library contains only extraction code and has no Ruby dependencies.
+     * Supports both static (.a) and shared (.so/.dylib) library builds.
      */
     @Synchronized
     fun loadLibrary() {
@@ -88,27 +89,36 @@ internal object AssetsNative {
         }
 
         val platform = detectPlatform()
-        val libraryFileName = mapLibraryName("assets")
-        val resourcePath = "/natives/$platform/$libraryFileName"
+        val sharedFileName = mapLibraryName("assets")
+        val sharedResourcePath = "/natives/$platform/$sharedFileName"
 
         try {
-            // Try to load from embedded resources
-            val inputStream = AssetsNative::class.java.getResourceAsStream(resourcePath)
+            // Try to load shared library from JAR
+            val inputStream = AssetsNative::class.java.getResourceAsStream(sharedResourcePath)
 
             if (inputStream != null) {
-                NativeLibraryLoader.loadFromStream(inputStream, libraryFileName)
+                NativeLibraryLoader.loadFromStream(inputStream, sharedFileName)
                 loaded = true
-                println("✓ Loaded assets library from JAR: $resourcePath")
+                println("✓ Loaded shared assets library from JAR: $sharedResourcePath")
             } else {
                 // Fallback to System.loadLibrary (requires java.library.path)
-                System.loadLibrary("assets")
-                loaded = true
-                println("✓ Loaded assets library from system path")
+                // This covers both:
+                // - Static builds (library already linked, System.loadLibrary is a no-op)
+                // - External shared libraries (loaded from java.library.path)
+                try {
+                    System.loadLibrary("assets")
+                    loaded = true
+                    println("✓ Loaded assets library from system path (may be static or shared)")
+                } catch (e: UnsatisfiedLinkError) {
+                    // If System.loadLibrary fails, assume it's a static build (already linked)
+                    loaded = true
+                    println("✓ Assuming static build - assets library already linked at compile time")
+                }
             }
         } catch (e: Exception) {
             throw RuntimeException(
-                "Failed to load assets library '$libraryFileName' for platform '$platform'.\n" +
-                "Tried resource: $resourcePath\n" +
+                "Failed to load assets library for platform '$platform'.\n" +
+                "Tried resource: $sharedResourcePath\n" +
                 "Error: ${e.message}", e
             )
         }

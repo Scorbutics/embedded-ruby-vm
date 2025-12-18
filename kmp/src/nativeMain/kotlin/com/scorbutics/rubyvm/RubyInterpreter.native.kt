@@ -10,6 +10,7 @@ import kotlin.experimental.ExperimentalNativeApi
  *
  * This implementation uses dynamic library loading (dlopen) to load the Ruby VM at runtime.
  * The library is extracted by libassets.a and then loaded via ruby_api_load().
+ * Dependencies are preloaded using load_dependencies_from_file() from ruby-api-loader.h.
  */
 @OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class, ExperimentalStdlibApi::class)
 actual class RubyInterpreter private constructor(

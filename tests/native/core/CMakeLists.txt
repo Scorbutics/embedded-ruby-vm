@@ -13,17 +13,18 @@ add_executable(test_core
     test_core.c
 )
 
-# Link against static assets library - simpler for testing, no runtime dependencies
+# Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
+# Link against ruby-vm to get the PUBLIC include paths for ruby-api-loader.h
 target_link_libraries(test_core
-    assets_static   # For assets_bootstrap() - handles extraction and library loading
+    assets          # For assets_bootstrap() - handles extraction and library loading
+    ruby-vm         # For ruby-api-loader.h and related headers (gets PUBLIC include paths)
     dl              # For dlopen/dlsym in ruby-api-loader
 )
 
 # Include directories for headers
 target_include_directories(test_core PRIVATE
-    ${CMAKE_SOURCE_DIR}/core/assets
-    ${CMAKE_SOURCE_DIR}/core/ruby-vm
+    ${CMAKE_SOURCE_DIR}/assets       # For install.h
     ${CMAKE_SOURCE_DIR}/core/logging
 )
 

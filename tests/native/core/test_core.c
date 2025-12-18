@@ -6,7 +6,6 @@
 #include "ruby-api-loader.h"
 #include "install.h"
 #include "assets-error.h"
-#include "deps-loader.h"
 
 /* Global log file pointer */
 static FILE* g_log_file = NULL;
@@ -62,6 +61,7 @@ int main(int argc, char* argv[]) {
 
     /* Simple test script */
     const char* test_script =
+        "require 'readline'\n"
         "puts 'Hello from Ruby!'\n"
         "puts \"Ruby version: #{RUBY_VERSION}\"\n"
         "puts '2 + 2 = ' + (2 + 2).to_s\n";
@@ -109,67 +109,25 @@ int main(int argc, char* argv[]) {
     printf("  Ruby stdlib: %s\n", ruby_base_dir);
     printf("  Native libs: %s\n\n", native_libs_dir);
 
-    /* ========================================================================
-     * Load libembedded-ruby.so dependencies
-     * Strategy: Read dependencies from libembedded-ruby.deps file and preload them
-     *
-     * Note: We cannot use RTLD_LAZY to load libembedded-ruby.so and query its
-     * embedded dependency list because even RTLD_LAZY requires all DT_NEEDED
-     * libraries to be available at dlopen() time. Symbol resolution is lazy,
-     * but dependency loading is not.
-     *
-     * Solution: Use a .deps sidecar file generated at build time.
-     * ======================================================================== */
-    printf("Preloading dependencies from libembedded-ruby.deps...\n");
-
     /* Try to find and load dependencies file */
     const char* deps_paths[] = {
         "../lib/libembedded-ruby.deps",
         "./libembedded-ruby.deps",
-        "libembedded-ruby.deps"
+        "libembedded-ruby.deps",
+        NULL
     };
-
-    int deps_loaded = 0;
-    for (size_t i = 0; i < sizeof(deps_paths) / sizeof(deps_paths[0]); i++) {
-        if (load_dependencies_from_file(deps_paths[i], native_libs_dir) == 0) {
-            deps_loaded = 1;
-            break;
-        }
-    }
-
-    if (!deps_loaded) {
-        printf("  ⚠ No .deps file found, proceeding without preloading\n");
-    }
-    printf("\n");
-
-    /* ========================================================================
-     * Load libembedded-ruby.so and resolve all API functions
-     * ======================================================================== */
-    printf("Loading libembedded-ruby.so...\n");
 
     /* Try multiple paths to find libembedded-ruby.so */
     const char* lib_paths[] = {
         "../lib/libembedded-ruby.so",   /* Relative to bin/ */
         "./libembedded-ruby.so",        /* Current directory */
-        "libembedded-ruby.so"           /* LD_LIBRARY_PATH */
+        "libembedded-ruby.so",          /* LD_LIBRARY_PATH */
+        NULL
     };
 
-    int loaded = 0;
-    for (size_t i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
-        if (ruby_api_load(lib_paths[i], &ruby_api) == 0) {
-            printf("  ✓ Loaded from: %s\n\n", lib_paths[i]);
-            loaded = 1;
-            break;
-        }
-    }
-
-    if (!loaded) {
-        fprintf(stderr, "Failed to load libembedded-ruby.so. Tried:\n");
-        for (size_t i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
-            fprintf(stderr, "  - %s\n", lib_paths[i]);
-        }
+    if (ruby_api_bootstrap(&ruby_api, deps_paths, lib_paths, native_libs_dir) != 0) {
         if (g_log_file) {
-            fprintf(g_log_file, "Failed to load libembedded-ruby.so\n");
+            fprintf(g_log_file, "Failed to bootstrap Ruby API\n");
             fflush(g_log_file);
         }
         result = 13;
