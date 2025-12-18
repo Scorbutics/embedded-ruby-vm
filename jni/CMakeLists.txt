@@ -18,10 +18,14 @@ endif()
 
 message(STATUS "JNI include directories: ${JNI_INCLUDE_DIRS}")
 
-find_library(zlib-lib z)
+if(BUILD_SHARED_LIBS)
+    find_library(zlib-lib z)
 
-if(NOT zlib-lib)
-    message(FATAL_ERROR "The 'z' library (zlib) was not found. Please specify its location.")
+    if(NOT zlib-lib)
+        message(FATAL_ERROR "The 'z' library (zlib) was not found. Please specify its location.")
+    endif()
+else()
+    set(zlib-lib z)
 endif()
 
 # Build Android logging module if on Android
@@ -46,6 +50,7 @@ target_include_directories(jni PRIVATE
 
 target_link_libraries(jni
         core
+        # zlib is either found in current build env, or provided by external libs
         ${zlib-lib}
 )
 

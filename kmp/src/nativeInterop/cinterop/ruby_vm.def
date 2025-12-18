@@ -1,24 +1,28 @@
 # Kotlin/Native cinterop definition for Ruby VM
-# This file tells K/N which C headers to use for dynamic library loading
+# This file tells K/N which C headers to use for static library linking
 
 package = com.scorbutics.rubyvm.native
 
 # C headers to expose to Kotlin
 # We expose:
-#  - ruby-api-loader.h: For dynamic library loading (includes RubyCompletionTask helpers and deps loading)
+#  - ruby-interpreter.h: Core interpreter functions
+#  - ruby-script.h: Script management functions
+#  - log-listener.h: Logging callback types
+#  - completion-task.h: Completion callback types
+#  - ruby-script-location.h: Script location types
 #  - install.h: For assets extraction and path management
 #  - assets-error.h: For error handling in assets operations
-headers = ruby-api-loader.h install.h assets-error.h
+headers = ruby-interpreter.h ruby-script.h log-listener.h completion-task.h ruby-script-location.h install.h assets-error.h
 
-# Filter which headers are processed
-headerFilter = ruby-api-loader.h install.h assets-error.h
+# Filter which headers are processed (allow all from ruby-vm and assets directories)
+# IMPORTANT: Include both static/ and shared/ subdirectories so cinterop can process them
+headerFilter = ruby-api-loader.h static/ruby-api-loader.h shared/ruby-api-loader.h log-listener.h completion-task.h ruby-script-location.h ruby-interpreter.h ruby-script.h install.h assets-error.h
 
 # Compiler options for finding headers
 # NOTE: Include paths are configured in build.gradle.kts via includeDirs.headerFilterOnly()
 # This ensures absolute paths are used and avoids path resolution issues
 
-# IMPORTANT: No linker options are specified here!
-# The ruby-api-loader.h approach uses dlopen() to load libembedded-ruby at runtime,
-# so we do NOT link against it at build time. This allows the library to be
-# extracted by libassets.a and loaded dynamically after deployment.
+# Linker options for static libraries
+# NOTE: Static libraries and their paths are configured in build.gradle.kts
+# via extraOpts for platform-specific linking
 

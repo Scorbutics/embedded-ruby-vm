@@ -51,7 +51,7 @@ if(NOT BUILD_SHARED_LIBS)
     if(BSD_LIBRARY)
         message(STATUS "BSD library found: ${BSD_LIBRARY}")
     else()
-        message(STATUS "BSD library not found (OK on musl/Alpine systems)")
+        message(WARNING "BSD library not found (OK on musl/Alpine systems)")
     endif()
 endif()
 

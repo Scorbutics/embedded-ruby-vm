@@ -2,528 +2,2434 @@
 # pragma GCC system_header
 #endif
 #define ALWAYS_INLINE(x) __attribute__ ((__always_inline__)) x
-typedef __builtin_va_list va_list;
-typedef unsigned long size_t;
-typedef long ssize_t;
-typedef long off_t;
+typedef __builtin_va_list __gnuc_va_list;
+typedef __gnuc_va_list va_list;
+
+typedef long unsigned int size_t;
+typedef unsigned char __u_char;
+typedef unsigned short int __u_short;
+typedef unsigned int __u_int;
+typedef unsigned long int __u_long;
+typedef signed char __int8_t;
+typedef unsigned char __uint8_t;
+typedef signed short int __int16_t;
+typedef unsigned short int __uint16_t;
+typedef signed int __int32_t;
+typedef unsigned int __uint32_t;
+typedef signed long int __int64_t;
+typedef unsigned long int __uint64_t;
+typedef __int8_t __int_least8_t;
+typedef __uint8_t __uint_least8_t;
+typedef __int16_t __int_least16_t;
+typedef __uint16_t __uint_least16_t;
+typedef __int32_t __int_least32_t;
+typedef __uint32_t __uint_least32_t;
+typedef __int64_t __int_least64_t;
+typedef __uint64_t __uint_least64_t;
+typedef long int __quad_t;
+typedef unsigned long int __u_quad_t;
+typedef long int __intmax_t;
+typedef unsigned long int __uintmax_t;
+typedef unsigned long int __dev_t;
+typedef unsigned int __uid_t;
+typedef unsigned int __gid_t;
+typedef unsigned long int __ino_t;
+typedef unsigned long int __ino64_t;
+typedef unsigned int __mode_t;
+typedef unsigned long int __nlink_t;
+typedef long int __off_t;
+typedef long int __off64_t;
+typedef int __pid_t;
+typedef struct { int __val[2]; } __fsid_t;
+typedef long int __clock_t;
+typedef unsigned long int __rlim_t;
+typedef unsigned long int __rlim64_t;
+typedef unsigned int __id_t;
+typedef long int __time_t;
+typedef unsigned int __useconds_t;
+typedef long int __suseconds_t;
+typedef long int __suseconds64_t;
+typedef int __daddr_t;
+typedef int __key_t;
+typedef int __clockid_t;
+typedef void * __timer_t;
+typedef long int __blksize_t;
+typedef long int __blkcnt_t;
+typedef long int __blkcnt64_t;
+typedef unsigned long int __fsblkcnt_t;
+typedef unsigned long int __fsblkcnt64_t;
+typedef unsigned long int __fsfilcnt_t;
+typedef unsigned long int __fsfilcnt64_t;
+typedef long int __fsword_t;
+typedef long int __ssize_t;
+typedef long int __syscall_slong_t;
+typedef unsigned long int __syscall_ulong_t;
+typedef __off64_t __loff_t;
+typedef char *__caddr_t;
+typedef long int __intptr_t;
+typedef unsigned int __socklen_t;
+typedef int __sig_atomic_t;
+typedef struct
+{
+  int __count;
+  union
+  {
+    unsigned int __wch;
+    char __wchb[4];
+  } __value;
+} __mbstate_t;
+typedef struct _G_fpos_t
+{
+  __off_t __pos;
+  __mbstate_t __state;
+} __fpos_t;
+typedef struct _G_fpos64_t
+{
+  __off64_t __pos;
+  __mbstate_t __state;
+} __fpos64_t;
+struct _IO_FILE;
+typedef struct _IO_FILE __FILE;
+struct _IO_FILE;
 typedef struct _IO_FILE FILE;
-typedef __builtin_va_list __isoc_va_list;
-typedef union _G_fpos64_t {
- char __opaque[16];
- long long __lldata;
- double __align;
-} fpos_t;
-extern FILE *const stdin;
-extern FILE *const stdout;
-extern FILE *const stderr;
-FILE *fopen(const char *__restrict, const char *__restrict);
-FILE *freopen(const char *__restrict, const char *__restrict, FILE *__restrict);
-int fclose(FILE *);
-int remove(const char *);
-int rename(const char *, const char *);
-int feof(FILE *);
-int ferror(FILE *);
-int fflush(FILE *);
-void clearerr(FILE *);
-int fseek(FILE *, long, int);
-long ftell(FILE *);
-void rewind(FILE *);
-int fgetpos(FILE *__restrict, fpos_t *__restrict);
-int fsetpos(FILE *, const fpos_t *);
-size_t fread(void *__restrict, size_t, size_t, FILE *__restrict);
-size_t fwrite(const void *__restrict, size_t, size_t, FILE *__restrict);
-int fgetc(FILE *);
-int getc(FILE *);
-int getchar(void);
-int ungetc(int, FILE *);
-int fputc(int, FILE *);
-int putc(int, FILE *);
-int putchar(int);
-char *fgets(char *__restrict, int, FILE *__restrict);
-int fputs(const char *__restrict, FILE *__restrict);
-int puts(const char *);
-int printf(const char *__restrict, ...);
-int fprintf(FILE *__restrict, const char *__restrict, ...);
-int sprintf(char *__restrict, const char *__restrict, ...);
-int snprintf(char *__restrict, size_t, const char *__restrict, ...);
-int vprintf(const char *__restrict, __isoc_va_list);
-int vfprintf(FILE *__restrict, const char *__restrict, __isoc_va_list);
-int vsprintf(char *__restrict, const char *__restrict, __isoc_va_list);
-int vsnprintf(char *__restrict, size_t, const char *__restrict, __isoc_va_list);
-int scanf(const char *__restrict, ...);
-int fscanf(FILE *__restrict, const char *__restrict, ...);
-int sscanf(const char *__restrict, const char *__restrict, ...);
-int vscanf(const char *__restrict, __isoc_va_list);
-int vfscanf(FILE *__restrict, const char *__restrict, __isoc_va_list);
-int vsscanf(const char *__restrict, const char *__restrict, __isoc_va_list);
-void perror(const char *);
-int setvbuf(FILE *__restrict, char *__restrict, int, size_t);
-void setbuf(FILE *__restrict, char *__restrict);
-char *tmpnam(char *);
-FILE *tmpfile(void);
-FILE *fmemopen(void *__restrict, size_t, const char *__restrict);
-FILE *open_memstream(char **, size_t *);
-FILE *fdopen(int, const char *);
-FILE *popen(const char *, const char *);
-int pclose(FILE *);
-int fileno(FILE *);
-int fseeko(FILE *, off_t, int);
-off_t ftello(FILE *);
-int dprintf(int, const char *__restrict, ...);
-int vdprintf(int, const char *__restrict, __isoc_va_list);
-void flockfile(FILE *);
-int ftrylockfile(FILE *);
-void funlockfile(FILE *);
-int getc_unlocked(FILE *);
-int getchar_unlocked(void);
-int putc_unlocked(int, FILE *);
-int putchar_unlocked(int);
-ssize_t getdelim(char **__restrict, size_t *__restrict, int, FILE *__restrict);
-ssize_t getline(char **__restrict, size_t *__restrict, FILE *__restrict);
-int renameat(int, const char *, int, const char *);
-char *ctermid(char *);
-char *tempnam(const char *, const char *);
-char *cuserid(char *);
-void setlinebuf(FILE *);
-void setbuffer(FILE *, char *, size_t);
-int fgetc_unlocked(FILE *);
-int fputc_unlocked(int, FILE *);
-int fflush_unlocked(FILE *);
-size_t fread_unlocked(void *, size_t, size_t, FILE *);
-size_t fwrite_unlocked(const void *, size_t, size_t, FILE *);
-void clearerr_unlocked(FILE *);
-int feof_unlocked(FILE *);
-int ferror_unlocked(FILE *);
-int fileno_unlocked(FILE *);
-int getw(FILE *);
-int putw(int, FILE *);
-char *fgetln(FILE *, size_t *);
-int asprintf(char **, const char *, ...);
-int vasprintf(char **, const char *, __isoc_va_list);
-char *fgets_unlocked(char *, int, FILE *);
-int fputs_unlocked(const char *, FILE *);
-typedef ssize_t (cookie_read_function_t)(void *, char *, size_t);
-typedef ssize_t (cookie_write_function_t)(void *, const char *, size_t);
-typedef int (cookie_seek_function_t)(void *, off_t *, int);
-typedef int (cookie_close_function_t)(void *);
-typedef struct _IO_cookie_io_functions_t {
- cookie_read_function_t *read;
- cookie_write_function_t *write;
- cookie_seek_function_t *seek;
- cookie_close_function_t *close;
-} cookie_io_functions_t;
-FILE *fopencookie(void *, const char *, cookie_io_functions_t);
-typedef long register_t;
-typedef long time_t;
-typedef long suseconds_t;
-typedef signed char int8_t;
-typedef signed short int16_t;
-typedef signed int int32_t;
-typedef signed long int64_t;
-typedef unsigned long u_int64_t;
-typedef unsigned mode_t;
-typedef unsigned long nlink_t;
-typedef unsigned long ino_t;
-typedef unsigned long dev_t;
-typedef long blksize_t;
-typedef long blkcnt_t;
-typedef unsigned long fsblkcnt_t;
-typedef unsigned long fsfilcnt_t;
-typedef void * timer_t;
-typedef int clockid_t;
-typedef long clock_t;
-typedef int pid_t;
-typedef unsigned id_t;
-typedef unsigned uid_t;
-typedef unsigned gid_t;
-typedef int key_t;
-typedef unsigned useconds_t;
-typedef struct __pthread * pthread_t;
-typedef int pthread_once_t;
-typedef unsigned pthread_key_t;
-typedef int pthread_spinlock_t;
-typedef struct { unsigned __attr; } pthread_mutexattr_t;
-typedef struct { unsigned __attr; } pthread_condattr_t;
-typedef struct { unsigned __attr; } pthread_barrierattr_t;
-typedef struct { unsigned __attr[2]; } pthread_rwlockattr_t;
-typedef struct { union { int __i[sizeof(long)==8?14:9]; volatile int __vi[sizeof(long)==8?14:9]; unsigned long __s[sizeof(long)==8?7:9]; } __u; } pthread_attr_t;
-typedef struct { union { int __i[sizeof(long)==8?10:6]; volatile int __vi[sizeof(long)==8?10:6]; volatile void *volatile __p[sizeof(long)==8?5:6]; } __u; } pthread_mutex_t;
-typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12*sizeof(int)/sizeof(void*)]; } __u; } pthread_cond_t;
-typedef struct { union { int __i[sizeof(long)==8?14:8]; volatile int __vi[sizeof(long)==8?14:8]; void *__p[sizeof(long)==8?7:8]; } __u; } pthread_rwlock_t;
-typedef struct { union { int __i[sizeof(long)==8?8:5]; volatile int __vi[sizeof(long)==8?8:5]; void *__p[sizeof(long)==8?4:5]; } __u; } pthread_barrier_t;
-typedef unsigned char u_int8_t;
-typedef unsigned short u_int16_t;
-typedef unsigned u_int32_t;
-typedef char *caddr_t;
-typedef unsigned char u_char;
-typedef unsigned short u_short, ushort;
-typedef unsigned u_int, uint;
-typedef unsigned long u_long, ulong;
-typedef long long quad_t;
-typedef unsigned long long u_quad_t;
-typedef unsigned short uint16_t;
-typedef unsigned int uint32_t;
-typedef unsigned long uint64_t;
-static inline uint16_t __bswap16(uint16_t __x)
+struct _IO_FILE;
+struct _IO_marker;
+struct _IO_codecvt;
+struct _IO_wide_data;
+typedef void _IO_lock_t;
+struct _IO_FILE
 {
- return __x<<8 | __x>>8;
-}
-static inline uint32_t __bswap32(uint32_t __x)
-{
- return __x>>24 | __x>>8&0xff00 | __x<<8&0xff0000 | __x<<24;
-}
-static inline uint64_t __bswap64(uint64_t __x)
-{
- return __bswap32(__x)+0ULL<<32 | __bswap32(__x>>32);
-}
-struct timeval { time_t tv_sec; suseconds_t tv_usec; };
-struct timespec { time_t tv_sec; int :8*(sizeof(time_t)-sizeof(long))*(1234==4321); long tv_nsec; int :8*(sizeof(time_t)-sizeof(long))*(1234!=4321); };
-typedef struct __sigset_t { unsigned long __bits[128/sizeof(long)]; } sigset_t;
-typedef unsigned long fd_mask;
-typedef struct {
- unsigned long fds_bits[1024 / 8 / sizeof(long)];
-} fd_set;
-int select (int, fd_set *__restrict, fd_set *__restrict, fd_set *__restrict, struct timeval *__restrict);
-int pselect (int, fd_set *__restrict, fd_set *__restrict, fd_set *__restrict, const struct timespec *__restrict, const sigset_t *__restrict);
-struct stat {
- dev_t st_dev;
- ino_t st_ino;
- nlink_t st_nlink;
- mode_t st_mode;
- uid_t st_uid;
- gid_t st_gid;
- unsigned int __pad0;
- dev_t st_rdev;
- off_t st_size;
- blksize_t st_blksize;
- blkcnt_t st_blocks;
- struct timespec st_atim;
- struct timespec st_mtim;
- struct timespec st_ctim;
- long __unused[3];
+  int _flags;
+  char *_IO_read_ptr;
+  char *_IO_read_end;
+  char *_IO_read_base;
+  char *_IO_write_base;
+  char *_IO_write_ptr;
+  char *_IO_write_end;
+  char *_IO_buf_base;
+  char *_IO_buf_end;
+  char *_IO_save_base;
+  char *_IO_backup_base;
+  char *_IO_save_end;
+  struct _IO_marker *_markers;
+  struct _IO_FILE *_chain;
+  int _fileno;
+  int _flags2;
+  __off_t _old_offset;
+  unsigned short _cur_column;
+  signed char _vtable_offset;
+  char _shortbuf[1];
+  _IO_lock_t *_lock;
+  __off64_t _offset;
+  struct _IO_codecvt *_codecvt;
+  struct _IO_wide_data *_wide_data;
+  struct _IO_FILE *_freeres_list;
+  void *_freeres_buf;
+  size_t __pad5;
+  int _mode;
+  char _unused2[15 * sizeof (int) - 4 * sizeof (void *) - sizeof (size_t)];
 };
-int stat(const char *__restrict, struct stat *__restrict);
-int fstat(int, struct stat *);
-int lstat(const char *__restrict, struct stat *__restrict);
-int fstatat(int, const char *__restrict, struct stat *__restrict, int);
-int chmod(const char *, mode_t);
-int fchmod(int, mode_t);
-int fchmodat(int, const char *, mode_t, int);
-mode_t umask(mode_t);
-int mkdir(const char *, mode_t);
-int mkfifo(const char *, mode_t);
-int mkdirat(int, const char *, mode_t);
-int mkfifoat(int, const char *, mode_t);
-int mknod(const char *, mode_t, dev_t);
-int mknodat(int, const char *, mode_t, dev_t);
-int futimens(int, const struct timespec [2]);
-int utimensat(int, const char *, const struct timespec [2], int);
-int lchmod(const char *, mode_t);
+typedef __ssize_t cookie_read_function_t (void *__cookie, char *__buf,
+                                          size_t __nbytes);
+typedef __ssize_t cookie_write_function_t (void *__cookie, const char *__buf,
+                                           size_t __nbytes);
+typedef int cookie_seek_function_t (void *__cookie, __off64_t *__pos, int __w);
+typedef int cookie_close_function_t (void *__cookie);
+typedef struct _IO_cookie_io_functions_t
+{
+  cookie_read_function_t *read;
+  cookie_write_function_t *write;
+  cookie_seek_function_t *seek;
+  cookie_close_function_t *close;
+} cookie_io_functions_t;
+typedef __off_t off_t;
+typedef __off64_t off64_t;
+typedef __ssize_t ssize_t;
+typedef __fpos_t fpos_t;
+typedef __fpos64_t fpos64_t;
+extern FILE *stdin;
+extern FILE *stdout;
+extern FILE *stderr;
+extern int remove (const char *__filename) __attribute__ ((__nothrow__ , __leaf__));
+extern int rename (const char *__old, const char *__new) __attribute__ ((__nothrow__ , __leaf__));
+extern int renameat (int __oldfd, const char *__old, int __newfd,
+       const char *__new) __attribute__ ((__nothrow__ , __leaf__));
+extern int renameat2 (int __oldfd, const char *__old, int __newfd,
+        const char *__new, unsigned int __flags) __attribute__ ((__nothrow__ , __leaf__));
+extern int fclose (FILE *__stream);
+extern FILE *tmpfile (void)
+  __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern FILE *tmpfile64 (void)
+   __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern char *tmpnam (char[20]) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *tmpnam_r (char __s[20]) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *tempnam (const char *__dir, const char *__pfx)
+   __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) __attribute__ ((__warn_unused_result__)) __attribute__ ((__malloc__ (__builtin_free, 1)));
+extern int fflush (FILE *__stream);
+extern int fflush_unlocked (FILE *__stream);
+extern int fcloseall (void);
+extern FILE *fopen (const char *__restrict __filename,
+      const char *__restrict __modes)
+  __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern FILE *freopen (const char *__restrict __filename,
+        const char *__restrict __modes,
+        FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern FILE *fopen64 (const char *__restrict __filename,
+        const char *__restrict __modes)
+  __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern FILE *freopen64 (const char *__restrict __filename,
+   const char *__restrict __modes,
+   FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern FILE *fdopen (int __fd, const char *__modes) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern FILE *fopencookie (void *__restrict __magic_cookie,
+     const char *__restrict __modes,
+     cookie_io_functions_t __io_funcs) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern FILE *fmemopen (void *__s, size_t __len, const char *__modes)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern FILE *open_memstream (char **__bufloc, size_t *__sizeloc) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (fclose, 1))) __attribute__ ((__warn_unused_result__));
+extern void setbuf (FILE *__restrict __stream, char *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__));
+extern int setvbuf (FILE *__restrict __stream, char *__restrict __buf,
+      int __modes, size_t __n) __attribute__ ((__nothrow__ , __leaf__));
+extern void setbuffer (FILE *__restrict __stream, char *__restrict __buf,
+         size_t __size) __attribute__ ((__nothrow__ , __leaf__));
+extern void setlinebuf (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__));
+extern int fprintf (FILE *__restrict __stream,
+      const char *__restrict __format, ...);
+extern int printf (const char *__restrict __format, ...);
+extern int sprintf (char *__restrict __s,
+      const char *__restrict __format, ...) __attribute__ ((__nothrow__));
+extern int vfprintf (FILE *__restrict __s, const char *__restrict __format,
+       __gnuc_va_list __arg);
+extern int vprintf (const char *__restrict __format, __gnuc_va_list __arg);
+extern int vsprintf (char *__restrict __s, const char *__restrict __format,
+       __gnuc_va_list __arg) __attribute__ ((__nothrow__));
+extern int snprintf (char *__restrict __s, size_t __maxlen,
+       const char *__restrict __format, ...)
+     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 3, 4)));
+extern int vsnprintf (char *__restrict __s, size_t __maxlen,
+        const char *__restrict __format, __gnuc_va_list __arg)
+     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 3, 0)));
+extern int vasprintf (char **__restrict __ptr, const char *__restrict __f,
+        __gnuc_va_list __arg)
+     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 2, 0))) __attribute__ ((__warn_unused_result__));
+extern int __asprintf (char **__restrict __ptr,
+         const char *__restrict __fmt, ...)
+     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 2, 3))) __attribute__ ((__warn_unused_result__));
+extern int asprintf (char **__restrict __ptr,
+       const char *__restrict __fmt, ...)
+     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 2, 3))) __attribute__ ((__warn_unused_result__));
+extern int vdprintf (int __fd, const char *__restrict __fmt,
+       __gnuc_va_list __arg)
+     __attribute__ ((__format__ (__printf__, 2, 0)));
+extern int dprintf (int __fd, const char *__restrict __fmt, ...)
+     __attribute__ ((__format__ (__printf__, 2, 3)));
+extern int fscanf (FILE *__restrict __stream,
+     const char *__restrict __format, ...) __attribute__ ((__warn_unused_result__));
+extern int scanf (const char *__restrict __format, ...) __attribute__ ((__warn_unused_result__));
+extern int sscanf (const char *__restrict __s,
+     const char *__restrict __format, ...) __attribute__ ((__nothrow__ , __leaf__));
+extern int fscanf (FILE *__restrict __stream, const char *__restrict __format, ...) __asm__ ("" "__isoc99_fscanf") __attribute__ ((__warn_unused_result__));
+extern int scanf (const char *__restrict __format, ...) __asm__ ("" "__isoc99_scanf") __attribute__ ((__warn_unused_result__));
+extern int sscanf (const char *__restrict __s, const char *__restrict __format, ...) __asm__ ("" "__isoc99_sscanf") __attribute__ ((__nothrow__ , __leaf__));
+extern int vfscanf (FILE *__restrict __s, const char *__restrict __format,
+      __gnuc_va_list __arg)
+     __attribute__ ((__format__ (__scanf__, 2, 0))) __attribute__ ((__warn_unused_result__));
+extern int vscanf (const char *__restrict __format, __gnuc_va_list __arg)
+     __attribute__ ((__format__ (__scanf__, 1, 0))) __attribute__ ((__warn_unused_result__));
+extern int vsscanf (const char *__restrict __s,
+      const char *__restrict __format, __gnuc_va_list __arg)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__format__ (__scanf__, 2, 0)));
+extern int vfscanf (FILE *__restrict __s, const char *__restrict __format, __gnuc_va_list __arg) __asm__ ("" "__isoc99_vfscanf")
+     __attribute__ ((__format__ (__scanf__, 2, 0))) __attribute__ ((__warn_unused_result__));
+extern int vscanf (const char *__restrict __format, __gnuc_va_list __arg) __asm__ ("" "__isoc99_vscanf")
+     __attribute__ ((__format__ (__scanf__, 1, 0))) __attribute__ ((__warn_unused_result__));
+extern int vsscanf (const char *__restrict __s, const char *__restrict __format, __gnuc_va_list __arg) __asm__ ("" "__isoc99_vsscanf") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__format__ (__scanf__, 2, 0)));
+extern int fgetc (FILE *__stream);
+extern int getc (FILE *__stream);
+extern int getchar (void);
+extern int getc_unlocked (FILE *__stream);
+extern int getchar_unlocked (void);
+extern int fgetc_unlocked (FILE *__stream);
+extern int fputc (int __c, FILE *__stream);
+extern int putc (int __c, FILE *__stream);
+extern int putchar (int __c);
+extern int fputc_unlocked (int __c, FILE *__stream);
+extern int putc_unlocked (int __c, FILE *__stream);
+extern int putchar_unlocked (int __c);
+extern int getw (FILE *__stream);
+extern int putw (int __w, FILE *__stream);
+extern char *fgets (char *__restrict __s, int __n, FILE *__restrict __stream)
+     __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern char *fgets_unlocked (char *__restrict __s, int __n,
+        FILE *__restrict __stream) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern __ssize_t __getdelim (char **__restrict __lineptr,
+                             size_t *__restrict __n, int __delimiter,
+                             FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern __ssize_t getdelim (char **__restrict __lineptr,
+                           size_t *__restrict __n, int __delimiter,
+                           FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern __ssize_t getline (char **__restrict __lineptr,
+                          size_t *__restrict __n,
+                          FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern int fputs (const char *__restrict __s, FILE *__restrict __stream);
+extern int puts (const char *__s);
+extern int ungetc (int __c, FILE *__stream);
+extern size_t fread (void *__restrict __ptr, size_t __size,
+       size_t __n, FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern size_t fwrite (const void *__restrict __ptr, size_t __size,
+        size_t __n, FILE *__restrict __s);
+extern int fputs_unlocked (const char *__restrict __s,
+      FILE *__restrict __stream);
+extern size_t fread_unlocked (void *__restrict __ptr, size_t __size,
+         size_t __n, FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern size_t fwrite_unlocked (const void *__restrict __ptr, size_t __size,
+          size_t __n, FILE *__restrict __stream);
+extern int fseek (FILE *__stream, long int __off, int __whence);
+extern long int ftell (FILE *__stream) __attribute__ ((__warn_unused_result__));
+extern void rewind (FILE *__stream);
+extern int fseeko (FILE *__stream, __off_t __off, int __whence);
+extern __off_t ftello (FILE *__stream) __attribute__ ((__warn_unused_result__));
+extern int fgetpos (FILE *__restrict __stream, fpos_t *__restrict __pos);
+extern int fsetpos (FILE *__stream, const fpos_t *__pos);
+extern int fseeko64 (FILE *__stream, __off64_t __off, int __whence);
+extern __off64_t ftello64 (FILE *__stream) __attribute__ ((__warn_unused_result__));
+extern int fgetpos64 (FILE *__restrict __stream, fpos64_t *__restrict __pos);
+extern int fsetpos64 (FILE *__stream, const fpos64_t *__pos);
+extern void clearerr (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__));
+extern int feof (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int ferror (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void clearerr_unlocked (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__));
+extern int feof_unlocked (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int ferror_unlocked (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void perror (const char *__s);
+extern int fileno (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int fileno_unlocked (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int pclose (FILE *__stream);
+extern FILE *popen (const char *__command, const char *__modes)
+  __attribute__ ((__malloc__)) __attribute__ ((__malloc__ (pclose, 1))) __attribute__ ((__warn_unused_result__));
+extern char *ctermid (char *__s) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__access__ (__write_only__, 1)));
+extern char *cuserid (char *__s)
+  __attribute__ ((__access__ (__write_only__, 1)));
+struct obstack;
+extern int obstack_printf (struct obstack *__restrict __obstack,
+      const char *__restrict __format, ...)
+     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 2, 3)));
+extern int obstack_vprintf (struct obstack *__restrict __obstack,
+       const char *__restrict __format,
+       __gnuc_va_list __args)
+     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 2, 0)));
+extern void flockfile (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__));
+extern int ftrylockfile (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void funlockfile (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__));
+extern int __uflow (FILE *);
+extern int __overflow (FILE *, int);
+extern int __sprintf_chk (char *__restrict __s, int __flag, size_t __slen,
+     const char *__restrict __format, ...) __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__write_only__, 1, 3)));
+extern int __vsprintf_chk (char *__restrict __s, int __flag, size_t __slen,
+      const char *__restrict __format,
+      __gnuc_va_list __ap) __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__write_only__, 1, 3)));
+extern int __snprintf_chk (char *__restrict __s, size_t __n, int __flag,
+      size_t __slen, const char *__restrict __format,
+      ...) __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int __vsnprintf_chk (char *__restrict __s, size_t __n, int __flag,
+       size_t __slen, const char *__restrict __format,
+       __gnuc_va_list __ap) __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int __fprintf_chk (FILE *__restrict __stream, int __flag,
+     const char *__restrict __format, ...);
+extern int __printf_chk (int __flag, const char *__restrict __format, ...);
+extern int __vfprintf_chk (FILE *__restrict __stream, int __flag,
+      const char *__restrict __format, __gnuc_va_list __ap);
+extern int __vprintf_chk (int __flag, const char *__restrict __format,
+     __gnuc_va_list __ap);
+extern int __dprintf_chk (int __fd, int __flag, const char *__restrict __fmt,
+     ...) __attribute__ ((__format__ (__printf__, 3, 4)));
+extern int __vdprintf_chk (int __fd, int __flag,
+      const char *__restrict __fmt, __gnuc_va_list __arg)
+     __attribute__ ((__format__ (__printf__, 3, 0)));
+extern int __asprintf_chk (char **__restrict __ptr, int __flag,
+      const char *__restrict __fmt, ...)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__format__ (__printf__, 3, 4))) __attribute__ ((__warn_unused_result__));
+extern int __vasprintf_chk (char **__restrict __ptr, int __flag,
+       const char *__restrict __fmt, __gnuc_va_list __arg)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__format__ (__printf__, 3, 0))) __attribute__ ((__warn_unused_result__));
+extern int __obstack_printf_chk (struct obstack *__restrict __obstack,
+     int __flag, const char *__restrict __format,
+     ...)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__format__ (__printf__, 3, 4)));
+extern int __obstack_vprintf_chk (struct obstack *__restrict __obstack,
+      int __flag,
+      const char *__restrict __format,
+      __gnuc_va_list __args)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__format__ (__printf__, 3, 0)));
+extern char *__fgets_chk (char *__restrict __s, size_t __size, int __n,
+     FILE *__restrict __stream)
+    __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 3)));
+extern size_t __fread_chk (void *__restrict __ptr, size_t __ptrlen,
+      size_t __size, size_t __n,
+      FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern char *__fgets_unlocked_chk (char *__restrict __s, size_t __size,
+       int __n, FILE *__restrict __stream)
+    __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 3)));
+extern size_t __fread_unlocked_chk (void *__restrict __ptr, size_t __ptrlen,
+        size_t __size, size_t __n,
+        FILE *__restrict __stream) __attribute__ ((__warn_unused_result__));
+extern __inline __attribute__ ((__gnu_inline__)) int
+getchar (void)
+{
+  return getc (stdin);
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+fgetc_unlocked (FILE *__fp)
+{
+  return (__builtin_expect (((__fp)->_IO_read_ptr >= (__fp)->_IO_read_end), 0) ? __uflow (__fp) : *(unsigned char *) (__fp)->_IO_read_ptr++);
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+getc_unlocked (FILE *__fp)
+{
+  return (__builtin_expect (((__fp)->_IO_read_ptr >= (__fp)->_IO_read_end), 0) ? __uflow (__fp) : *(unsigned char *) (__fp)->_IO_read_ptr++);
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+getchar_unlocked (void)
+{
+  return (__builtin_expect (((stdin)->_IO_read_ptr >= (stdin)->_IO_read_end), 0) ? __uflow (stdin) : *(unsigned char *) (stdin)->_IO_read_ptr++);
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+putchar (int __c)
+{
+  return putc (__c, stdout);
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+fputc_unlocked (int __c, FILE *__stream)
+{
+  return (__builtin_expect (((__stream)->_IO_write_ptr >= (__stream)->_IO_write_end), 0) ? __overflow (__stream, (unsigned char) (__c)) : (unsigned char) (*(__stream)->_IO_write_ptr++ = (__c)));
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+putc_unlocked (int __c, FILE *__stream)
+{
+  return (__builtin_expect (((__stream)->_IO_write_ptr >= (__stream)->_IO_write_end), 0) ? __overflow (__stream, (unsigned char) (__c)) : (unsigned char) (*(__stream)->_IO_write_ptr++ = (__c)));
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+putchar_unlocked (int __c)
+{
+  return (__builtin_expect (((stdout)->_IO_write_ptr >= (stdout)->_IO_write_end), 0) ? __overflow (stdout, (unsigned char) (__c)) : (unsigned char) (*(stdout)->_IO_write_ptr++ = (__c)));
+}
+extern __inline __attribute__ ((__gnu_inline__)) __ssize_t
+getline (char **__lineptr, size_t *__n, FILE *__stream)
+{
+  return __getdelim (__lineptr, __n, '\n', __stream);
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+__attribute__ ((__nothrow__ , __leaf__)) feof_unlocked (FILE *__stream)
+{
+  return (((__stream)->_flags & 0x0010) != 0);
+}
+extern __inline __attribute__ ((__gnu_inline__)) int
+__attribute__ ((__nothrow__ , __leaf__)) ferror_unlocked (FILE *__stream)
+{
+  return (((__stream)->_flags & 0x0020) != 0);
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) sprintf (char *__restrict __s, const char *__restrict __fmt, ...)
+{
+  return __builtin___sprintf_chk (__s, 2 - 1,
+      __builtin_object_size (__s, 2 > 1), __fmt,
+      __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) vsprintf (char *__restrict __s, const char *__restrict __fmt, __gnuc_va_list __ap)
+{
+  return __builtin___vsprintf_chk (__s, 2 - 1,
+       __builtin_object_size (__s, 2 > 1), __fmt, __ap);
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) snprintf (char *__restrict __s, size_t __n, const char *__restrict __fmt, ...)
+{
+  return __builtin___snprintf_chk (__s, __n, 2 - 1,
+       __builtin_object_size (__s, 2 > 1), __fmt,
+       __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) vsnprintf (char *__restrict __s, size_t __n, const char *__restrict __fmt, __gnuc_va_list __ap)
+{
+  return __builtin___vsnprintf_chk (__s, __n, 2 - 1,
+        __builtin_object_size (__s, 2 > 1), __fmt, __ap);
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+fprintf (FILE *__restrict __stream, const char *__restrict __fmt, ...)
+{
+  return __fprintf_chk (__stream, 2 - 1, __fmt,
+   __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+printf (const char *__restrict __fmt, ...)
+{
+  return __printf_chk (2 - 1, __fmt, __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+vprintf (const char *__restrict __fmt, __gnuc_va_list __ap)
+{
+  return __vfprintf_chk (stdout, 2 - 1, __fmt, __ap);
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+vfprintf (FILE *__restrict __stream,
+   const char *__restrict __fmt, __gnuc_va_list __ap)
+{
+  return __vfprintf_chk (__stream, 2 - 1, __fmt, __ap);
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+dprintf (int __fd, const char *__restrict __fmt, ...)
+{
+  return __dprintf_chk (__fd, 2 - 1, __fmt,
+   __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+vdprintf (int __fd, const char *__restrict __fmt, __gnuc_va_list __ap)
+{
+  return __vdprintf_chk (__fd, 2 - 1, __fmt, __ap);
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) asprintf (char **__restrict __ptr, const char *__restrict __fmt, ...)
+{
+  return __asprintf_chk (__ptr, 2 - 1, __fmt,
+    __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) __asprintf (char **__restrict __ptr, const char *__restrict __fmt, ...)
+{
+  return __asprintf_chk (__ptr, 2 - 1, __fmt,
+    __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) obstack_printf (struct obstack *__restrict __obstack, const char *__restrict __fmt, ...)
+{
+  return __obstack_printf_chk (__obstack, 2 - 1, __fmt,
+          __builtin_va_arg_pack ());
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) vasprintf (char **__restrict __ptr, const char *__restrict __fmt, __gnuc_va_list __ap)
+{
+  return __vasprintf_chk (__ptr, 2 - 1, __fmt, __ap);
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) obstack_vprintf (struct obstack *__restrict __obstack, const char *__restrict __fmt, __gnuc_va_list __ap)
+{
+  return __obstack_vprintf_chk (__obstack, 2 - 1, __fmt,
+    __ap);
+}
+extern char *__fgets_alias (char *__restrict __s, int __n, FILE *__restrict __stream) __asm__ ("" "fgets")
+    __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern char *__fgets_chk_warn (char *__restrict __s, size_t __size, int __n, FILE *__restrict __stream) __asm__ ("" "__fgets_chk")
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("fgets called with bigger size than length " "of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2))) char *
+fgets (char *__restrict __s, int __n, FILE *__restrict __stream)
+{
+  size_t __sz = __builtin_object_size (__s, 2 > 1);
+  if (((__builtin_constant_p (__sz) && (__sz) == (long unsigned int) -1) || (((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= ((__sz)) / ((sizeof (char))))) && (((long unsigned int) (__n)) <= ((__sz)) / ((sizeof (char)))))))
+    return __fgets_alias (__s, __n, __stream);
+  if ((((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= (__sz) / (sizeof (char)))) && !(((long unsigned int) (__n)) <= (__sz) / (sizeof (char)))))
+    return __fgets_chk_warn (__s, __sz, __n, __stream);
+  return __fgets_chk (__s, __sz, __n, __stream);
+}
+extern size_t __fread_alias (void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __stream) __asm__ ("" "fread") __attribute__ ((__warn_unused_result__));
+extern size_t __fread_chk_warn (void *__restrict __ptr, size_t __ptrlen, size_t __size, size_t __n, FILE *__restrict __stream) __asm__ ("" "__fread_chk")
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("fread called with bigger size * nmemb than length " "of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) size_t
+fread (void *__restrict __ptr, size_t __size, size_t __n,
+       FILE *__restrict __stream)
+{
+  size_t __sz = __builtin_object_size (__ptr, 0);
+  if (((__builtin_constant_p (__sz) && (__sz) == (long unsigned int) -1) || (((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= ((__sz)) / ((__size)))) && (((long unsigned int) (__n)) <= ((__sz)) / ((__size))))))
+    return __fread_alias (__ptr, __size, __n, __stream);
+  if ((((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= (__sz) / (__size))) && !(((long unsigned int) (__n)) <= (__sz) / (__size))))
+    return __fread_chk_warn (__ptr, __sz, __size, __n, __stream);
+  return __fread_chk (__ptr, __sz, __size, __n, __stream);
+}
+extern char *__fgets_unlocked_alias (char *__restrict __s, int __n, FILE *__restrict __stream) __asm__ ("" "fgets_unlocked")
+    __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern char *__fgets_unlocked_chk_warn (char *__restrict __s, size_t __size, int __n, FILE *__restrict __stream) __asm__ ("" "__fgets_unlocked_chk")
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("fgets_unlocked called with bigger size than length " "of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2))) char *
+fgets_unlocked (char *__restrict __s, int __n, FILE *__restrict __stream)
+{
+  size_t __sz = __builtin_object_size (__s, 2 > 1);
+  if (((__builtin_constant_p (__sz) && (__sz) == (long unsigned int) -1) || (((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= ((__sz)) / ((sizeof (char))))) && (((long unsigned int) (__n)) <= ((__sz)) / ((sizeof (char)))))))
+    return __fgets_unlocked_alias (__s, __n, __stream);
+  if ((((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= (__sz) / (sizeof (char)))) && !(((long unsigned int) (__n)) <= (__sz) / (sizeof (char)))))
+    return __fgets_unlocked_chk_warn (__s, __sz, __n, __stream);
+  return __fgets_unlocked_chk (__s, __sz, __n, __stream);
+}
+extern size_t __fread_unlocked_alias (void *__restrict __ptr, size_t __size, size_t __n, FILE *__restrict __stream) __asm__ ("" "fread_unlocked") __attribute__ ((__warn_unused_result__));
+extern size_t __fread_unlocked_chk_warn (void *__restrict __ptr, size_t __ptrlen, size_t __size, size_t __n, FILE *__restrict __stream) __asm__ ("" "__fread_unlocked_chk")
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("fread_unlocked called with bigger size * nmemb than " "length of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) size_t
+fread_unlocked (void *__restrict __ptr, size_t __size, size_t __n,
+  FILE *__restrict __stream)
+{
+  size_t __sz = __builtin_object_size (__ptr, 0);
+  if (((__builtin_constant_p (__sz) && (__sz) == (long unsigned int) -1) || (((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= ((__sz)) / ((__size)))) && (((long unsigned int) (__n)) <= ((__sz)) / ((__size))))))
+    {
+      if (__builtin_constant_p (__size)
+   && __builtin_constant_p (__n)
+   && (__size | __n) < (((size_t) 1) << (8 * sizeof (size_t) / 2))
+   && __size * __n <= 8)
+ {
+   size_t __cnt = __size * __n;
+   char *__cptr = (char *) __ptr;
+   if (__cnt == 0)
+     return 0;
+   for (; __cnt > 0; --__cnt)
+     {
+       int __c = getc_unlocked (__stream);
+       if (__c == (-1))
+  break;
+       *__cptr++ = __c;
+     }
+   return (__cptr - (char *) __ptr) / __size;
+ }
+      return __fread_unlocked_alias (__ptr, __size, __n, __stream);
+    }
+  if ((((__typeof (__n)) 0 < (__typeof (__n)) -1 || (__builtin_constant_p (__n) && (__n) > 0)) && __builtin_constant_p ((((long unsigned int) (__n)) <= (__sz) / (__size))) && !(((long unsigned int) (__n)) <= (__sz) / (__size))))
+    return __fread_unlocked_chk_warn (__ptr, __sz, __size, __n, __stream);
+  return __fread_unlocked_chk (__ptr, __sz, __size, __n, __stream);
+}
+
+
+typedef __u_char u_char;
+typedef __u_short u_short;
+typedef __u_int u_int;
+typedef __u_long u_long;
+typedef __quad_t quad_t;
+typedef __u_quad_t u_quad_t;
+typedef __fsid_t fsid_t;
+typedef __loff_t loff_t;
+typedef __ino_t ino_t;
+typedef __ino64_t ino64_t;
+typedef __dev_t dev_t;
+typedef __gid_t gid_t;
+typedef __mode_t mode_t;
+typedef __nlink_t nlink_t;
+typedef __uid_t uid_t;
+typedef __pid_t pid_t;
+typedef __id_t id_t;
+typedef __daddr_t daddr_t;
+typedef __caddr_t caddr_t;
+typedef __key_t key_t;
+typedef __clock_t clock_t;
+typedef __clockid_t clockid_t;
+typedef __time_t time_t;
+typedef __timer_t timer_t;
+typedef __useconds_t useconds_t;
+typedef __suseconds_t suseconds_t;
+typedef unsigned long int ulong;
+typedef unsigned short int ushort;
+typedef unsigned int uint;
+typedef __int8_t int8_t;
+typedef __int16_t int16_t;
+typedef __int32_t int32_t;
+typedef __int64_t int64_t;
+typedef __uint8_t u_int8_t;
+typedef __uint16_t u_int16_t;
+typedef __uint32_t u_int32_t;
+typedef __uint64_t u_int64_t;
+typedef int register_t __attribute__ ((__mode__ (__word__)));
+static __inline __uint16_t
+__bswap_16 (__uint16_t __bsx)
+{
+  return __builtin_bswap16 (__bsx);
+}
+static __inline __uint32_t
+__bswap_32 (__uint32_t __bsx)
+{
+  return __builtin_bswap32 (__bsx);
+}
+__extension__ static __inline __uint64_t
+__bswap_64 (__uint64_t __bsx)
+{
+  return __builtin_bswap64 (__bsx);
+}
+static __inline __uint16_t
+__uint16_identity (__uint16_t __x)
+{
+  return __x;
+}
+static __inline __uint32_t
+__uint32_identity (__uint32_t __x)
+{
+  return __x;
+}
+static __inline __uint64_t
+__uint64_identity (__uint64_t __x)
+{
+  return __x;
+}
+typedef struct
+{
+  unsigned long int __val[(1024 / (8 * sizeof (unsigned long int)))];
+} __sigset_t;
+typedef __sigset_t sigset_t;
+struct timeval
+{
+  __time_t tv_sec;
+  __suseconds_t tv_usec;
+};
+struct timespec
+{
+  __time_t tv_sec;
+  __syscall_slong_t tv_nsec;
+};
+typedef long int __fd_mask;
+typedef struct
+  {
+    __fd_mask fds_bits[1024 / (8 * (int) sizeof (__fd_mask))];
+  } fd_set;
+typedef __fd_mask fd_mask;
+
+extern int select (int __nfds, fd_set *__restrict __readfds,
+     fd_set *__restrict __writefds,
+     fd_set *__restrict __exceptfds,
+     struct timeval *__restrict __timeout);
+extern int pselect (int __nfds, fd_set *__restrict __readfds,
+      fd_set *__restrict __writefds,
+      fd_set *__restrict __exceptfds,
+      const struct timespec *__restrict __timeout,
+      const __sigset_t *__restrict __sigmask);
+extern long int __fdelt_chk (long int __d);
+extern long int __fdelt_warn (long int __d)
+  __attribute__((__warning__ ("bit outside of fd_set selected")));
+
+typedef __blksize_t blksize_t;
+typedef __blkcnt_t blkcnt_t;
+typedef __fsblkcnt_t fsblkcnt_t;
+typedef __fsfilcnt_t fsfilcnt_t;
+typedef __blkcnt64_t blkcnt64_t;
+typedef __fsblkcnt64_t fsblkcnt64_t;
+typedef __fsfilcnt64_t fsfilcnt64_t;
+typedef union
+{
+  __extension__ unsigned long long int __value64;
+  struct
+  {
+    unsigned int __low;
+    unsigned int __high;
+  } __value32;
+} __atomic_wide_counter;
+typedef struct __pthread_internal_list
+{
+  struct __pthread_internal_list *__prev;
+  struct __pthread_internal_list *__next;
+} __pthread_list_t;
+typedef struct __pthread_internal_slist
+{
+  struct __pthread_internal_slist *__next;
+} __pthread_slist_t;
+struct __pthread_mutex_s
+{
+  int __lock;
+  unsigned int __count;
+  int __owner;
+  unsigned int __nusers;
+  int __kind;
+  short __spins;
+  short __elision;
+  __pthread_list_t __list;
+};
+struct __pthread_rwlock_arch_t
+{
+  unsigned int __readers;
+  unsigned int __writers;
+  unsigned int __wrphase_futex;
+  unsigned int __writers_futex;
+  unsigned int __pad3;
+  unsigned int __pad4;
+  int __cur_writer;
+  int __shared;
+  signed char __rwelision;
+  unsigned char __pad1[7];
+  unsigned long int __pad2;
+  unsigned int __flags;
+};
+struct __pthread_cond_s
+{
+  __atomic_wide_counter __wseq;
+  __atomic_wide_counter __g1_start;
+  unsigned int __g_refs[2] ;
+  unsigned int __g_size[2];
+  unsigned int __g1_orig_size;
+  unsigned int __wrefs;
+  unsigned int __g_signals[2];
+};
+typedef unsigned int __tss_t;
+typedef unsigned long int __thrd_t;
+typedef struct
+{
+  int __data ;
+} __once_flag;
+typedef unsigned long int pthread_t;
+typedef union
+{
+  char __size[4];
+  int __align;
+} pthread_mutexattr_t;
+typedef union
+{
+  char __size[4];
+  int __align;
+} pthread_condattr_t;
+typedef unsigned int pthread_key_t;
+typedef int pthread_once_t;
+union pthread_attr_t
+{
+  char __size[56];
+  long int __align;
+};
+typedef union pthread_attr_t pthread_attr_t;
+typedef union
+{
+  struct __pthread_mutex_s __data;
+  char __size[40];
+  long int __align;
+} pthread_mutex_t;
+typedef union
+{
+  struct __pthread_cond_s __data;
+  char __size[48];
+  __extension__ long long int __align;
+} pthread_cond_t;
+typedef union
+{
+  struct __pthread_rwlock_arch_t __data;
+  char __size[56];
+  long int __align;
+} pthread_rwlock_t;
+typedef union
+{
+  char __size[8];
+  long int __align;
+} pthread_rwlockattr_t;
+typedef volatile int pthread_spinlock_t;
+typedef union
+{
+  char __size[32];
+  long int __align;
+} pthread_barrier_t;
+typedef union
+{
+  char __size[4];
+  int __align;
+} pthread_barrierattr_t;
+
+
+struct stat
+  {
+    __dev_t st_dev;
+    __ino_t st_ino;
+    __nlink_t st_nlink;
+    __mode_t st_mode;
+    __uid_t st_uid;
+    __gid_t st_gid;
+    int __pad0;
+    __dev_t st_rdev;
+    __off_t st_size;
+    __blksize_t st_blksize;
+    __blkcnt_t st_blocks;
+    struct timespec st_atim;
+    struct timespec st_mtim;
+    struct timespec st_ctim;
+    __syscall_slong_t __glibc_reserved[3];
+  };
+struct stat64
+  {
+    __dev_t st_dev;
+    __ino64_t st_ino;
+    __nlink_t st_nlink;
+    __mode_t st_mode;
+    __uid_t st_uid;
+    __gid_t st_gid;
+    int __pad0;
+    __dev_t st_rdev;
+    __off_t st_size;
+    __blksize_t st_blksize;
+    __blkcnt64_t st_blocks;
+    struct timespec st_atim;
+    struct timespec st_mtim;
+    struct timespec st_ctim;
+    __syscall_slong_t __glibc_reserved[3];
+  };
+extern int stat (const char *__restrict __file,
+   struct stat *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int fstat (int __fd, struct stat *__buf) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int stat64 (const char *__restrict __file,
+     struct stat64 *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int fstat64 (int __fd, struct stat64 *__buf) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int fstatat (int __fd, const char *__restrict __file,
+      struct stat *__restrict __buf, int __flag)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+extern int fstatat64 (int __fd, const char *__restrict __file,
+        struct stat64 *__restrict __buf, int __flag)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+extern int lstat (const char *__restrict __file,
+    struct stat *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int lstat64 (const char *__restrict __file,
+      struct stat64 *__restrict __buf)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int chmod (const char *__file, __mode_t __mode)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int lchmod (const char *__file, __mode_t __mode)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int fchmod (int __fd, __mode_t __mode) __attribute__ ((__nothrow__ , __leaf__));
+extern int fchmodat (int __fd, const char *__file, __mode_t __mode,
+       int __flag)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2))) __attribute__ ((__warn_unused_result__));
+extern __mode_t umask (__mode_t __mask) __attribute__ ((__nothrow__ , __leaf__));
+extern __mode_t getumask (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int mkdir (const char *__path, __mode_t __mode)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int mkdirat (int __fd, const char *__path, __mode_t __mode)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int mknod (const char *__path, __mode_t __mode, __dev_t __dev)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int mknodat (int __fd, const char *__path, __mode_t __mode,
+      __dev_t __dev) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int mkfifo (const char *__path, __mode_t __mode)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int mkfifoat (int __fd, const char *__path, __mode_t __mode)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int utimensat (int __fd, const char *__path,
+        const struct timespec __times[2],
+        int __flags)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int futimens (int __fd, const struct timespec __times[2]) __attribute__ ((__nothrow__ , __leaf__));
+typedef __signed__ char __s8;
+typedef unsigned char __u8;
+typedef __signed__ short __s16;
+typedef unsigned short __u16;
+typedef __signed__ int __s32;
+typedef unsigned int __u32;
+__extension__ typedef __signed__ long long __s64;
+__extension__ typedef unsigned long long __u64;
+typedef struct {
+ unsigned long fds_bits[1024 / (8 * sizeof(long))];
+} __kernel_fd_set;
+typedef void (*__kernel_sighandler_t)(int);
+typedef int __kernel_key_t;
+typedef int __kernel_mqd_t;
+typedef unsigned short __kernel_old_uid_t;
+typedef unsigned short __kernel_old_gid_t;
+typedef unsigned long __kernel_old_dev_t;
+typedef long __kernel_long_t;
+typedef unsigned long __kernel_ulong_t;
+typedef __kernel_ulong_t __kernel_ino_t;
+typedef unsigned int __kernel_mode_t;
+typedef int __kernel_pid_t;
+typedef int __kernel_ipc_pid_t;
+typedef unsigned int __kernel_uid_t;
+typedef unsigned int __kernel_gid_t;
+typedef __kernel_long_t __kernel_suseconds_t;
+typedef int __kernel_daddr_t;
+typedef unsigned int __kernel_uid32_t;
+typedef unsigned int __kernel_gid32_t;
+typedef __kernel_ulong_t __kernel_size_t;
+typedef __kernel_long_t __kernel_ssize_t;
+typedef __kernel_long_t __kernel_ptrdiff_t;
+typedef struct {
+ int val[2];
+} __kernel_fsid_t;
+typedef __kernel_long_t __kernel_off_t;
+typedef long long __kernel_loff_t;
+typedef __kernel_long_t __kernel_old_time_t;
+typedef __kernel_long_t __kernel_time_t;
+typedef long long __kernel_time64_t;
+typedef __kernel_long_t __kernel_clock_t;
+typedef int __kernel_timer_t;
+typedef int __kernel_clockid_t;
+typedef char * __kernel_caddr_t;
+typedef unsigned short __kernel_uid16_t;
+typedef unsigned short __kernel_gid16_t;
+typedef __u16 __le16;
+typedef __u16 __be16;
+typedef __u32 __le32;
+typedef __u32 __be32;
+typedef __u64 __le64;
+typedef __u64 __be64;
+typedef __u16 __sum16;
+typedef __u32 __wsum;
+typedef unsigned __poll_t;
+struct statx_timestamp {
+ __s64 tv_sec;
+ __u32 tv_nsec;
+ __s32 __reserved;
+};
+struct statx {
+ __u32 stx_mask;
+ __u32 stx_blksize;
+ __u64 stx_attributes;
+ __u32 stx_nlink;
+ __u32 stx_uid;
+ __u32 stx_gid;
+ __u16 stx_mode;
+ __u16 __spare0[1];
+ __u64 stx_ino;
+ __u64 stx_size;
+ __u64 stx_blocks;
+ __u64 stx_attributes_mask;
+ struct statx_timestamp stx_atime;
+ struct statx_timestamp stx_btime;
+ struct statx_timestamp stx_ctime;
+ struct statx_timestamp stx_mtime;
+ __u32 stx_rdev_major;
+ __u32 stx_rdev_minor;
+ __u32 stx_dev_major;
+ __u32 stx_dev_minor;
+ __u64 stx_mnt_id;
+ __u32 stx_dio_mem_align;
+ __u32 stx_dio_offset_align;
+ __u64 __spare3[12];
+};
+
+int statx (int __dirfd, const char *__restrict __path, int __flags,
+           unsigned int __mask, struct statx *__restrict __buf)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 5)));
+
+
 typedef int wchar_t;
-int atoi (const char *);
-long atol (const char *);
-long long atoll (const char *);
-double atof (const char *);
-float strtof (const char *__restrict, char **__restrict);
-double strtod (const char *__restrict, char **__restrict);
-long double strtold (const char *__restrict, char **__restrict);
-long strtol (const char *__restrict, char **__restrict, int);
-unsigned long strtoul (const char *__restrict, char **__restrict, int);
-long long strtoll (const char *__restrict, char **__restrict, int);
-unsigned long long strtoull (const char *__restrict, char **__restrict, int);
-int rand (void);
-void srand (unsigned);
-void *malloc (size_t);
-void *calloc (size_t, size_t);
-void *realloc (void *, size_t);
-void free (void *);
-void *aligned_alloc(size_t, size_t);
-_Noreturn void abort (void);
-int atexit (void (*) (void));
-_Noreturn void exit (int);
-_Noreturn void _Exit (int);
-int at_quick_exit (void (*) (void));
-_Noreturn void quick_exit (int);
-char *getenv (const char *);
-int system (const char *);
-void *bsearch (const void *, const void *, size_t, size_t, int (*)(const void *, const void *));
-void qsort (void *, size_t, size_t, int (*)(const void *, const void *));
-int abs (int);
-long labs (long);
-long long llabs (long long);
-typedef struct { int quot, rem; } div_t;
-typedef struct { long quot, rem; } ldiv_t;
-typedef struct { long long quot, rem; } lldiv_t;
-div_t div (int, int);
-ldiv_t ldiv (long, long);
-lldiv_t lldiv (long long, long long);
-int mblen (const char *, size_t);
-int mbtowc (wchar_t *__restrict, const char *__restrict, size_t);
-int wctomb (char *, wchar_t);
-size_t mbstowcs (wchar_t *__restrict, const char *__restrict, size_t);
-size_t wcstombs (char *__restrict, const wchar_t *__restrict, size_t);
-size_t __ctype_get_mb_cur_max(void);
-int posix_memalign (void **, size_t, size_t);
-int setenv (const char *, const char *, int);
-int unsetenv (const char *);
-int mkstemp (char *);
-int mkostemp (char *, int);
-char *mkdtemp (char *);
-int getsubopt (char **, char *const *, char **);
-int rand_r (unsigned *);
-char *realpath (const char *__restrict, char *__restrict);
-long int random (void);
-void srandom (unsigned int);
-char *initstate (unsigned int, char *, size_t);
-char *setstate (char *);
-int putenv (char *);
-int posix_openpt (int);
-int grantpt (int);
-int unlockpt (int);
-char *ptsname (int);
-char *l64a (long);
-long a64l (const char *);
-void setkey (const char *);
-double drand48 (void);
-double erand48 (unsigned short [3]);
-long int lrand48 (void);
-long int nrand48 (unsigned short [3]);
-long mrand48 (void);
-long jrand48 (unsigned short [3]);
-void srand48 (long);
-unsigned short *seed48 (unsigned short [3]);
-void lcong48 (unsigned short [7]);
-void *alloca(size_t);
-char *mktemp (char *);
-int mkstemps (char *, int);
-int mkostemps (char *, int, int);
-void *valloc (size_t);
-void *memalign(size_t, size_t);
-int getloadavg(double *, int);
-int clearenv(void);
-void *reallocarray (void *, size_t, size_t);
-void qsort_r (void *, size_t, size_t, int (*)(const void *, const void *, void *), void *);
-int ptsname_r(int, char *, size_t);
-char *ecvt(double, int, int *, int *);
-char *fcvt(double, int, int *, int *);
-char *gcvt(double, int, char *);
-char *secure_getenv(const char *);
-struct __locale_struct;
-float strtof_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-double strtod_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-long double strtold_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-typedef struct { long long __ll; long double __ld; } max_align_t;
-typedef long ptrdiff_t;
-typedef struct __locale_struct * locale_t;
-void *memcpy (void *__restrict, const void *__restrict, size_t);
-void *memmove (void *, const void *, size_t);
-void *memset (void *, int, size_t);
-int memcmp (const void *, const void *, size_t);
-void *memchr (const void *, int, size_t);
-char *strcpy (char *__restrict, const char *__restrict);
-char *strncpy (char *__restrict, const char *__restrict, size_t);
-char *strcat (char *__restrict, const char *__restrict);
-char *strncat (char *__restrict, const char *__restrict, size_t);
-int strcmp (const char *, const char *);
-int strncmp (const char *, const char *, size_t);
-int strcoll (const char *, const char *);
-size_t strxfrm (char *__restrict, const char *__restrict, size_t);
-char *strchr (const char *, int);
-char *strrchr (const char *, int);
-size_t strcspn (const char *, const char *);
-size_t strspn (const char *, const char *);
-char *strpbrk (const char *, const char *);
-char *strstr (const char *, const char *);
-char *strtok (char *__restrict, const char *__restrict);
-size_t strlen (const char *);
-char *strerror (int);
-int bcmp (const void *, const void *, size_t);
-void bcopy (const void *, void *, size_t);
-void bzero (void *, size_t);
-char *index (const char *, int);
-char *rindex (const char *, int);
-int ffs (int);
-int ffsl (long);
-int ffsll (long long);
-int strcasecmp (const char *, const char *);
-int strncasecmp (const char *, const char *, size_t);
-int strcasecmp_l (const char *, const char *, locale_t);
-int strncasecmp_l (const char *, const char *, size_t, locale_t);
-char *strtok_r (char *__restrict, const char *__restrict, char **__restrict);
-int strerror_r (int, char *, size_t);
-char *stpcpy(char *__restrict, const char *__restrict);
-char *stpncpy(char *__restrict, const char *__restrict, size_t);
-size_t strnlen (const char *, size_t);
-char *strdup (const char *);
-char *strndup (const char *, size_t);
-char *strsignal(int);
-char *strerror_l (int, locale_t);
-int strcoll_l (const char *, const char *, locale_t);
-size_t strxfrm_l (char *__restrict, const char *__restrict, size_t, locale_t);
-void *memccpy (void *__restrict, const void *__restrict, int, size_t);
-char *strsep(char **, const char *);
-size_t strlcat (char *, const char *, size_t);
-size_t strlcpy (char *, const char *, size_t);
-void explicit_bzero (void *, size_t);
-int strverscmp (const char *, const char *);
-char *strchrnul(const char *, int);
-char *strcasestr(const char *, const char *);
-void *memmem(const void *, size_t, const void *, size_t);
-void *memrchr(const void *, int, size_t);
-void *mempcpy(void *, const void *, size_t);
-char *basename();
-typedef unsigned long uintptr_t;
-typedef long intptr_t;
-typedef signed long intmax_t;
-typedef unsigned char uint8_t;
-typedef unsigned long uintmax_t;
-typedef int8_t int_fast8_t;
-typedef int64_t int_fast64_t;
-typedef int8_t int_least8_t;
-typedef int16_t int_least16_t;
-typedef int32_t int_least32_t;
-typedef int64_t int_least64_t;
-typedef uint8_t uint_fast8_t;
-typedef uint64_t uint_fast64_t;
-typedef uint8_t uint_least8_t;
-typedef uint16_t uint_least16_t;
-typedef uint32_t uint_least32_t;
-typedef uint64_t uint_least64_t;
-typedef int32_t int_fast16_t;
-typedef int32_t int_fast32_t;
-typedef uint32_t uint_fast16_t;
-typedef uint32_t uint_fast32_t;
-typedef struct { intmax_t quot, rem; } imaxdiv_t;
-intmax_t imaxabs(intmax_t);
-imaxdiv_t imaxdiv(intmax_t, intmax_t);
-intmax_t strtoimax(const char *__restrict, char **__restrict, int);
-uintmax_t strtoumax(const char *__restrict, char **__restrict, int);
-intmax_t wcstoimax(const wchar_t *__restrict, wchar_t **__restrict, int);
-uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
-int pipe(int [2]);
-int pipe2(int [2], int);
-int close(int);
-int posix_close(int, int);
-int dup(int);
-int dup2(int, int);
-int dup3(int, int, int);
-off_t lseek(int, off_t, int);
-int fsync(int);
-int fdatasync(int);
-ssize_t read(int, void *, size_t);
-ssize_t write(int, const void *, size_t);
-ssize_t pread(int, void *, size_t, off_t);
-ssize_t pwrite(int, const void *, size_t, off_t);
-int chown(const char *, uid_t, gid_t);
-int fchown(int, uid_t, gid_t);
-int lchown(const char *, uid_t, gid_t);
-int fchownat(int, const char *, uid_t, gid_t, int);
-int link(const char *, const char *);
-int linkat(int, const char *, int, const char *, int);
-int symlink(const char *, const char *);
-int symlinkat(const char *, int, const char *);
-ssize_t readlink(const char *__restrict, char *__restrict, size_t);
-ssize_t readlinkat(int, const char *__restrict, char *__restrict, size_t);
-int unlink(const char *);
-int unlinkat(int, const char *, int);
-int rmdir(const char *);
-int truncate(const char *, off_t);
-int ftruncate(int, off_t);
-int access(const char *, int);
-int faccessat(int, const char *, int, int);
-int chdir(const char *);
-int fchdir(int);
-char *getcwd(char *, size_t);
-unsigned alarm(unsigned);
-unsigned sleep(unsigned);
-int pause(void);
-pid_t fork(void);
-pid_t _Fork(void);
-int execve(const char *, char *const [], char *const []);
-int execv(const char *, char *const []);
-int execle(const char *, const char *, ...);
-int execl(const char *, const char *, ...);
-int execvp(const char *, char *const []);
-int execlp(const char *, const char *, ...);
-int fexecve(int, char *const [], char *const []);
-_Noreturn void _exit(int);
-pid_t getpid(void);
-pid_t getppid(void);
-pid_t getpgrp(void);
-pid_t getpgid(pid_t);
-int setpgid(pid_t, pid_t);
-pid_t setsid(void);
-pid_t getsid(pid_t);
-char *ttyname(int);
-int ttyname_r(int, char *, size_t);
-int isatty(int);
-pid_t tcgetpgrp(int);
-int tcsetpgrp(int, pid_t);
-uid_t getuid(void);
-uid_t geteuid(void);
-gid_t getgid(void);
-gid_t getegid(void);
-int getgroups(int, gid_t []);
-int setuid(uid_t);
-int seteuid(uid_t);
-int setgid(gid_t);
-int setegid(gid_t);
-char *getlogin(void);
-int getlogin_r(char *, size_t);
-int gethostname(char *, size_t);
-char *ctermid(char *);
-int getopt(int, char * const [], const char *);
-extern char *optarg;
-extern int optind, opterr, optopt;
-long pathconf(const char *, int);
-long fpathconf(int, int);
-long sysconf(int);
-size_t confstr(int, char *, size_t);
-int setreuid(uid_t, uid_t);
-int setregid(gid_t, gid_t);
-int lockf(int, int, off_t);
-long gethostid(void);
-int nice(int);
-void sync(void);
-pid_t setpgrp(void);
-char *crypt(const char *, const char *);
-void encrypt(char *, int);
-void swab(const void *__restrict, void *__restrict, ssize_t);
-int usleep(unsigned);
-unsigned ualarm(unsigned, unsigned);
-int brk(void *);
-void *sbrk(intptr_t);
-pid_t vfork(void);
-int vhangup(void);
-int chroot(const char *);
-int getpagesize(void);
-int getdtablesize(void);
-int sethostname(const char *, size_t);
-int getdomainname(char *, size_t);
-int setdomainname(const char *, size_t);
-int setgroups(size_t, const gid_t *);
-char *getpass(const char *);
-int daemon(int, int);
-void setusershell(void);
-void endusershell(void);
-char *getusershell(void);
-int acct(const char *);
-long syscall(long, ...);
-int execvpe(const char *, char *const [], char *const []);
-int issetugid(void);
-int getentropy(void *, size_t);
-extern int optreset;
+
+typedef struct
+  {
+    int quot;
+    int rem;
+  } div_t;
+typedef struct
+  {
+    long int quot;
+    long int rem;
+  } ldiv_t;
+__extension__ typedef struct
+  {
+    long long int quot;
+    long long int rem;
+  } lldiv_t;
+extern size_t __ctype_get_mb_cur_max (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern double atof (const char *__nptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int atoi (const char *__nptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern long int atol (const char *__nptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+__extension__ extern long long int atoll (const char *__nptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern double strtod (const char *__restrict __nptr,
+        char **__restrict __endptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern float strtof (const char *__restrict __nptr,
+       char **__restrict __endptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern long double strtold (const char *__restrict __nptr,
+       char **__restrict __endptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern _Float32 strtof32 (const char *__restrict __nptr,
+     char **__restrict __endptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern _Float64 strtof64 (const char *__restrict __nptr,
+     char **__restrict __endptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern _Float128 strtof128 (const char *__restrict __nptr,
+       char **__restrict __endptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern _Float32x strtof32x (const char *__restrict __nptr,
+       char **__restrict __endptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern _Float64x strtof64x (const char *__restrict __nptr,
+       char **__restrict __endptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern long int strtol (const char *__restrict __nptr,
+   char **__restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern unsigned long int strtoul (const char *__restrict __nptr,
+      char **__restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+__extension__
+extern long long int strtoq (const char *__restrict __nptr,
+        char **__restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+__extension__
+extern unsigned long long int strtouq (const char *__restrict __nptr,
+           char **__restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+__extension__
+extern long long int strtoll (const char *__restrict __nptr,
+         char **__restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+__extension__
+extern unsigned long long int strtoull (const char *__restrict __nptr,
+     char **__restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int strfromd (char *__dest, size_t __size, const char *__format,
+       double __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int strfromf (char *__dest, size_t __size, const char *__format,
+       float __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int strfroml (char *__dest, size_t __size, const char *__format,
+       long double __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int strfromf32 (char *__dest, size_t __size, const char * __format,
+         _Float32 __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int strfromf64 (char *__dest, size_t __size, const char * __format,
+         _Float64 __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int strfromf128 (char *__dest, size_t __size, const char * __format,
+   _Float128 __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int strfromf32x (char *__dest, size_t __size, const char * __format,
+   _Float32x __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int strfromf64x (char *__dest, size_t __size, const char * __format,
+   _Float64x __f)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+struct __locale_struct
+{
+  struct __locale_data *__locales[13];
+  const unsigned short int *__ctype_b;
+  const int *__ctype_tolower;
+  const int *__ctype_toupper;
+  const char *__names[13];
+};
+typedef struct __locale_struct *__locale_t;
+typedef __locale_t locale_t;
+extern long int strtol_l (const char *__restrict __nptr,
+     char **__restrict __endptr, int __base,
+     locale_t __loc) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 4)));
+extern unsigned long int strtoul_l (const char *__restrict __nptr,
+        char **__restrict __endptr,
+        int __base, locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 4)));
+__extension__
+extern long long int strtoll_l (const char *__restrict __nptr,
+    char **__restrict __endptr, int __base,
+    locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 4)));
+__extension__
+extern unsigned long long int strtoull_l (const char *__restrict __nptr,
+       char **__restrict __endptr,
+       int __base, locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 4)));
+extern double strtod_l (const char *__restrict __nptr,
+   char **__restrict __endptr, locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern float strtof_l (const char *__restrict __nptr,
+         char **__restrict __endptr, locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern long double strtold_l (const char *__restrict __nptr,
+         char **__restrict __endptr,
+         locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern _Float32 strtof32_l (const char *__restrict __nptr,
+       char **__restrict __endptr,
+       locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern _Float64 strtof64_l (const char *__restrict __nptr,
+       char **__restrict __endptr,
+       locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern _Float128 strtof128_l (const char *__restrict __nptr,
+         char **__restrict __endptr,
+         locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern _Float32x strtof32x_l (const char *__restrict __nptr,
+         char **__restrict __endptr,
+         locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern _Float64x strtof64x_l (const char *__restrict __nptr,
+         char **__restrict __endptr,
+         locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern __inline __attribute__ ((__gnu_inline__)) int
+__attribute__ ((__nothrow__ , __leaf__)) atoi (const char *__nptr)
+{
+  return (int) strtol (__nptr, (char **) ((void *)0), 10);
+}
+extern __inline __attribute__ ((__gnu_inline__)) long int
+__attribute__ ((__nothrow__ , __leaf__)) atol (const char *__nptr)
+{
+  return strtol (__nptr, (char **) ((void *)0), 10);
+}
+__extension__ extern __inline __attribute__ ((__gnu_inline__)) long long int
+__attribute__ ((__nothrow__ , __leaf__)) atoll (const char *__nptr)
+{
+  return strtoll (__nptr, (char **) ((void *)0), 10);
+}
+extern char *l64a (long int __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern long int a64l (const char *__s)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern long int random (void) __attribute__ ((__nothrow__ , __leaf__));
+extern void srandom (unsigned int __seed) __attribute__ ((__nothrow__ , __leaf__));
+extern char *initstate (unsigned int __seed, char *__statebuf,
+   size_t __statelen) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern char *setstate (char *__statebuf) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+struct random_data
+  {
+    int32_t *fptr;
+    int32_t *rptr;
+    int32_t *state;
+    int rand_type;
+    int rand_deg;
+    int rand_sep;
+    int32_t *end_ptr;
+  };
+extern int random_r (struct random_data *__restrict __buf,
+       int32_t *__restrict __result) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int srandom_r (unsigned int __seed, struct random_data *__buf)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int initstate_r (unsigned int __seed, char *__restrict __statebuf,
+   size_t __statelen,
+   struct random_data *__restrict __buf)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 4)));
+extern int setstate_r (char *__restrict __statebuf,
+         struct random_data *__restrict __buf)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int rand (void) __attribute__ ((__nothrow__ , __leaf__));
+extern void srand (unsigned int __seed) __attribute__ ((__nothrow__ , __leaf__));
+extern int rand_r (unsigned int *__seed) __attribute__ ((__nothrow__ , __leaf__));
+extern double drand48 (void) __attribute__ ((__nothrow__ , __leaf__));
+extern double erand48 (unsigned short int __xsubi[3]) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern long int lrand48 (void) __attribute__ ((__nothrow__ , __leaf__));
+extern long int nrand48 (unsigned short int __xsubi[3])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern long int mrand48 (void) __attribute__ ((__nothrow__ , __leaf__));
+extern long int jrand48 (unsigned short int __xsubi[3])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern void srand48 (long int __seedval) __attribute__ ((__nothrow__ , __leaf__));
+extern unsigned short int *seed48 (unsigned short int __seed16v[3])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern void lcong48 (unsigned short int __param[7]) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+struct drand48_data
+  {
+    unsigned short int __x[3];
+    unsigned short int __old_x[3];
+    unsigned short int __c;
+    unsigned short int __init;
+    __extension__ unsigned long long int __a;
+  };
+extern int drand48_r (struct drand48_data *__restrict __buffer,
+        double *__restrict __result) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int erand48_r (unsigned short int __xsubi[3],
+        struct drand48_data *__restrict __buffer,
+        double *__restrict __result) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int lrand48_r (struct drand48_data *__restrict __buffer,
+        long int *__restrict __result)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int nrand48_r (unsigned short int __xsubi[3],
+        struct drand48_data *__restrict __buffer,
+        long int *__restrict __result)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int mrand48_r (struct drand48_data *__restrict __buffer,
+        long int *__restrict __result)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int jrand48_r (unsigned short int __xsubi[3],
+        struct drand48_data *__restrict __buffer,
+        long int *__restrict __result)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int srand48_r (long int __seedval, struct drand48_data *__buffer)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int seed48_r (unsigned short int __seed16v[3],
+       struct drand48_data *__buffer) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int lcong48_r (unsigned short int __param[7],
+        struct drand48_data *__buffer)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern __uint32_t arc4random (void)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void arc4random_buf (void *__buf, size_t __size)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern __uint32_t arc4random_uniform (__uint32_t __upper_bound)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void *malloc (size_t __size) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__))
+     __attribute__ ((__alloc_size__ (1))) __attribute__ ((__warn_unused_result__));
+extern void *calloc (size_t __nmemb, size_t __size)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) __attribute__ ((__alloc_size__ (1, 2))) __attribute__ ((__warn_unused_result__));
+extern void *realloc (void *__ptr, size_t __size)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__)) __attribute__ ((__alloc_size__ (2)));
+extern void free (void *__ptr) __attribute__ ((__nothrow__ , __leaf__));
+extern void *reallocarray (void *__ptr, size_t __nmemb, size_t __size)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__))
+     __attribute__ ((__alloc_size__ (2, 3)))
+    __attribute__ ((__malloc__ (__builtin_free, 1)));
+extern void *reallocarray (void *__ptr, size_t __nmemb, size_t __size)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__ (reallocarray, 1)));
+
+extern void *alloca (size_t __size) __attribute__ ((__nothrow__ , __leaf__));
+
+extern void *valloc (size_t __size) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__))
+     __attribute__ ((__alloc_size__ (1))) __attribute__ ((__warn_unused_result__));
+extern int posix_memalign (void **__memptr, size_t __alignment, size_t __size)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern void *aligned_alloc (size_t __alignment, size_t __size)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) __attribute__ ((__alloc_align__ (1)))
+     __attribute__ ((__alloc_size__ (2))) __attribute__ ((__warn_unused_result__));
+extern void abort (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
+extern int atexit (void (*__func) (void)) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int at_quick_exit (void (*__func) (void)) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int on_exit (void (*__func) (int __status, void *__arg), void *__arg)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern void exit (int __status) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
+extern void quick_exit (int __status) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
+extern void _Exit (int __status) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
+extern char *getenv (const char *__name) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern char *secure_getenv (const char *__name)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int putenv (char *__string) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int setenv (const char *__name, const char *__value, int __replace)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int unsetenv (const char *__name) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int clearenv (void) __attribute__ ((__nothrow__ , __leaf__));
+extern char *mktemp (char *__template) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int mkstemp (char *__template) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int mkstemp64 (char *__template) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int mkstemps (char *__template, int __suffixlen) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int mkstemps64 (char *__template, int __suffixlen)
+     __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern char *mkdtemp (char *__template) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int mkostemp (char *__template, int __flags) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int mkostemp64 (char *__template, int __flags) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int mkostemps (char *__template, int __suffixlen, int __flags)
+     __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int mkostemps64 (char *__template, int __suffixlen, int __flags)
+     __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int system (const char *__command) __attribute__ ((__warn_unused_result__));
+extern char *canonicalize_file_name (const char *__name)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__malloc__))
+     __attribute__ ((__malloc__ (__builtin_free, 1))) __attribute__ ((__warn_unused_result__));
+extern char *realpath (const char *__restrict __name,
+         char *__restrict __resolved) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+typedef int (*__compar_fn_t) (const void *, const void *);
+typedef __compar_fn_t comparison_fn_t;
+typedef int (*__compar_d_fn_t) (const void *, const void *, void *);
+extern void *bsearch (const void *__key, const void *__base,
+        size_t __nmemb, size_t __size, __compar_fn_t __compar)
+     __attribute__ ((__nonnull__ (1, 2, 5))) __attribute__ ((__warn_unused_result__));
+extern __inline __attribute__ ((__gnu_inline__)) void *
+bsearch (const void *__key, const void *__base, size_t __nmemb, size_t __size,
+  __compar_fn_t __compar)
+{
+  size_t __l, __u, __idx;
+  const void *__p;
+  int __comparison;
+  __l = 0;
+  __u = __nmemb;
+  while (__l < __u)
+    {
+      __idx = (__l + __u) / 2;
+      __p = (const void *) (((const char *) __base) + (__idx * __size));
+      __comparison = (*__compar) (__key, __p);
+      if (__comparison < 0)
+ __u = __idx;
+      else if (__comparison > 0)
+ __l = __idx + 1;
+      else
+ {
+   return (void *) __p;
+ }
+    }
+  return ((void *)0);
+}
+extern void qsort (void *__base, size_t __nmemb, size_t __size,
+     __compar_fn_t __compar) __attribute__ ((__nonnull__ (1, 4)));
+extern void qsort_r (void *__base, size_t __nmemb, size_t __size,
+       __compar_d_fn_t __compar, void *__arg)
+  __attribute__ ((__nonnull__ (1, 4)));
+extern int abs (int __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)) __attribute__ ((__warn_unused_result__));
+extern long int labs (long int __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)) __attribute__ ((__warn_unused_result__));
+__extension__ extern long long int llabs (long long int __x)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)) __attribute__ ((__warn_unused_result__));
+extern div_t div (int __numer, int __denom)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)) __attribute__ ((__warn_unused_result__));
+extern ldiv_t ldiv (long int __numer, long int __denom)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)) __attribute__ ((__warn_unused_result__));
+__extension__ extern lldiv_t lldiv (long long int __numer,
+        long long int __denom)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)) __attribute__ ((__warn_unused_result__));
+extern char *ecvt (double __value, int __ndigit, int *__restrict __decpt,
+     int *__restrict __sign) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4))) __attribute__ ((__warn_unused_result__));
+extern char *fcvt (double __value, int __ndigit, int *__restrict __decpt,
+     int *__restrict __sign) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4))) __attribute__ ((__warn_unused_result__));
+extern char *gcvt (double __value, int __ndigit, char *__buf)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3))) __attribute__ ((__warn_unused_result__));
+extern char *qecvt (long double __value, int __ndigit,
+      int *__restrict __decpt, int *__restrict __sign)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4))) __attribute__ ((__warn_unused_result__));
+extern char *qfcvt (long double __value, int __ndigit,
+      int *__restrict __decpt, int *__restrict __sign)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4))) __attribute__ ((__warn_unused_result__));
+extern char *qgcvt (long double __value, int __ndigit, char *__buf)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3))) __attribute__ ((__warn_unused_result__));
+extern int ecvt_r (double __value, int __ndigit, int *__restrict __decpt,
+     int *__restrict __sign, char *__restrict __buf,
+     size_t __len) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4, 5)));
+extern int fcvt_r (double __value, int __ndigit, int *__restrict __decpt,
+     int *__restrict __sign, char *__restrict __buf,
+     size_t __len) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4, 5)));
+extern int qecvt_r (long double __value, int __ndigit,
+      int *__restrict __decpt, int *__restrict __sign,
+      char *__restrict __buf, size_t __len)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4, 5)));
+extern int qfcvt_r (long double __value, int __ndigit,
+      int *__restrict __decpt, int *__restrict __sign,
+      char *__restrict __buf, size_t __len)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3, 4, 5)));
+extern int mblen (const char *__s, size_t __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int mbtowc (wchar_t *__restrict __pwc,
+     const char *__restrict __s, size_t __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int wctomb (char *__s, wchar_t __wchar) __attribute__ ((__nothrow__ , __leaf__));
+extern size_t mbstowcs (wchar_t *__restrict __pwcs,
+   const char *__restrict __s, size_t __n) __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__read_only__, 2)));
+extern size_t wcstombs (char *__restrict __s,
+   const wchar_t *__restrict __pwcs, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__access__ (__write_only__, 1, 3)))
+  __attribute__ ((__access__ (__read_only__, 2)));
+extern int rpmatch (const char *__response) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int getsubopt (char **__restrict __optionp,
+        char *const *__restrict __tokens,
+        char **__restrict __valuep)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2, 3))) __attribute__ ((__warn_unused_result__));
+extern int posix_openpt (int __oflag) __attribute__ ((__warn_unused_result__));
+extern int grantpt (int __fd) __attribute__ ((__nothrow__ , __leaf__));
+extern int unlockpt (int __fd) __attribute__ ((__nothrow__ , __leaf__));
+extern char *ptsname (int __fd) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int ptsname_r (int __fd, char *__buf, size_t __buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2))) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern int getpt (void);
+extern int getloadavg (double __loadavg[], int __nelem)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern __inline __attribute__ ((__gnu_inline__)) double
+__attribute__ ((__nothrow__ , __leaf__)) atof (const char *__nptr)
+{
+  return strtod (__nptr, (char **) ((void *)0));
+}
+extern char *__realpath_chk (const char *__restrict __name,
+        char *__restrict __resolved,
+        size_t __resolvedlen) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *__realpath_alias (const char *__restrict __name, char *__restrict __resolved) __asm__ ("" "realpath") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *__realpath_chk_warn (const char *__restrict __name, char *__restrict __resolved, size_t __resolvedlen) __asm__ ("" "__realpath_chk") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__))
+     __attribute__((__warning__ ("second argument of realpath must be either NULL or at " "least PATH_MAX bytes long buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) realpath (const char *__restrict __name, char *__restrict __resolved)
+{
+  size_t __sz = __builtin_object_size (__resolved, 2 > 1);
+  if (__sz == (size_t) -1)
+    return __realpath_alias (__name, __resolved);
+  return __realpath_chk (__name, __resolved, __sz);
+}
+extern int __ptsname_r_chk (int __fd, char *__buf, size_t __buflen,
+       size_t __nreal) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)))
+    __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern int __ptsname_r_alias (int __fd, char *__buf, size_t __buflen) __asm__ ("" "ptsname_r") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (2))) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern int __ptsname_r_chk_warn (int __fd, char *__buf, size_t __buflen, size_t __nreal) __asm__ ("" "__ptsname_r_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (2))) __attribute__((__warning__ ("ptsname_r called with buflen bigger than " "size of buf")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) ptsname_r (int __fd, char *__buf, size_t __buflen)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __ptsname_r_alias (__fd, __buf, __buflen) : ((((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __ptsname_r_chk_warn (__fd, __buf, __buflen, __builtin_object_size (__buf, 2 > 1)) : __ptsname_r_chk (__fd, __buf, __buflen, __builtin_object_size (__buf, 2 > 1))));
+}
+extern int __wctomb_chk (char *__s, wchar_t __wchar, size_t __buflen)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int __wctomb_alias (char *__s, wchar_t __wchar) __asm__ ("" "wctomb") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) int
+__attribute__ ((__nothrow__ , __leaf__)) wctomb (char *__s, wchar_t __wchar)
+{
+  if (__builtin_object_size (__s, 2 > 1) != (size_t) -1
+      && 16 > __builtin_object_size (__s, 2 > 1))
+    return __wctomb_chk (__s, __wchar, __builtin_object_size (__s, 2 > 1));
+  return __wctomb_alias (__s, __wchar);
+}
+extern size_t __mbstowcs_chk (wchar_t *__restrict __dst,
+         const char *__restrict __src,
+         size_t __len, size_t __dstlen) __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__write_only__, 1, 3))) __attribute__ ((__access__ (__read_only__, 2)));
+extern size_t __mbstowcs_nulldst (wchar_t *__restrict __dst, const char *__restrict __src, size_t __len) __asm__ ("" "mbstowcs") __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__read_only__, 2)));
+extern size_t __mbstowcs_alias (wchar_t *__restrict __dst, const char *__restrict __src, size_t __len) __asm__ ("" "mbstowcs") __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__write_only__, 1, 3))) __attribute__ ((__access__ (__read_only__, 2)));
+extern size_t __mbstowcs_chk_warn (wchar_t *__restrict __dst, const char *__restrict __src, size_t __len, size_t __dstlen) __asm__ ("" "__mbstowcs_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__((__warning__ ("mbstowcs called with dst buffer smaller than len " "* sizeof (wchar_t)")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) size_t
+__attribute__ ((__nothrow__ , __leaf__)) mbstowcs (wchar_t *__restrict __dst, const char *__restrict __src, size_t __len)
+{
+  if (__builtin_constant_p (__dst == ((void *)0)) && __dst == ((void *)0))
+    return __mbstowcs_nulldst (__dst, __src, __len);
+  else
+    return (((__builtin_constant_p (__builtin_object_size (__dst, 2 > 1)) && (__builtin_object_size (__dst, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= ((__builtin_object_size (__dst, 2 > 1))) / ((sizeof (wchar_t))))) && (((long unsigned int) (__len)) <= ((__builtin_object_size (__dst, 2 > 1))) / ((sizeof (wchar_t)))))) ? __mbstowcs_alias (__dst, __src, __len) : ((((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= (__builtin_object_size (__dst, 2 > 1)) / (sizeof (wchar_t)))) && !(((long unsigned int) (__len)) <= (__builtin_object_size (__dst, 2 > 1)) / (sizeof (wchar_t)))) ? __mbstowcs_chk_warn (__dst, __src, __len, (__builtin_object_size (__dst, 2 > 1)) / (sizeof (wchar_t))) : __mbstowcs_chk (__dst, __src, __len, (__builtin_object_size (__dst, 2 > 1)) / (sizeof (wchar_t)))));
+}
+extern size_t __wcstombs_chk (char *__restrict __dst,
+         const wchar_t *__restrict __src,
+         size_t __len, size_t __dstlen) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__access__ (__write_only__, 1, 3))) __attribute__ ((__access__ (__read_only__, 2)));
+extern size_t __wcstombs_alias (char *__restrict __dst, const wchar_t *__restrict __src, size_t __len) __asm__ ("" "wcstombs") __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__access__ (__write_only__, 1, 3))) __attribute__ ((__access__ (__read_only__, 2)));
+extern size_t __wcstombs_chk_warn (char *__restrict __dst, const wchar_t *__restrict __src, size_t __len, size_t __dstlen) __asm__ ("" "__wcstombs_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__((__warning__ ("wcstombs called with dst buffer smaller than len")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) size_t
+__attribute__ ((__nothrow__ , __leaf__)) wcstombs (char *__restrict __dst, const wchar_t *__restrict __src, size_t __len)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__dst, 2 > 1)) && (__builtin_object_size (__dst, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= ((__builtin_object_size (__dst, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__len)) <= ((__builtin_object_size (__dst, 2 > 1))) / ((sizeof (char)))))) ? __wcstombs_alias (__dst, __src, __len) : ((((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= (__builtin_object_size (__dst, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__len)) <= (__builtin_object_size (__dst, 2 > 1)) / (sizeof (char)))) ? __wcstombs_chk_warn (__dst, __src, __len, __builtin_object_size (__dst, 2 > 1)) : __wcstombs_chk (__dst, __src, __len, __builtin_object_size (__dst, 2 > 1))));
+}
+
+typedef long int ptrdiff_t;
+typedef struct {
+  long long __max_align_ll __attribute__((__aligned__(__alignof__(long long))));
+  long double __max_align_ld __attribute__((__aligned__(__alignof__(long double))));
+} max_align_t;
+
+extern void *memcpy (void *__restrict __dest, const void *__restrict __src,
+       size_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void *memmove (void *__dest, const void *__src, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void *memccpy (void *__restrict __dest, const void *__restrict __src,
+        int __c, size_t __n)
+    __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__access__ (__write_only__, 1, 4)));
+extern void *memset (void *__s, int __c, size_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int memcmp (const void *__s1, const void *__s2, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int __memcmpeq (const void *__s1, const void *__s2, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void *memchr (const void *__s, int __c, size_t __n)
+      __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern void *rawmemchr (const void *__s, int __c)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern void *memrchr (const void *__s, int __c, size_t __n)
+      __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)))
+      __attribute__ ((__access__ (__read_only__, 1, 3)));
+extern char *strcpy (char *__restrict __dest, const char *__restrict __src)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strncpy (char *__restrict __dest,
+        const char *__restrict __src, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strcat (char *__restrict __dest, const char *__restrict __src)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strncat (char *__restrict __dest, const char *__restrict __src,
+        size_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int strcmp (const char *__s1, const char *__s2)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int strncmp (const char *__s1, const char *__s2, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int strcoll (const char *__s1, const char *__s2)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern size_t strxfrm (char *__restrict __dest,
+         const char *__restrict __src, size_t __n)
+    __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2))) __attribute__ ((__access__ (__write_only__, 1, 3)));
+extern int strcoll_l (const char *__s1, const char *__s2, locale_t __l)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2, 3)));
+extern size_t strxfrm_l (char *__dest, const char *__src, size_t __n,
+    locale_t __l) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 4)))
+     __attribute__ ((__access__ (__write_only__, 1, 3)));
+extern char *strdup (const char *__s)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) __attribute__ ((__nonnull__ (1)));
+extern char *strndup (const char *__string, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) __attribute__ ((__nonnull__ (1)));
+extern char *strchr (const char *__s, int __c)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern char *strrchr (const char *__s, int __c)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern char *strchrnul (const char *__s, int __c)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern size_t strcspn (const char *__s, const char *__reject)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern size_t strspn (const char *__s, const char *__accept)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strpbrk (const char *__s, const char *__accept)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strstr (const char *__haystack, const char *__needle)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strtok (char *__restrict __s, const char *__restrict __delim)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern char *__strtok_r (char *__restrict __s,
+    const char *__restrict __delim,
+    char **__restrict __save_ptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+extern char *strtok_r (char *__restrict __s, const char *__restrict __delim,
+         char **__restrict __save_ptr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+extern char *strcasestr (const char *__haystack, const char *__needle)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void *memmem (const void *__haystack, size_t __haystacklen,
+       const void *__needle, size_t __needlelen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 3)))
+    __attribute__ ((__access__ (__read_only__, 1, 2)))
+    __attribute__ ((__access__ (__read_only__, 3, 4)));
+extern void *__mempcpy (void *__restrict __dest,
+   const void *__restrict __src, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void *mempcpy (void *__restrict __dest,
+        const void *__restrict __src, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern size_t strlen (const char *__s)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern size_t strnlen (const char *__string, size_t __maxlen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern char *strerror (int __errnum) __attribute__ ((__nothrow__ , __leaf__));
+extern char *strerror_r (int __errnum, char *__buf, size_t __buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern const char *strerrordesc_np (int __err) __attribute__ ((__nothrow__ , __leaf__));
+extern const char *strerrorname_np (int __err) __attribute__ ((__nothrow__ , __leaf__));
+extern char *strerror_l (int __errnum, locale_t __l) __attribute__ ((__nothrow__ , __leaf__));
+
+extern int bcmp (const void *__s1, const void *__s2, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void bcopy (const void *__src, void *__dest, size_t __n)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void bzero (void *__s, size_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern char *index (const char *__s, int __c)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern char *rindex (const char *__s, int __c)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1)));
+extern int ffs (int __i) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int ffsl (long int __l) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+__extension__ extern int ffsll (long long int __ll)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int strcasecmp (const char *__s1, const char *__s2)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int strncasecmp (const char *__s1, const char *__s2, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int strcasecmp_l (const char *__s1, const char *__s2, locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2, 3)));
+extern int strncasecmp_l (const char *__s1, const char *__s2,
+     size_t __n, locale_t __loc)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2, 4)));
+
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) void
+__attribute__ ((__nothrow__ , __leaf__)) bcopy (const void *__src, void *__dest, size_t __len)
+{
+  (void) __builtin___memmove_chk (__dest, __src, __len,
+      __builtin_object_size (__dest, 0));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) void
+__attribute__ ((__nothrow__ , __leaf__)) bzero (void *__dest, size_t __len)
+{
+  (void) __builtin___memset_chk (__dest, '\0', __len,
+     __builtin_object_size (__dest, 0));
+}
+extern void explicit_bzero (void *__s, size_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)))
+    __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern char *strsep (char **__restrict __stringp,
+       const char *__restrict __delim)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strsignal (int __sig) __attribute__ ((__nothrow__ , __leaf__));
+extern const char *sigabbrev_np (int __sig) __attribute__ ((__nothrow__ , __leaf__));
+extern const char *sigdescr_np (int __sig) __attribute__ ((__nothrow__ , __leaf__));
+extern char *__stpcpy (char *__restrict __dest, const char *__restrict __src)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *stpcpy (char *__restrict __dest, const char *__restrict __src)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *__stpncpy (char *__restrict __dest,
+   const char *__restrict __src, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *stpncpy (char *__restrict __dest,
+        const char *__restrict __src, size_t __n)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int strverscmp (const char *__s1, const char *__s2)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__pure__)) __attribute__ ((__nonnull__ (1, 2)));
+extern char *strfry (char *__string) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern void *memfrob (void *__s, size_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)))
+    __attribute__ ((__access__ (__read_write__, 1, 2)));
+extern char *basename (const char *__filename) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) void *
+__attribute__ ((__nothrow__ , __leaf__)) memcpy (void *__restrict __dest, const void *__restrict __src, size_t __len)
+{
+  return __builtin___memcpy_chk (__dest, __src, __len,
+     __builtin_object_size (__dest, 0));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) void *
+__attribute__ ((__nothrow__ , __leaf__)) memmove (void *__dest, const void *__src, size_t __len)
+{
+  return __builtin___memmove_chk (__dest, __src, __len,
+      __builtin_object_size (__dest, 0));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) void *
+__attribute__ ((__nothrow__ , __leaf__)) mempcpy (void *__restrict __dest, const void *__restrict __src, size_t __len)
+{
+  return __builtin___mempcpy_chk (__dest, __src, __len,
+      __builtin_object_size (__dest, 0));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) void *
+__attribute__ ((__nothrow__ , __leaf__)) memset (void *__dest, int __ch, size_t __len)
+{
+  return __builtin___memset_chk (__dest, __ch, __len,
+     __builtin_object_size (__dest, 0));
+}
+void __explicit_bzero_chk (void *__dest, size_t __len, size_t __destlen)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) void
+__attribute__ ((__nothrow__ , __leaf__)) explicit_bzero (void *__dest, size_t __len)
+{
+  __explicit_bzero_chk (__dest, __len, __builtin_object_size (__dest, 0));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) strcpy (char *__restrict __dest, const char *__restrict __src)
+{
+  return __builtin___strcpy_chk (__dest, __src, __builtin_object_size (__dest, 2 > 1));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) stpcpy (char *__restrict __dest, const char *__restrict __src)
+{
+  return __builtin___stpcpy_chk (__dest, __src, __builtin_object_size (__dest, 2 > 1));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) strncpy (char *__restrict __dest, const char *__restrict __src, size_t __len)
+{
+  return __builtin___strncpy_chk (__dest, __src, __len,
+      __builtin_object_size (__dest, 2 > 1));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) stpncpy (char *__dest, const char *__src, size_t __n)
+{
+  return __builtin___stpncpy_chk (__dest, __src, __n,
+      __builtin_object_size (__dest, 2 > 1));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) strcat (char *__restrict __dest, const char *__restrict __src)
+{
+  return __builtin___strcat_chk (__dest, __src, __builtin_object_size (__dest, 2 > 1));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) strncat (char *__restrict __dest, const char *__restrict __src, size_t __len)
+{
+  return __builtin___strncat_chk (__dest, __src, __len,
+      __builtin_object_size (__dest, 2 > 1));
+}
+
+typedef __uint8_t uint8_t;
+typedef __uint16_t uint16_t;
+typedef __uint32_t uint32_t;
+typedef __uint64_t uint64_t;
+typedef __int_least8_t int_least8_t;
+typedef __int_least16_t int_least16_t;
+typedef __int_least32_t int_least32_t;
+typedef __int_least64_t int_least64_t;
+typedef __uint_least8_t uint_least8_t;
+typedef __uint_least16_t uint_least16_t;
+typedef __uint_least32_t uint_least32_t;
+typedef __uint_least64_t uint_least64_t;
+typedef signed char int_fast8_t;
+typedef long int int_fast16_t;
+typedef long int int_fast32_t;
+typedef long int int_fast64_t;
+typedef unsigned char uint_fast8_t;
+typedef unsigned long int uint_fast16_t;
+typedef unsigned long int uint_fast32_t;
+typedef unsigned long int uint_fast64_t;
+typedef long int intptr_t;
+typedef unsigned long int uintptr_t;
+typedef __intmax_t intmax_t;
+typedef __uintmax_t uintmax_t;
+typedef int __gwchar_t;
+
+typedef struct
+  {
+    long int quot;
+    long int rem;
+  } imaxdiv_t;
+extern intmax_t imaxabs (intmax_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern imaxdiv_t imaxdiv (intmax_t __numer, intmax_t __denom)
+      __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern intmax_t strtoimax (const char *__restrict __nptr,
+      char **__restrict __endptr, int __base) __attribute__ ((__nothrow__ , __leaf__));
+extern uintmax_t strtoumax (const char *__restrict __nptr,
+       char ** __restrict __endptr, int __base) __attribute__ ((__nothrow__ , __leaf__));
+extern intmax_t wcstoimax (const __gwchar_t *__restrict __nptr,
+      __gwchar_t **__restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern uintmax_t wcstoumax (const __gwchar_t *__restrict __nptr,
+       __gwchar_t ** __restrict __endptr, int __base)
+     __attribute__ ((__nothrow__ , __leaf__));
+
+
+typedef __socklen_t socklen_t;
+extern int access (const char *__name, int __type) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int euidaccess (const char *__name, int __type)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int eaccess (const char *__name, int __type)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int execveat (int __fd, const char *__path, char *const __argv[],
+                     char *const __envp[], int __flags)
+    __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+extern int faccessat (int __fd, const char *__file, int __type, int __flag)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2))) __attribute__ ((__warn_unused_result__));
+extern __off_t lseek (int __fd, __off_t __offset, int __whence) __attribute__ ((__nothrow__ , __leaf__));
+extern __off64_t lseek64 (int __fd, __off64_t __offset, int __whence)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int close (int __fd);
+extern void closefrom (int __lowfd) __attribute__ ((__nothrow__ , __leaf__));
+extern ssize_t read (int __fd, void *__buf, size_t __nbytes) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t write (int __fd, const void *__buf, size_t __n) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__read_only__, 2, 3)));
+extern ssize_t pread (int __fd, void *__buf, size_t __nbytes,
+        __off_t __offset) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t pwrite (int __fd, const void *__buf, size_t __n,
+         __off_t __offset) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__read_only__, 2, 3)));
+extern ssize_t pread64 (int __fd, void *__buf, size_t __nbytes,
+   __off64_t __offset) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t pwrite64 (int __fd, const void *__buf, size_t __n,
+    __off64_t __offset) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__read_only__, 2, 3)));
+extern int pipe (int __pipedes[2]) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int pipe2 (int __pipedes[2], int __flags) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern unsigned int alarm (unsigned int __seconds) __attribute__ ((__nothrow__ , __leaf__));
+extern unsigned int sleep (unsigned int __seconds);
+extern __useconds_t ualarm (__useconds_t __value, __useconds_t __interval)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int usleep (__useconds_t __useconds);
+extern int pause (void);
+extern int chown (const char *__file, __uid_t __owner, __gid_t __group)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int fchown (int __fd, __uid_t __owner, __gid_t __group) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int lchown (const char *__file, __uid_t __owner, __gid_t __group)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int fchownat (int __fd, const char *__file, __uid_t __owner,
+       __gid_t __group, int __flag)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2))) __attribute__ ((__warn_unused_result__));
+extern int chdir (const char *__path) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int fchdir (int __fd) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *getcwd (char *__buf, size_t __size) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *get_current_dir_name (void) __attribute__ ((__nothrow__ , __leaf__));
+extern char *getwd (char *__buf)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__deprecated__)) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__write_only__, 1)));
+extern int dup (int __fd) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int dup2 (int __fd, int __fd2) __attribute__ ((__nothrow__ , __leaf__));
+extern int dup3 (int __fd, int __fd2, int __flags) __attribute__ ((__nothrow__ , __leaf__));
+extern char **__environ;
 extern char **environ;
-int setresuid(uid_t, uid_t, uid_t);
-int setresgid(gid_t, gid_t, gid_t);
-int getresuid(uid_t *, uid_t *, uid_t *);
-int getresgid(gid_t *, gid_t *, gid_t *);
-char *get_current_dir_name(void);
-int syncfs(int);
-int euidaccess(const char *, int);
-int eaccess(const char *, int);
-ssize_t copy_file_range(int, off_t *, int, off_t *, size_t, unsigned);
-pid_t gettid(void);
+extern int execve (const char *__path, char *const __argv[],
+     char *const __envp[]) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int fexecve (int __fd, char *const __argv[], char *const __envp[])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int execv (const char *__path, char *const __argv[])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int execle (const char *__path, const char *__arg, ...)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int execl (const char *__path, const char *__arg, ...)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int execvp (const char *__file, char *const __argv[])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int execlp (const char *__file, const char *__arg, ...)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int execvpe (const char *__file, char *const __argv[],
+      char *const __envp[])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int nice (int __inc) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void _exit (int __status) __attribute__ ((__noreturn__));
+enum
+  {
+    _PC_LINK_MAX,
+    _PC_MAX_CANON,
+    _PC_MAX_INPUT,
+    _PC_NAME_MAX,
+    _PC_PATH_MAX,
+    _PC_PIPE_BUF,
+    _PC_CHOWN_RESTRICTED,
+    _PC_NO_TRUNC,
+    _PC_VDISABLE,
+    _PC_SYNC_IO,
+    _PC_ASYNC_IO,
+    _PC_PRIO_IO,
+    _PC_SOCK_MAXBUF,
+    _PC_FILESIZEBITS,
+    _PC_REC_INCR_XFER_SIZE,
+    _PC_REC_MAX_XFER_SIZE,
+    _PC_REC_MIN_XFER_SIZE,
+    _PC_REC_XFER_ALIGN,
+    _PC_ALLOC_SIZE_MIN,
+    _PC_SYMLINK_MAX,
+    _PC_2_SYMLINKS
+  };
+enum
+  {
+    _SC_ARG_MAX,
+    _SC_CHILD_MAX,
+    _SC_CLK_TCK,
+    _SC_NGROUPS_MAX,
+    _SC_OPEN_MAX,
+    _SC_STREAM_MAX,
+    _SC_TZNAME_MAX,
+    _SC_JOB_CONTROL,
+    _SC_SAVED_IDS,
+    _SC_REALTIME_SIGNALS,
+    _SC_PRIORITY_SCHEDULING,
+    _SC_TIMERS,
+    _SC_ASYNCHRONOUS_IO,
+    _SC_PRIORITIZED_IO,
+    _SC_SYNCHRONIZED_IO,
+    _SC_FSYNC,
+    _SC_MAPPED_FILES,
+    _SC_MEMLOCK,
+    _SC_MEMLOCK_RANGE,
+    _SC_MEMORY_PROTECTION,
+    _SC_MESSAGE_PASSING,
+    _SC_SEMAPHORES,
+    _SC_SHARED_MEMORY_OBJECTS,
+    _SC_AIO_LISTIO_MAX,
+    _SC_AIO_MAX,
+    _SC_AIO_PRIO_DELTA_MAX,
+    _SC_DELAYTIMER_MAX,
+    _SC_MQ_OPEN_MAX,
+    _SC_MQ_PRIO_MAX,
+    _SC_VERSION,
+    _SC_PAGESIZE,
+    _SC_RTSIG_MAX,
+    _SC_SEM_NSEMS_MAX,
+    _SC_SEM_VALUE_MAX,
+    _SC_SIGQUEUE_MAX,
+    _SC_TIMER_MAX,
+    _SC_BC_BASE_MAX,
+    _SC_BC_DIM_MAX,
+    _SC_BC_SCALE_MAX,
+    _SC_BC_STRING_MAX,
+    _SC_COLL_WEIGHTS_MAX,
+    _SC_EQUIV_CLASS_MAX,
+    _SC_EXPR_NEST_MAX,
+    _SC_LINE_MAX,
+    _SC_RE_DUP_MAX,
+    _SC_CHARCLASS_NAME_MAX,
+    _SC_2_VERSION,
+    _SC_2_C_BIND,
+    _SC_2_C_DEV,
+    _SC_2_FORT_DEV,
+    _SC_2_FORT_RUN,
+    _SC_2_SW_DEV,
+    _SC_2_LOCALEDEF,
+    _SC_PII,
+    _SC_PII_XTI,
+    _SC_PII_SOCKET,
+    _SC_PII_INTERNET,
+    _SC_PII_OSI,
+    _SC_POLL,
+    _SC_SELECT,
+    _SC_UIO_MAXIOV,
+    _SC_IOV_MAX = _SC_UIO_MAXIOV,
+    _SC_PII_INTERNET_STREAM,
+    _SC_PII_INTERNET_DGRAM,
+    _SC_PII_OSI_COTS,
+    _SC_PII_OSI_CLTS,
+    _SC_PII_OSI_M,
+    _SC_T_IOV_MAX,
+    _SC_THREADS,
+    _SC_THREAD_SAFE_FUNCTIONS,
+    _SC_GETGR_R_SIZE_MAX,
+    _SC_GETPW_R_SIZE_MAX,
+    _SC_LOGIN_NAME_MAX,
+    _SC_TTY_NAME_MAX,
+    _SC_THREAD_DESTRUCTOR_ITERATIONS,
+    _SC_THREAD_KEYS_MAX,
+    _SC_THREAD_STACK_MIN,
+    _SC_THREAD_THREADS_MAX,
+    _SC_THREAD_ATTR_STACKADDR,
+    _SC_THREAD_ATTR_STACKSIZE,
+    _SC_THREAD_PRIORITY_SCHEDULING,
+    _SC_THREAD_PRIO_INHERIT,
+    _SC_THREAD_PRIO_PROTECT,
+    _SC_THREAD_PROCESS_SHARED,
+    _SC_NPROCESSORS_CONF,
+    _SC_NPROCESSORS_ONLN,
+    _SC_PHYS_PAGES,
+    _SC_AVPHYS_PAGES,
+    _SC_ATEXIT_MAX,
+    _SC_PASS_MAX,
+    _SC_XOPEN_VERSION,
+    _SC_XOPEN_XCU_VERSION,
+    _SC_XOPEN_UNIX,
+    _SC_XOPEN_CRYPT,
+    _SC_XOPEN_ENH_I18N,
+    _SC_XOPEN_SHM,
+    _SC_2_CHAR_TERM,
+    _SC_2_C_VERSION,
+    _SC_2_UPE,
+    _SC_XOPEN_XPG2,
+    _SC_XOPEN_XPG3,
+    _SC_XOPEN_XPG4,
+    _SC_CHAR_BIT,
+    _SC_CHAR_MAX,
+    _SC_CHAR_MIN,
+    _SC_INT_MAX,
+    _SC_INT_MIN,
+    _SC_LONG_BIT,
+    _SC_WORD_BIT,
+    _SC_MB_LEN_MAX,
+    _SC_NZERO,
+    _SC_SSIZE_MAX,
+    _SC_SCHAR_MAX,
+    _SC_SCHAR_MIN,
+    _SC_SHRT_MAX,
+    _SC_SHRT_MIN,
+    _SC_UCHAR_MAX,
+    _SC_UINT_MAX,
+    _SC_ULONG_MAX,
+    _SC_USHRT_MAX,
+    _SC_NL_ARGMAX,
+    _SC_NL_LANGMAX,
+    _SC_NL_MSGMAX,
+    _SC_NL_NMAX,
+    _SC_NL_SETMAX,
+    _SC_NL_TEXTMAX,
+    _SC_XBS5_ILP32_OFF32,
+    _SC_XBS5_ILP32_OFFBIG,
+    _SC_XBS5_LP64_OFF64,
+    _SC_XBS5_LPBIG_OFFBIG,
+    _SC_XOPEN_LEGACY,
+    _SC_XOPEN_REALTIME,
+    _SC_XOPEN_REALTIME_THREADS,
+    _SC_ADVISORY_INFO,
+    _SC_BARRIERS,
+    _SC_BASE,
+    _SC_C_LANG_SUPPORT,
+    _SC_C_LANG_SUPPORT_R,
+    _SC_CLOCK_SELECTION,
+    _SC_CPUTIME,
+    _SC_THREAD_CPUTIME,
+    _SC_DEVICE_IO,
+    _SC_DEVICE_SPECIFIC,
+    _SC_DEVICE_SPECIFIC_R,
+    _SC_FD_MGMT,
+    _SC_FIFO,
+    _SC_PIPE,
+    _SC_FILE_ATTRIBUTES,
+    _SC_FILE_LOCKING,
+    _SC_FILE_SYSTEM,
+    _SC_MONOTONIC_CLOCK,
+    _SC_MULTI_PROCESS,
+    _SC_SINGLE_PROCESS,
+    _SC_NETWORKING,
+    _SC_READER_WRITER_LOCKS,
+    _SC_SPIN_LOCKS,
+    _SC_REGEXP,
+    _SC_REGEX_VERSION,
+    _SC_SHELL,
+    _SC_SIGNALS,
+    _SC_SPAWN,
+    _SC_SPORADIC_SERVER,
+    _SC_THREAD_SPORADIC_SERVER,
+    _SC_SYSTEM_DATABASE,
+    _SC_SYSTEM_DATABASE_R,
+    _SC_TIMEOUTS,
+    _SC_TYPED_MEMORY_OBJECTS,
+    _SC_USER_GROUPS,
+    _SC_USER_GROUPS_R,
+    _SC_2_PBS,
+    _SC_2_PBS_ACCOUNTING,
+    _SC_2_PBS_LOCATE,
+    _SC_2_PBS_MESSAGE,
+    _SC_2_PBS_TRACK,
+    _SC_SYMLOOP_MAX,
+    _SC_STREAMS,
+    _SC_2_PBS_CHECKPOINT,
+    _SC_V6_ILP32_OFF32,
+    _SC_V6_ILP32_OFFBIG,
+    _SC_V6_LP64_OFF64,
+    _SC_V6_LPBIG_OFFBIG,
+    _SC_HOST_NAME_MAX,
+    _SC_TRACE,
+    _SC_TRACE_EVENT_FILTER,
+    _SC_TRACE_INHERIT,
+    _SC_TRACE_LOG,
+    _SC_LEVEL1_ICACHE_SIZE,
+    _SC_LEVEL1_ICACHE_ASSOC,
+    _SC_LEVEL1_ICACHE_LINESIZE,
+    _SC_LEVEL1_DCACHE_SIZE,
+    _SC_LEVEL1_DCACHE_ASSOC,
+    _SC_LEVEL1_DCACHE_LINESIZE,
+    _SC_LEVEL2_CACHE_SIZE,
+    _SC_LEVEL2_CACHE_ASSOC,
+    _SC_LEVEL2_CACHE_LINESIZE,
+    _SC_LEVEL3_CACHE_SIZE,
+    _SC_LEVEL3_CACHE_ASSOC,
+    _SC_LEVEL3_CACHE_LINESIZE,
+    _SC_LEVEL4_CACHE_SIZE,
+    _SC_LEVEL4_CACHE_ASSOC,
+    _SC_LEVEL4_CACHE_LINESIZE,
+    _SC_IPV6 = _SC_LEVEL1_ICACHE_SIZE + 50,
+    _SC_RAW_SOCKETS,
+    _SC_V7_ILP32_OFF32,
+    _SC_V7_ILP32_OFFBIG,
+    _SC_V7_LP64_OFF64,
+    _SC_V7_LPBIG_OFFBIG,
+    _SC_SS_REPL_MAX,
+    _SC_TRACE_EVENT_NAME_MAX,
+    _SC_TRACE_NAME_MAX,
+    _SC_TRACE_SYS_MAX,
+    _SC_TRACE_USER_EVENT_MAX,
+    _SC_XOPEN_STREAMS,
+    _SC_THREAD_ROBUST_PRIO_INHERIT,
+    _SC_THREAD_ROBUST_PRIO_PROTECT,
+    _SC_MINSIGSTKSZ,
+    _SC_SIGSTKSZ
+  };
+enum
+  {
+    _CS_PATH,
+    _CS_V6_WIDTH_RESTRICTED_ENVS,
+    _CS_GNU_LIBC_VERSION,
+    _CS_GNU_LIBPTHREAD_VERSION,
+    _CS_V5_WIDTH_RESTRICTED_ENVS,
+    _CS_V7_WIDTH_RESTRICTED_ENVS,
+    _CS_LFS_CFLAGS = 1000,
+    _CS_LFS_LDFLAGS,
+    _CS_LFS_LIBS,
+    _CS_LFS_LINTFLAGS,
+    _CS_LFS64_CFLAGS,
+    _CS_LFS64_LDFLAGS,
+    _CS_LFS64_LIBS,
+    _CS_LFS64_LINTFLAGS,
+    _CS_XBS5_ILP32_OFF32_CFLAGS = 1100,
+    _CS_XBS5_ILP32_OFF32_LDFLAGS,
+    _CS_XBS5_ILP32_OFF32_LIBS,
+    _CS_XBS5_ILP32_OFF32_LINTFLAGS,
+    _CS_XBS5_ILP32_OFFBIG_CFLAGS,
+    _CS_XBS5_ILP32_OFFBIG_LDFLAGS,
+    _CS_XBS5_ILP32_OFFBIG_LIBS,
+    _CS_XBS5_ILP32_OFFBIG_LINTFLAGS,
+    _CS_XBS5_LP64_OFF64_CFLAGS,
+    _CS_XBS5_LP64_OFF64_LDFLAGS,
+    _CS_XBS5_LP64_OFF64_LIBS,
+    _CS_XBS5_LP64_OFF64_LINTFLAGS,
+    _CS_XBS5_LPBIG_OFFBIG_CFLAGS,
+    _CS_XBS5_LPBIG_OFFBIG_LDFLAGS,
+    _CS_XBS5_LPBIG_OFFBIG_LIBS,
+    _CS_XBS5_LPBIG_OFFBIG_LINTFLAGS,
+    _CS_POSIX_V6_ILP32_OFF32_CFLAGS,
+    _CS_POSIX_V6_ILP32_OFF32_LDFLAGS,
+    _CS_POSIX_V6_ILP32_OFF32_LIBS,
+    _CS_POSIX_V6_ILP32_OFF32_LINTFLAGS,
+    _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS,
+    _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS,
+    _CS_POSIX_V6_ILP32_OFFBIG_LIBS,
+    _CS_POSIX_V6_ILP32_OFFBIG_LINTFLAGS,
+    _CS_POSIX_V6_LP64_OFF64_CFLAGS,
+    _CS_POSIX_V6_LP64_OFF64_LDFLAGS,
+    _CS_POSIX_V6_LP64_OFF64_LIBS,
+    _CS_POSIX_V6_LP64_OFF64_LINTFLAGS,
+    _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS,
+    _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS,
+    _CS_POSIX_V6_LPBIG_OFFBIG_LIBS,
+    _CS_POSIX_V6_LPBIG_OFFBIG_LINTFLAGS,
+    _CS_POSIX_V7_ILP32_OFF32_CFLAGS,
+    _CS_POSIX_V7_ILP32_OFF32_LDFLAGS,
+    _CS_POSIX_V7_ILP32_OFF32_LIBS,
+    _CS_POSIX_V7_ILP32_OFF32_LINTFLAGS,
+    _CS_POSIX_V7_ILP32_OFFBIG_CFLAGS,
+    _CS_POSIX_V7_ILP32_OFFBIG_LDFLAGS,
+    _CS_POSIX_V7_ILP32_OFFBIG_LIBS,
+    _CS_POSIX_V7_ILP32_OFFBIG_LINTFLAGS,
+    _CS_POSIX_V7_LP64_OFF64_CFLAGS,
+    _CS_POSIX_V7_LP64_OFF64_LDFLAGS,
+    _CS_POSIX_V7_LP64_OFF64_LIBS,
+    _CS_POSIX_V7_LP64_OFF64_LINTFLAGS,
+    _CS_POSIX_V7_LPBIG_OFFBIG_CFLAGS,
+    _CS_POSIX_V7_LPBIG_OFFBIG_LDFLAGS,
+    _CS_POSIX_V7_LPBIG_OFFBIG_LIBS,
+    _CS_POSIX_V7_LPBIG_OFFBIG_LINTFLAGS,
+    _CS_V6_ENV,
+    _CS_V7_ENV
+  };
+extern long int pathconf (const char *__path, int __name)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern long int fpathconf (int __fd, int __name) __attribute__ ((__nothrow__ , __leaf__));
+extern long int sysconf (int __name) __attribute__ ((__nothrow__ , __leaf__));
+extern size_t confstr (int __name, char *__buf, size_t __len) __attribute__ ((__nothrow__ , __leaf__))
+    __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern __pid_t getpid (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __pid_t getppid (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __pid_t getpgrp (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __pid_t __getpgid (__pid_t __pid) __attribute__ ((__nothrow__ , __leaf__));
+extern __pid_t getpgid (__pid_t __pid) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpgid (__pid_t __pid, __pid_t __pgid) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpgrp (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __pid_t setsid (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __pid_t getsid (__pid_t __pid) __attribute__ ((__nothrow__ , __leaf__));
+extern __uid_t getuid (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __uid_t geteuid (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __gid_t getgid (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __gid_t getegid (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int getgroups (int __size, __gid_t __list[]) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__write_only__, 2, 1)));
+extern int group_member (__gid_t __gid) __attribute__ ((__nothrow__ , __leaf__));
+extern int setuid (__uid_t __uid) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int setreuid (__uid_t __ruid, __uid_t __euid) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int seteuid (__uid_t __uid) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int setgid (__gid_t __gid) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int setregid (__gid_t __rgid, __gid_t __egid) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int setegid (__gid_t __gid) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int getresuid (__uid_t *__ruid, __uid_t *__euid, __uid_t *__suid)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int getresgid (__gid_t *__rgid, __gid_t *__egid, __gid_t *__sgid)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int setresuid (__uid_t __ruid, __uid_t __euid, __uid_t __suid)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int setresgid (__gid_t __rgid, __gid_t __egid, __gid_t __sgid)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern __pid_t fork (void) __attribute__ ((__nothrow__));
+extern __pid_t vfork (void) __attribute__ ((__nothrow__ , __leaf__));
+extern __pid_t _Fork (void) __attribute__ ((__nothrow__ , __leaf__));
+extern char *ttyname (int __fd) __attribute__ ((__nothrow__ , __leaf__));
+extern int ttyname_r (int __fd, char *__buf, size_t __buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2))) __attribute__ ((__warn_unused_result__))
+     __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern int isatty (int __fd) __attribute__ ((__nothrow__ , __leaf__));
+extern int ttyslot (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int link (const char *__from, const char *__to)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__warn_unused_result__));
+extern int linkat (int __fromfd, const char *__from, int __tofd,
+     const char *__to, int __flags)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 4))) __attribute__ ((__warn_unused_result__));
+extern int symlink (const char *__from, const char *__to)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__warn_unused_result__));
+extern ssize_t readlink (const char *__restrict __path,
+    char *__restrict __buf, size_t __len)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__warn_unused_result__))
+     __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern int symlinkat (const char *__from, int __tofd,
+        const char *__to) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3))) __attribute__ ((__warn_unused_result__));
+extern ssize_t readlinkat (int __fd, const char *__restrict __path,
+      char *__restrict __buf, size_t __len)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3))) __attribute__ ((__warn_unused_result__))
+     __attribute__ ((__access__ (__write_only__, 3, 4)));
+extern int unlink (const char *__name) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int unlinkat (int __fd, const char *__name, int __flag)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int rmdir (const char *__path) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern __pid_t tcgetpgrp (int __fd) __attribute__ ((__nothrow__ , __leaf__));
+extern int tcsetpgrp (int __fd, __pid_t __pgrp_id) __attribute__ ((__nothrow__ , __leaf__));
+extern char *getlogin (void);
+extern int getlogin_r (char *__name, size_t __name_len) __attribute__ ((__nonnull__ (1)))
+    __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int setlogin (const char *__name) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+extern char *optarg;
+extern int optind;
+extern int opterr;
+extern int optopt;
+extern int getopt (int ___argc, char *const *___argv, const char *__shortopts)
+       __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+
+
+
+extern int gethostname (char *__name, size_t __len) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)))
+    __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int sethostname (const char *__name, size_t __len)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__read_only__, 1, 2)));
+extern int sethostid (long int __id) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int getdomainname (char *__name, size_t __len)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__))
+     __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int setdomainname (const char *__name, size_t __len)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__read_only__, 1, 2)));
+extern int vhangup (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int revoke (const char *__file) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int profil (unsigned short int *__sample_buffer, size_t __size,
+     size_t __offset, unsigned int __scale)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int acct (const char *__name) __attribute__ ((__nothrow__ , __leaf__));
+extern char *getusershell (void) __attribute__ ((__nothrow__ , __leaf__));
+extern void endusershell (void) __attribute__ ((__nothrow__ , __leaf__));
+extern void setusershell (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int daemon (int __nochdir, int __noclose) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int chroot (const char *__path) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern char *getpass (const char *__prompt) __attribute__ ((__nonnull__ (1)));
+extern int fsync (int __fd);
+extern int syncfs (int __fd) __attribute__ ((__nothrow__ , __leaf__));
+extern long int gethostid (void);
+extern void sync (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int getpagesize (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int getdtablesize (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int truncate (const char *__file, __off_t __length)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int truncate64 (const char *__file, __off64_t __length)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__));
+extern int ftruncate (int __fd, __off_t __length) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int ftruncate64 (int __fd, __off64_t __length) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern int brk (void *__addr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void *sbrk (intptr_t __delta) __attribute__ ((__nothrow__ , __leaf__));
+extern long int syscall (long int __sysno, ...) __attribute__ ((__nothrow__ , __leaf__));
+extern int lockf (int __fd, int __cmd, __off_t __len) __attribute__ ((__warn_unused_result__));
+extern int lockf64 (int __fd, int __cmd, __off64_t __len) __attribute__ ((__warn_unused_result__));
+ssize_t copy_file_range (int __infd, __off64_t *__pinoff,
+    int __outfd, __off64_t *__poutoff,
+    size_t __length, unsigned int __flags);
+extern int fdatasync (int __fildes);
+extern char *crypt (const char *__key, const char *__salt)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern void swab (const void *__restrict __from, void *__restrict __to,
+    ssize_t __n) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)))
+    __attribute__ ((__access__ (__read_only__, 1, 3)))
+    __attribute__ ((__access__ (__write_only__, 2, 3)));
+int getentropy (void *__buffer, size_t __length) __attribute__ ((__warn_unused_result__))
+    __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int close_range (unsigned int __fd, unsigned int __max_fd,
+   int __flags) __attribute__ ((__nothrow__ , __leaf__));
+extern ssize_t __read_chk (int __fd, void *__buf, size_t __nbytes,
+      size_t __buflen)
+  __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __read_alias (int __fd, void *__buf, size_t __nbytes) __asm__ ("" "read")
+  __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __read_chk_warn (int __fd, void *__buf, size_t __nbytes, size_t __buflen) __asm__ ("" "__read_chk")
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("read called with bigger length than size of " "the destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) ssize_t
+read (int __fd, void *__buf, size_t __nbytes)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 0)) && (__builtin_object_size (__buf, 0)) == (long unsigned int) -1) || (((__typeof (__nbytes)) 0 < (__typeof (__nbytes)) -1 || (__builtin_constant_p (__nbytes) && (__nbytes) > 0)) && __builtin_constant_p ((((long unsigned int) (__nbytes)) <= ((__builtin_object_size (__buf, 0))) / ((sizeof (char))))) && (((long unsigned int) (__nbytes)) <= ((__builtin_object_size (__buf, 0))) / ((sizeof (char)))))) ? __read_alias (__fd, __buf, __nbytes) : ((((__typeof (__nbytes)) 0 < (__typeof (__nbytes)) -1 || (__builtin_constant_p (__nbytes) && (__nbytes) > 0)) && __builtin_constant_p ((((long unsigned int) (__nbytes)) <= (__builtin_object_size (__buf, 0)) / (sizeof (char)))) && !(((long unsigned int) (__nbytes)) <= (__builtin_object_size (__buf, 0)) / (sizeof (char)))) ? __read_chk_warn (__fd, __buf, __nbytes, __builtin_object_size (__buf, 0)) : __read_chk (__fd, __buf, __nbytes, __builtin_object_size (__buf, 0))));
+}
+extern ssize_t __pread_chk (int __fd, void *__buf, size_t __nbytes,
+       __off_t __offset, size_t __bufsize)
+  __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __pread64_chk (int __fd, void *__buf, size_t __nbytes,
+         __off64_t __offset, size_t __bufsize)
+  __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __pread_alias (int __fd, void *__buf, size_t __nbytes, __off_t __offset) __asm__ ("" "pread")
+  __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __pread64_alias (int __fd, void *__buf, size_t __nbytes, __off64_t __offset) __asm__ ("" "pread64")
+  __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __pread_chk_warn (int __fd, void *__buf, size_t __nbytes, __off_t __offset, size_t __bufsize) __asm__ ("" "__pread_chk")
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("pread called with bigger length than size of " "the destination buffer")));
+extern ssize_t __pread64_chk_warn (int __fd, void *__buf, size_t __nbytes, __off64_t __offset, size_t __bufsize) __asm__ ("" "__pread64_chk")
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("pread64 called with bigger length than size of " "the destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) ssize_t
+pread (int __fd, void *__buf, size_t __nbytes, __off_t __offset)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 0)) && (__builtin_object_size (__buf, 0)) == (long unsigned int) -1) || (((__typeof (__nbytes)) 0 < (__typeof (__nbytes)) -1 || (__builtin_constant_p (__nbytes) && (__nbytes) > 0)) && __builtin_constant_p ((((long unsigned int) (__nbytes)) <= ((__builtin_object_size (__buf, 0))) / ((sizeof (char))))) && (((long unsigned int) (__nbytes)) <= ((__builtin_object_size (__buf, 0))) / ((sizeof (char)))))) ? __pread_alias (__fd, __buf, __nbytes, __offset) : ((((__typeof (__nbytes)) 0 < (__typeof (__nbytes)) -1 || (__builtin_constant_p (__nbytes) && (__nbytes) > 0)) && __builtin_constant_p ((((long unsigned int) (__nbytes)) <= (__builtin_object_size (__buf, 0)) / (sizeof (char)))) && !(((long unsigned int) (__nbytes)) <= (__builtin_object_size (__buf, 0)) / (sizeof (char)))) ? __pread_chk_warn (__fd, __buf, __nbytes, __offset, __builtin_object_size (__buf, 0)) : __pread_chk (__fd, __buf, __nbytes, __offset, __builtin_object_size (__buf, 0))));
+}
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) ssize_t
+pread64 (int __fd, void *__buf, size_t __nbytes, __off64_t __offset)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 0)) && (__builtin_object_size (__buf, 0)) == (long unsigned int) -1) || (((__typeof (__nbytes)) 0 < (__typeof (__nbytes)) -1 || (__builtin_constant_p (__nbytes) && (__nbytes) > 0)) && __builtin_constant_p ((((long unsigned int) (__nbytes)) <= ((__builtin_object_size (__buf, 0))) / ((sizeof (char))))) && (((long unsigned int) (__nbytes)) <= ((__builtin_object_size (__buf, 0))) / ((sizeof (char)))))) ? __pread64_alias (__fd, __buf, __nbytes, __offset) : ((((__typeof (__nbytes)) 0 < (__typeof (__nbytes)) -1 || (__builtin_constant_p (__nbytes) && (__nbytes) > 0)) && __builtin_constant_p ((((long unsigned int) (__nbytes)) <= (__builtin_object_size (__buf, 0)) / (sizeof (char)))) && !(((long unsigned int) (__nbytes)) <= (__builtin_object_size (__buf, 0)) / (sizeof (char)))) ? __pread64_chk_warn (__fd, __buf, __nbytes, __offset, __builtin_object_size (__buf, 0)) : __pread64_chk (__fd, __buf, __nbytes, __offset, __builtin_object_size (__buf, 0))));
+}
+extern ssize_t __readlink_chk (const char *__restrict __path,
+          char *__restrict __buf, size_t __len,
+          size_t __buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __readlink_alias (const char *__restrict __path, char *__restrict __buf, size_t __len) __asm__ ("" "readlink") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern ssize_t __readlink_chk_warn (const char *__restrict __path, char *__restrict __buf, size_t __len, size_t __buflen) __asm__ ("" "__readlink_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("readlink called with bigger length " "than size of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__warn_unused_result__)) ssize_t
+__attribute__ ((__nothrow__ , __leaf__)) readlink (const char *__restrict __path, char *__restrict __buf, size_t __len)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__len)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __readlink_alias (__path, __buf, __len) : ((((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__len)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __readlink_chk_warn (__path, __buf, __len, __builtin_object_size (__buf, 2 > 1)) : __readlink_chk (__path, __buf, __len, __builtin_object_size (__buf, 2 > 1))));
+}
+extern ssize_t __readlinkat_chk (int __fd, const char *__restrict __path,
+     char *__restrict __buf, size_t __len,
+     size_t __buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 3, 4)));
+extern ssize_t __readlinkat_alias (int __fd, const char *__restrict __path, char *__restrict __buf, size_t __len) __asm__ ("" "readlinkat") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (2, 3))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 3, 4)));
+extern ssize_t __readlinkat_chk_warn (int __fd, const char *__restrict __path, char *__restrict __buf, size_t __len, size_t __buflen) __asm__ ("" "__readlinkat_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (2, 3))) __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("readlinkat called with bigger " "length than size of destination " "buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__nonnull__ (2, 3))) __attribute__ ((__warn_unused_result__)) ssize_t
+__attribute__ ((__nothrow__ , __leaf__)) readlinkat (int __fd, const char *__restrict __path, char *__restrict __buf, size_t __len)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__len)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __readlinkat_alias (__fd, __path, __buf, __len) : ((((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__len)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __readlinkat_chk_warn (__fd, __path, __buf, __len, __builtin_object_size (__buf, 2 > 1)) : __readlinkat_chk (__fd, __path, __buf, __len, __builtin_object_size (__buf, 2 > 1))));
+}
+extern char *__getcwd_chk (char *__buf, size_t __size, size_t __buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *__getcwd_alias (char *__buf, size_t __size) __asm__ ("" "getcwd") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern char *__getcwd_chk_warn (char *__buf, size_t __size, size_t __buflen) __asm__ ("" "__getcwd_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("getcwd caller with bigger length than size of " "destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__warn_unused_result__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) getcwd (char *__buf, size_t __size)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__size)) 0 < (__typeof (__size)) -1 || (__builtin_constant_p (__size) && (__size) > 0)) && __builtin_constant_p ((((long unsigned int) (__size)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__size)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __getcwd_alias (__buf, __size) : ((((__typeof (__size)) 0 < (__typeof (__size)) -1 || (__builtin_constant_p (__size) && (__size) > 0)) && __builtin_constant_p ((((long unsigned int) (__size)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__size)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __getcwd_chk_warn (__buf, __size, __builtin_object_size (__buf, 2 > 1)) : __getcwd_chk (__buf, __size, __builtin_object_size (__buf, 2 > 1))));
+}
+extern char *__getwd_chk (char *__buf, size_t buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern char *__getwd_warn (char *__buf) __asm__ ("" "getwd") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("please use getcwd instead, as getwd " "doesn't specify buffer size")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__deprecated__)) __attribute__ ((__warn_unused_result__)) char *
+__attribute__ ((__nothrow__ , __leaf__)) getwd (char *__buf)
+{
+  if (__builtin_object_size (__buf, 2 > 1) != (size_t) -1)
+    return __getwd_chk (__buf, __builtin_object_size (__buf, 2 > 1));
+  return __getwd_warn (__buf);
+}
+extern size_t __confstr_chk (int __name, char *__buf, size_t __len,
+        size_t __buflen) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern size_t __confstr_alias (int __name, char *__buf, size_t __len) __asm__ ("" "confstr") __attribute__ ((__nothrow__ , __leaf__))
+   __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern size_t __confstr_chk_warn (int __name, char *__buf, size_t __len, size_t __buflen) __asm__ ("" "__confstr_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__((__warning__ ("confstr called with bigger length than size of destination " "buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) size_t
+__attribute__ ((__nothrow__ , __leaf__)) confstr (int __name, char *__buf, size_t __len)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__len)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __confstr_alias (__name, __buf, __len) : ((((__typeof (__len)) 0 < (__typeof (__len)) -1 || (__builtin_constant_p (__len) && (__len) > 0)) && __builtin_constant_p ((((long unsigned int) (__len)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__len)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __confstr_chk_warn (__name, __buf, __len, __builtin_object_size (__buf, 2 > 1)) : __confstr_chk (__name, __buf, __len, __builtin_object_size (__buf, 2 > 1))));
+}
+extern int __getgroups_chk (int __size, __gid_t __list[], size_t __listlen)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 1)));
+extern int __getgroups_alias (int __size, __gid_t __list[]) __asm__ ("" "getgroups") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 2, 1)));
+extern int __getgroups_chk_warn (int __size, __gid_t __list[], size_t __listlen) __asm__ ("" "__getgroups_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("getgroups called with bigger group count than what " "can fit into destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) getgroups (int __size, __gid_t __list[])
+{
+  return (((__builtin_constant_p (__builtin_object_size (__list, 2 > 1)) && (__builtin_object_size (__list, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__size)) 0 < (__typeof (__size)) -1 || (__builtin_constant_p (__size) && (__size) > 0)) && __builtin_constant_p ((((long unsigned int) (__size)) <= ((__builtin_object_size (__list, 2 > 1))) / ((sizeof (__gid_t))))) && (((long unsigned int) (__size)) <= ((__builtin_object_size (__list, 2 > 1))) / ((sizeof (__gid_t)))))) ? __getgroups_alias (__size, __list) : ((((__typeof (__size)) 0 < (__typeof (__size)) -1 || (__builtin_constant_p (__size) && (__size) > 0)) && __builtin_constant_p ((((long unsigned int) (__size)) <= (__builtin_object_size (__list, 2 > 1)) / (sizeof (__gid_t)))) && !(((long unsigned int) (__size)) <= (__builtin_object_size (__list, 2 > 1)) / (sizeof (__gid_t)))) ? __getgroups_chk_warn (__size, __list, __builtin_object_size (__list, 2 > 1)) : __getgroups_chk (__size, __list, __builtin_object_size (__list, 2 > 1))));
+}
+extern int __ttyname_r_chk (int __fd, char *__buf, size_t __buflen,
+       size_t __nreal) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)))
+   __attribute__ ((__access__ (__write_only__, 2, 3)));
+extern int __ttyname_r_alias (int __fd, char *__buf, size_t __buflen) __asm__ ("" "ttyname_r") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (2)));
+extern int __ttyname_r_chk_warn (int __fd, char *__buf, size_t __buflen, size_t __nreal) __asm__ ("" "__ttyname_r_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (2))) __attribute__((__warning__ ("ttyname_r called with bigger buflen than " "size of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) ttyname_r (int __fd, char *__buf, size_t __buflen)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __ttyname_r_alias (__fd, __buf, __buflen) : ((((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __ttyname_r_chk_warn (__fd, __buf, __buflen, __builtin_object_size (__buf, 2 > 1)) : __ttyname_r_chk (__fd, __buf, __buflen, __builtin_object_size (__buf, 2 > 1))));
+}
+extern int __getlogin_r_chk (char *__buf, size_t __buflen, size_t __nreal)
+     __attribute__ ((__nonnull__ (1))) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int __getlogin_r_alias (char *__buf, size_t __buflen) __asm__ ("" "getlogin_r") __attribute__ ((__nonnull__ (1)));
+extern int __getlogin_r_chk_warn (char *__buf, size_t __buflen, size_t __nreal) __asm__ ("" "__getlogin_r_chk")
+     __attribute__ ((__nonnull__ (1))) __attribute__((__warning__ ("getlogin_r called with bigger buflen than " "size of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+getlogin_r (char *__buf, size_t __buflen)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __getlogin_r_alias (__buf, __buflen) : ((((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __getlogin_r_chk_warn (__buf, __buflen, __builtin_object_size (__buf, 2 > 1)) : __getlogin_r_chk (__buf, __buflen, __builtin_object_size (__buf, 2 > 1))));
+}
+extern int __gethostname_chk (char *__buf, size_t __buflen, size_t __nreal)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int __gethostname_alias (char *__buf, size_t __buflen) __asm__ ("" "gethostname") __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__nonnull__ (1))) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int __gethostname_chk_warn (char *__buf, size_t __buflen, size_t __nreal) __asm__ ("" "__gethostname_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (1))) __attribute__((__warning__ ("gethostname called with bigger buflen than " "size of destination buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) gethostname (char *__buf, size_t __buflen)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __gethostname_alias (__buf, __buflen) : ((((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __gethostname_chk_warn (__buf, __buflen, __builtin_object_size (__buf, 2 > 1)) : __gethostname_chk (__buf, __buflen, __builtin_object_size (__buf, 2 > 1))));
+}
+extern int __getdomainname_chk (char *__buf, size_t __buflen, size_t __nreal)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int __getdomainname_alias (char *__buf, size_t __buflen) __asm__ ("" "getdomainname") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)))
+  __attribute__ ((__warn_unused_result__)) __attribute__ ((__access__ (__write_only__, 1, 2)));
+extern int __getdomainname_chk_warn (char *__buf, size_t __buflen, size_t __nreal) __asm__ ("" "__getdomainname_chk") __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__nonnull__ (1))) __attribute__ ((__warn_unused_result__)) __attribute__((__warning__ ("getdomainname called with bigger " "buflen than size of destination " "buffer")));
+extern __inline __attribute__ ((__always_inline__)) __attribute__ ((__gnu_inline__)) __attribute__ ((__artificial__)) int
+__attribute__ ((__nothrow__ , __leaf__)) getdomainname (char *__buf, size_t __buflen)
+{
+  return (((__builtin_constant_p (__builtin_object_size (__buf, 2 > 1)) && (__builtin_object_size (__buf, 2 > 1)) == (long unsigned int) -1) || (((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char))))) && (((long unsigned int) (__buflen)) <= ((__builtin_object_size (__buf, 2 > 1))) / ((sizeof (char)))))) ? __getdomainname_alias (__buf, __buflen) : ((((__typeof (__buflen)) 0 < (__typeof (__buflen)) -1 || (__builtin_constant_p (__buflen) && (__buflen) > 0)) && __builtin_constant_p ((((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) && !(((long unsigned int) (__buflen)) <= (__builtin_object_size (__buf, 2 > 1)) / (sizeof (char)))) ? __getdomainname_chk_warn (__buf, __buflen, __builtin_object_size (__buf, 2 > 1)) : __getdomainname_chk (__buf, __buflen, __builtin_object_size (__buf, 2 > 1))));
+}
+extern __pid_t gettid (void) __attribute__ ((__nothrow__ , __leaf__));
+
 
 
 [[nodiscard]]
@@ -574,322 +2480,1115 @@ void rb_assert_failure(const char *file, int line, const char *name, const char 
 
 
 #define COLDFUNC RBIMPL_ATTR_COLD()
+
 typedef float float_t;
 typedef double double_t;
-int __fpclassify(double);
-int __fpclassifyf(float);
-int __fpclassifyl(long double);
-static inline unsigned __FLOAT_BITS(float __f)
-{
- union {float __f; unsigned __i;} __u;
- __u.__f = __f;
- return __u.__i;
-}
-static inline unsigned long long __DOUBLE_BITS(double __f)
-{
- union {double __f; unsigned long long __i;} __u;
- __u.__f = __f;
- return __u.__i;
-}
-int __signbit(double);
-int __signbitf(float);
-int __signbitl(long double);
-static inline int __islessf(float_t __x, float_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x < __y; }
-static inline int __isless(double_t __x, double_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x < __y; }
-static inline int __islessl(long double __x, long double __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x < __y; }
-static inline int __islessequalf(float_t __x, float_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x <= __y; }
-static inline int __islessequal(double_t __x, double_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x <= __y; }
-static inline int __islessequall(long double __x, long double __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x <= __y; }
-static inline int __islessgreaterf(float_t __x, float_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x != __y; }
-static inline int __islessgreater(double_t __x, double_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x != __y; }
-static inline int __islessgreaterl(long double __x, long double __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x != __y; }
-static inline int __isgreaterf(float_t __x, float_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x > __y; }
-static inline int __isgreater(double_t __x, double_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x > __y; }
-static inline int __isgreaterl(long double __x, long double __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x > __y; }
-static inline int __isgreaterequalf(float_t __x, float_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x >= __y; }
-static inline int __isgreaterequal(double_t __x, double_t __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x >= __y; }
-static inline int __isgreaterequall(long double __x, long double __y) { return !(( sizeof((__x)) == sizeof(float) ? (__FLOAT_BITS((__x)) & 0x7fffffff) > 0x7f800000 : sizeof((__x)) == sizeof(double) ? (__DOUBLE_BITS((__x)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__x)) == 0) ? ((void)(__y),1) : ( sizeof((__y)) == sizeof(float) ? (__FLOAT_BITS((__y)) & 0x7fffffff) > 0x7f800000 : sizeof((__y)) == sizeof(double) ? (__DOUBLE_BITS((__y)) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl((__y)) == 0)) && __x >= __y; }
-double acos(double);
-float acosf(float);
-long double acosl(long double);
-double acosh(double);
-float acoshf(float);
-long double acoshl(long double);
-double asin(double);
-float asinf(float);
-long double asinl(long double);
-double asinh(double);
-float asinhf(float);
-long double asinhl(long double);
-double atan(double);
-float atanf(float);
-long double atanl(long double);
-double atan2(double, double);
-float atan2f(float, float);
-long double atan2l(long double, long double);
-double atanh(double);
-float atanhf(float);
-long double atanhl(long double);
-double cbrt(double);
-float cbrtf(float);
-long double cbrtl(long double);
-double ceil(double);
-float ceilf(float);
-long double ceill(long double);
-double copysign(double, double);
-float copysignf(float, float);
-long double copysignl(long double, long double);
-double cos(double);
-float cosf(float);
-long double cosl(long double);
-double cosh(double);
-float coshf(float);
-long double coshl(long double);
-double erf(double);
-float erff(float);
-long double erfl(long double);
-double erfc(double);
-float erfcf(float);
-long double erfcl(long double);
-double exp(double);
-float expf(float);
-long double expl(long double);
-double exp2(double);
-float exp2f(float);
-long double exp2l(long double);
-double expm1(double);
-float expm1f(float);
-long double expm1l(long double);
-double fabs(double);
-float fabsf(float);
-long double fabsl(long double);
-double fdim(double, double);
-float fdimf(float, float);
-long double fdiml(long double, long double);
-double floor(double);
-float floorf(float);
-long double floorl(long double);
-double fma(double, double, double);
-float fmaf(float, float, float);
-long double fmal(long double, long double, long double);
-double fmax(double, double);
-float fmaxf(float, float);
-long double fmaxl(long double, long double);
-double fmin(double, double);
-float fminf(float, float);
-long double fminl(long double, long double);
-double fmod(double, double);
-float fmodf(float, float);
-long double fmodl(long double, long double);
-double frexp(double, int *);
-float frexpf(float, int *);
-long double frexpl(long double, int *);
-double hypot(double, double);
-float hypotf(float, float);
-long double hypotl(long double, long double);
-int ilogb(double);
-int ilogbf(float);
-int ilogbl(long double);
-double ldexp(double, int);
-float ldexpf(float, int);
-long double ldexpl(long double, int);
-double lgamma(double);
-float lgammaf(float);
-long double lgammal(long double);
-long long llrint(double);
-long long llrintf(float);
-long long llrintl(long double);
-long long llround(double);
-long long llroundf(float);
-long long llroundl(long double);
-double log(double);
-float logf(float);
-long double logl(long double);
-double log10(double);
-float log10f(float);
-long double log10l(long double);
-double log1p(double);
-float log1pf(float);
-long double log1pl(long double);
-double log2(double);
-float log2f(float);
-long double log2l(long double);
-double logb(double);
-float logbf(float);
-long double logbl(long double);
-long lrint(double);
-long lrintf(float);
-long lrintl(long double);
-long lround(double);
-long lroundf(float);
-long lroundl(long double);
-double modf(double, double *);
-float modff(float, float *);
-long double modfl(long double, long double *);
-double nan(const char *);
-float nanf(const char *);
-long double nanl(const char *);
-double nearbyint(double);
-float nearbyintf(float);
-long double nearbyintl(long double);
-double nextafter(double, double);
-float nextafterf(float, float);
-long double nextafterl(long double, long double);
-double nexttoward(double, long double);
-float nexttowardf(float, long double);
-long double nexttowardl(long double, long double);
-double pow(double, double);
-float powf(float, float);
-long double powl(long double, long double);
-double remainder(double, double);
-float remainderf(float, float);
-long double remainderl(long double, long double);
-double remquo(double, double, int *);
-float remquof(float, float, int *);
-long double remquol(long double, long double, int *);
-double rint(double);
-float rintf(float);
-long double rintl(long double);
-double round(double);
-float roundf(float);
-long double roundl(long double);
-double scalbln(double, long);
-float scalblnf(float, long);
-long double scalblnl(long double, long);
-double scalbn(double, int);
-float scalbnf(float, int);
-long double scalbnl(long double, int);
-double sin(double);
-float sinf(float);
-long double sinl(long double);
-double sinh(double);
-float sinhf(float);
-long double sinhl(long double);
-double sqrt(double);
-float sqrtf(float);
-long double sqrtl(long double);
-double tan(double);
-float tanf(float);
-long double tanl(long double);
-double tanh(double);
-float tanhf(float);
-long double tanhl(long double);
-double tgamma(double);
-float tgammaf(float);
-long double tgammal(long double);
-double trunc(double);
-float truncf(float);
-long double truncl(long double);
+enum
+  {
+    FP_INT_UPWARD =
+      0,
+    FP_INT_DOWNWARD =
+      1,
+    FP_INT_TOWARDZERO =
+      2,
+    FP_INT_TONEARESTFROMZERO =
+      3,
+    FP_INT_TONEAREST =
+      4,
+  };
+extern int __fpclassify (double __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __signbit (double __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __isinf (double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __finite (double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __isnan (double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __iseqsig (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern int __issignaling (double __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+ extern double acos (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __acos (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double asin (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __asin (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double atan (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __atan (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double atan2 (double __y, double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __atan2 (double __y, double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double cos (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __cos (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double sin (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __sin (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double tan (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __tan (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double cosh (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __cosh (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double sinh (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __sinh (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double tanh (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __tanh (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincos (double __x, double *__sinx, double *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincos (double __x, double *__sinx, double *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern double acosh (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __acosh (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double asinh (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __asinh (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double atanh (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __atanh (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double exp (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __exp (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double frexp (double __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern double __frexp (double __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern double ldexp (double __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern double __ldexp (double __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern double log (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __log (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double log10 (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __log10 (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double modf (double __x, double *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern double __modf (double __x, double *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern double exp10 (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __exp10 (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double expm1 (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __expm1 (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double log1p (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __log1p (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double logb (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __logb (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double exp2 (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __exp2 (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double log2 (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __log2 (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double pow (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __pow (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double sqrt (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __sqrt (double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern double hypot (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __hypot (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern double cbrt (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __cbrt (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double ceil (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __ceil (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fabs (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fabs (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double floor (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __floor (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fmod (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __fmod (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern int isinf (double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int finite (double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern double drem (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __drem (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double significand (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __significand (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double copysign (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __copysign (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double nan (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern double __nan (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern int isnan (double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern double j0 (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __j0 (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double j1 (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __j1 (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double jn (int, double) __attribute__ ((__nothrow__ , __leaf__)); extern double __jn (int, double) __attribute__ ((__nothrow__ , __leaf__));
+extern double y0 (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __y0 (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double y1 (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __y1 (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double yn (int, double) __attribute__ ((__nothrow__ , __leaf__)); extern double __yn (int, double) __attribute__ ((__nothrow__ , __leaf__));
+ extern double erf (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __erf (double) __attribute__ ((__nothrow__ , __leaf__));
+ extern double erfc (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __erfc (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double lgamma (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __lgamma (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double tgamma (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __tgamma (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double gamma (double) __attribute__ ((__nothrow__ , __leaf__)); extern double __gamma (double) __attribute__ ((__nothrow__ , __leaf__));
+extern double lgamma_r (double, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern double __lgamma_r (double, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern double rint (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __rint (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double nextafter (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __nextafter (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double nexttoward (double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __nexttoward (double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double nextdown (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __nextdown (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double nextup (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __nextup (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double remainder (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __remainder (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double scalbn (double __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern double __scalbn (double __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogb (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogb (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogb (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogb (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double scalbln (double __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern double __scalbln (double __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern double nearbyint (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern double __nearbyint (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double round (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __round (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double trunc (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __trunc (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double remquo (double __x, double __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern double __remquo (double __x, double __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrint (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrint (double __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrint (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrint (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lround (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lround (double __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llround (double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llround (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double fdim (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)); extern double __fdim (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double fmax (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fmax (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fmin (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fmin (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fma (double __x, double __y, double __z) __attribute__ ((__nothrow__ , __leaf__)); extern double __fma (double __x, double __y, double __z) __attribute__ ((__nothrow__ , __leaf__));
+extern double roundeven (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __roundeven (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfp (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfp (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfp (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfp (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpx (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpx (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpx (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpx (double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalize (double *__cx, const double *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern double fmaxmag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fmaxmag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fminmag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fminmag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fmaximum (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fmaximum (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fminimum (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fminimum (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fmaximum_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fmaximum_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fminimum_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fminimum_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fmaximum_mag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fmaximum_mag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fminimum_mag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fminimum_mag (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fmaximum_mag_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fmaximum_mag_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern double fminimum_mag_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern double __fminimum_mag_num (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorder (const double *__x, const double *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermag (const double *__x, const double *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern double getpayload (const double *__x) __attribute__ ((__nothrow__ , __leaf__)); extern double __getpayload (const double *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayload (double *__x, double __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsig (double *__x, double __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern double scalb (double __x, double __n) __attribute__ ((__nothrow__ , __leaf__)); extern double __scalb (double __x, double __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int __fpclassifyf (float __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __signbitf (float __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __isinff (float __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __finitef (float __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __isnanf (float __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __iseqsigf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+extern int __issignalingf (float __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+ extern float acosf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __acosf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float asinf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __asinf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float atanf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __atanf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float atan2f (float __y, float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __atan2f (float __y, float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float cosf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __cosf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float sinf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __sinf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float tanf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __tanf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float coshf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __coshf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float sinhf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __sinhf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float tanhf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __tanhf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincosf (float __x, float *__sinx, float *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincosf (float __x, float *__sinx, float *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern float acoshf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __acoshf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float asinhf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __asinhf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float atanhf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __atanhf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float expf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __expf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float frexpf (float __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern float __frexpf (float __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern float ldexpf (float __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern float __ldexpf (float __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern float logf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __logf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float log10f (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __log10f (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float modff (float __x, float *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern float __modff (float __x, float *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern float exp10f (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __exp10f (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float expm1f (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __expm1f (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float log1pf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __log1pf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float logbf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __logbf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float exp2f (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __exp2f (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float log2f (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __log2f (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float powf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __powf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float sqrtf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __sqrtf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern float hypotf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __hypotf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern float cbrtf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __cbrtf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float ceilf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __ceilf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fabsf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fabsf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float floorf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __floorf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fmodf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __fmodf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+extern int isinff (float __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int finitef (float __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern float dremf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __dremf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float significandf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __significandf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float copysignf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __copysignf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float nanf (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern float __nanf (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern int isnanf (float __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern float j0f (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __j0f (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float j1f (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __j1f (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float jnf (int, float) __attribute__ ((__nothrow__ , __leaf__)); extern float __jnf (int, float) __attribute__ ((__nothrow__ , __leaf__));
+extern float y0f (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __y0f (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float y1f (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __y1f (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float ynf (int, float) __attribute__ ((__nothrow__ , __leaf__)); extern float __ynf (int, float) __attribute__ ((__nothrow__ , __leaf__));
+ extern float erff (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __erff (float) __attribute__ ((__nothrow__ , __leaf__));
+ extern float erfcf (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __erfcf (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float lgammaf (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __lgammaf (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float tgammaf (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __tgammaf (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float gammaf (float) __attribute__ ((__nothrow__ , __leaf__)); extern float __gammaf (float) __attribute__ ((__nothrow__ , __leaf__));
+extern float lgammaf_r (float, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern float __lgammaf_r (float, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern float rintf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __rintf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float nextafterf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __nextafterf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float nexttowardf (float __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __nexttowardf (float __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float nextdownf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __nextdownf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float nextupf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __nextupf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float remainderf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __remainderf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float scalbnf (float __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern float __scalbnf (float __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogbf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogbf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogbf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogbf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float scalblnf (float __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern float __scalblnf (float __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern float nearbyintf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern float __nearbyintf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float roundf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __roundf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float truncf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __truncf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float remquof (float __x, float __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern float __remquof (float __x, float __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrintf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrintf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrintf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrintf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lroundf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lroundf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llroundf (float __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llroundf (float __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float fdimf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)); extern float __fdimf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float fmaxf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fmaxf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fminf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fminf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fmaf (float __x, float __y, float __z) __attribute__ ((__nothrow__ , __leaf__)); extern float __fmaf (float __x, float __y, float __z) __attribute__ ((__nothrow__ , __leaf__));
+extern float roundevenf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __roundevenf (float __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfpf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpxf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpxf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpxf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpxf (float __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalizef (float *__cx, const float *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern float fmaxmagf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fmaxmagf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fminmagf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fminmagf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fmaximumf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fmaximumf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fminimumf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fminimumf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fmaximum_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fmaximum_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fminimum_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fminimum_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fmaximum_magf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fmaximum_magf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fminimum_magf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fminimum_magf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fmaximum_mag_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fmaximum_mag_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern float fminimum_mag_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern float __fminimum_mag_numf (float __x, float __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorderf (const float *__x, const float *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermagf (const float *__x, const float *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern float getpayloadf (const float *__x) __attribute__ ((__nothrow__ , __leaf__)); extern float __getpayloadf (const float *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadf (float *__x, float __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsigf (float *__x, float __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern float scalbf (float __x, float __n) __attribute__ ((__nothrow__ , __leaf__)); extern float __scalbf (float __x, float __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int __fpclassifyl (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __signbitl (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __isinfl (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __finitel (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __isnanl (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __iseqsigl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern int __issignalingl (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+ extern long double acosl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __acosl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double asinl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __asinl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double atanl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __atanl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double atan2l (long double __y, long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __atan2l (long double __y, long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double cosl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __cosl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double sinl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __sinl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double tanl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __tanl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double coshl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __coshl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double sinhl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __sinhl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double tanhl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __tanhl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincosl (long double __x, long double *__sinx, long double *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincosl (long double __x, long double *__sinx, long double *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double acoshl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __acoshl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double asinhl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __asinhl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double atanhl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __atanhl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double expl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __expl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double frexpl (long double __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern long double __frexpl (long double __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern long double ldexpl (long double __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern long double __ldexpl (long double __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double logl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __logl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double log10l (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __log10l (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double modfl (long double __x, long double *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern long double __modfl (long double __x, long double *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern long double exp10l (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __exp10l (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double expm1l (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __expm1l (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double log1pl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __log1pl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double logbl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __logbl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double exp2l (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __exp2l (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double log2l (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __log2l (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double powl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __powl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern long double sqrtl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __sqrtl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double hypotl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __hypotl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double cbrtl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __cbrtl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double ceill (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __ceill (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fabsl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fabsl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double floorl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __floorl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fmodl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __fmodl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern int isinfl (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int finitel (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern long double dreml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __dreml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern long double significandl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __significandl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double copysignl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __copysignl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double nanl (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern long double __nanl (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern int isnanl (long double __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern long double j0l (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __j0l (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double j1l (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __j1l (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double jnl (int, long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __jnl (int, long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double y0l (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __y0l (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double y1l (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __y1l (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double ynl (int, long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __ynl (int, long double) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double erfl (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __erfl (long double) __attribute__ ((__nothrow__ , __leaf__));
+ extern long double erfcl (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __erfcl (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double lgammal (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __lgammal (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double tgammal (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __tgammal (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double gammal (long double) __attribute__ ((__nothrow__ , __leaf__)); extern long double __gammal (long double) __attribute__ ((__nothrow__ , __leaf__));
+extern long double lgammal_r (long double, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern long double __lgammal_r (long double, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern long double rintl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __rintl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double nextafterl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __nextafterl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern long double nexttowardl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __nexttowardl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern long double nextdownl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __nextdownl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double nextupl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __nextupl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double remainderl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __remainderl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern long double scalbnl (long double __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern long double __scalbnl (long double __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogbl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogbl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogbl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogbl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double scalblnl (long double __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern long double __scalblnl (long double __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern long double nearbyintl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __nearbyintl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double roundl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __roundl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double truncl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __truncl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double remquol (long double __x, long double __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern long double __remquol (long double __x, long double __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrintl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrintl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrintl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrintl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lroundl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lroundl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llroundl (long double __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llroundl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double fdiml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)); extern long double __fdiml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern long double fmaxl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fmaxl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fminl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fminl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fmal (long double __x, long double __y, long double __z) __attribute__ ((__nothrow__ , __leaf__)); extern long double __fmal (long double __x, long double __y, long double __z) __attribute__ ((__nothrow__ , __leaf__));
+extern long double roundevenl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __roundevenl (long double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfpl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpxl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpxl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpxl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpxl (long double __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalizel (long double *__cx, const long double *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern long double fmaxmagl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fmaxmagl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fminmagl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fminmagl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fmaximuml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fmaximuml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fminimuml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fminimuml (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fmaximum_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fmaximum_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fminimum_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fminimum_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fmaximum_magl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fmaximum_magl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fminimum_magl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fminimum_magl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fmaximum_mag_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fmaximum_mag_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern long double fminimum_mag_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern long double __fminimum_mag_numl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorderl (const long double *__x, const long double *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermagl (const long double *__x, const long double *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern long double getpayloadl (const long double *__x) __attribute__ ((__nothrow__ , __leaf__)); extern long double __getpayloadl (const long double *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadl (long double *__x, long double __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsigl (long double *__x, long double __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern long double scalbl (long double __x, long double __n) __attribute__ ((__nothrow__ , __leaf__)); extern long double __scalbl (long double __x, long double __n) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 acosf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __acosf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 asinf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __asinf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 atanf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __atanf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 atan2f32 (_Float32 __y, _Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __atan2f32 (_Float32 __y, _Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 cosf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __cosf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 sinf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __sinf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 tanf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __tanf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 coshf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __coshf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 sinhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __sinhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 tanhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __tanhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincosf32 (_Float32 __x, _Float32 *__sinx, _Float32 *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincosf32 (_Float32 __x, _Float32 *__sinx, _Float32 *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 acoshf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __acoshf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 asinhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __asinhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 atanhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __atanhf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 expf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __expf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 frexpf32 (_Float32 __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __frexpf32 (_Float32 __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 ldexpf32 (_Float32 __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __ldexpf32 (_Float32 __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 logf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __logf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 log10f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __log10f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 modff32 (_Float32 __x, _Float32 *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __modff32 (_Float32 __x, _Float32 *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern _Float32 exp10f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __exp10f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 expm1f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __expm1f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 log1pf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __log1pf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 logbf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __logbf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 exp2f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __exp2f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 log2f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __log2f32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 powf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __powf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 sqrtf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __sqrtf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 hypotf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __hypotf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 cbrtf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __cbrtf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 ceilf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __ceilf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fabsf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fabsf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 floorf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __floorf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fmodf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __fmodf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 copysignf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __copysignf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 nanf32 (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __nanf32 (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 j0f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __j0f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 j1f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __j1f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 jnf32 (int, _Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __jnf32 (int, _Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 y0f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __y0f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 y1f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __y1f32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 ynf32 (int, _Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __ynf32 (int, _Float32) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 erff32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __erff32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32 erfcf32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __erfcf32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 lgammaf32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __lgammaf32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 tgammaf32 (_Float32) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __tgammaf32 (_Float32) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 lgammaf32_r (_Float32, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __lgammaf32_r (_Float32, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 rintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __rintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 nextafterf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __nextafterf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 nextdownf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __nextdownf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 nextupf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __nextupf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 remainderf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __remainderf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 scalbnf32 (_Float32 __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __scalbnf32 (_Float32 __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogbf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogbf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogbf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogbf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 scalblnf32 (_Float32 __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __scalblnf32 (_Float32 __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 nearbyintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __nearbyintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 roundf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __roundf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 truncf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __truncf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 remquof32 (_Float32 __x, _Float32 __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __remquof32 (_Float32 __x, _Float32 __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrintf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lroundf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lroundf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llroundf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llroundf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 fdimf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __fdimf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 fmaxf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fmaxf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fminf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fminf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fmaf32 (_Float32 __x, _Float32 __y, _Float32 __z) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __fmaf32 (_Float32 __x, _Float32 __y, _Float32 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 roundevenf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __roundevenf32 (_Float32 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfpf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpxf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpxf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpxf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpxf32 (_Float32 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalizef32 (_Float32 *__cx, const _Float32 *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 fmaxmagf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fmaxmagf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fminmagf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fminmagf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fmaximumf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fmaximumf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fminimumf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fminimumf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fmaximum_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fmaximum_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fminimum_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fminimum_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fmaximum_magf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fmaximum_magf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fminimum_magf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fminimum_magf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fmaximum_mag_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fmaximum_mag_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32 fminimum_mag_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32 __fminimum_mag_numf32 (_Float32 __x, _Float32 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorderf32 (const _Float32 *__x, const _Float32 *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermagf32 (const _Float32 *__x, const _Float32 *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern _Float32 getpayloadf32 (const _Float32 *__x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32 __getpayloadf32 (const _Float32 *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadf32 (_Float32 *__x, _Float32 __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsigf32 (_Float32 *__x, _Float32 __payload) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 acosf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __acosf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 asinf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __asinf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 atanf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __atanf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 atan2f64 (_Float64 __y, _Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __atan2f64 (_Float64 __y, _Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 cosf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __cosf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 sinf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __sinf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 tanf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __tanf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 coshf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __coshf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 sinhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __sinhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 tanhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __tanhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincosf64 (_Float64 __x, _Float64 *__sinx, _Float64 *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincosf64 (_Float64 __x, _Float64 *__sinx, _Float64 *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 acoshf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __acoshf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 asinhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __asinhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 atanhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __atanhf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 expf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __expf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 frexpf64 (_Float64 __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __frexpf64 (_Float64 __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 ldexpf64 (_Float64 __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __ldexpf64 (_Float64 __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 logf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __logf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 log10f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __log10f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 modff64 (_Float64 __x, _Float64 *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __modff64 (_Float64 __x, _Float64 *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern _Float64 exp10f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __exp10f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 expm1f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __expm1f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 log1pf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __log1pf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 logbf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __logbf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 exp2f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __exp2f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 log2f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __log2f64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 powf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __powf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 sqrtf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __sqrtf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 hypotf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __hypotf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 cbrtf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __cbrtf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 ceilf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __ceilf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fabsf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fabsf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 floorf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __floorf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fmodf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __fmodf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 copysignf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __copysignf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 nanf64 (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __nanf64 (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 j0f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __j0f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 j1f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __j1f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 jnf64 (int, _Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __jnf64 (int, _Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 y0f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __y0f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 y1f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __y1f64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 ynf64 (int, _Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __ynf64 (int, _Float64) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 erff64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __erff64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64 erfcf64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __erfcf64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 lgammaf64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __lgammaf64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 tgammaf64 (_Float64) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __tgammaf64 (_Float64) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 lgammaf64_r (_Float64, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __lgammaf64_r (_Float64, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 rintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __rintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 nextafterf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __nextafterf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 nextdownf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __nextdownf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 nextupf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __nextupf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 remainderf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __remainderf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 scalbnf64 (_Float64 __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __scalbnf64 (_Float64 __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogbf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogbf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogbf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogbf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 scalblnf64 (_Float64 __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __scalblnf64 (_Float64 __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 nearbyintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __nearbyintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 roundf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __roundf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 truncf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __truncf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 remquof64 (_Float64 __x, _Float64 __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __remquof64 (_Float64 __x, _Float64 __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrintf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lroundf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lroundf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llroundf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llroundf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 fdimf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __fdimf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 fmaxf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fmaxf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fminf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fminf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fmaf64 (_Float64 __x, _Float64 __y, _Float64 __z) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __fmaf64 (_Float64 __x, _Float64 __y, _Float64 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 roundevenf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __roundevenf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfpf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpxf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpxf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpxf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpxf64 (_Float64 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalizef64 (_Float64 *__cx, const _Float64 *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 fmaxmagf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fmaxmagf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fminmagf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fminmagf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fmaximumf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fmaximumf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fminimumf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fminimumf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fmaximum_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fmaximum_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fminimum_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fminimum_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fmaximum_magf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fmaximum_magf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fminimum_magf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fminimum_magf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fmaximum_mag_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fmaximum_mag_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64 fminimum_mag_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64 __fminimum_mag_numf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorderf64 (const _Float64 *__x, const _Float64 *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermagf64 (const _Float64 *__x, const _Float64 *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern _Float64 getpayloadf64 (const _Float64 *__x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64 __getpayloadf64 (const _Float64 *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadf64 (_Float64 *__x, _Float64 __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsigf64 (_Float64 *__x, _Float64 __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int __fpclassifyf128 (_Float128 __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __signbitf128 (_Float128 __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+extern int __isinff128 (_Float128 __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __finitef128 (_Float128 __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __isnanf128 (_Float128 __value) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__const__));
+extern int __iseqsigf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern int __issignalingf128 (_Float128 __value) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__const__));
+ extern _Float128 acosf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __acosf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 asinf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __asinf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 atanf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __atanf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 atan2f128 (_Float128 __y, _Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __atan2f128 (_Float128 __y, _Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 cosf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __cosf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 sinf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __sinf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 tanf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __tanf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 coshf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __coshf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 sinhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __sinhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 tanhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __tanhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincosf128 (_Float128 __x, _Float128 *__sinx, _Float128 *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincosf128 (_Float128 __x, _Float128 *__sinx, _Float128 *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 acoshf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __acoshf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 asinhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __asinhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 atanhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __atanhf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 expf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __expf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 frexpf128 (_Float128 __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __frexpf128 (_Float128 __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 ldexpf128 (_Float128 __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __ldexpf128 (_Float128 __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 logf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __logf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 log10f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __log10f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 modff128 (_Float128 __x, _Float128 *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __modff128 (_Float128 __x, _Float128 *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern _Float128 exp10f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __exp10f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 expm1f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __expm1f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 log1pf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __log1pf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 logbf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __logbf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 exp2f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __exp2f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 log2f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __log2f128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 powf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __powf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 sqrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __sqrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 hypotf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __hypotf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 cbrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __cbrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 ceilf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __ceilf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fabsf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fabsf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 floorf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __floorf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fmodf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __fmodf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 copysignf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __copysignf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 nanf128 (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __nanf128 (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 j0f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __j0f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 j1f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __j1f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 jnf128 (int, _Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __jnf128 (int, _Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 y0f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __y0f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 y1f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __y1f128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 ynf128 (int, _Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __ynf128 (int, _Float128) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 erff128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __erff128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float128 erfcf128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __erfcf128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 lgammaf128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __lgammaf128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 tgammaf128 (_Float128) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __tgammaf128 (_Float128) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 lgammaf128_r (_Float128, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __lgammaf128_r (_Float128, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 rintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __rintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 nextafterf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __nextafterf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 nextdownf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __nextdownf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 nextupf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __nextupf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 remainderf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __remainderf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 scalbnf128 (_Float128 __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __scalbnf128 (_Float128 __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogbf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogbf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogbf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogbf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 scalblnf128 (_Float128 __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __scalblnf128 (_Float128 __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 nearbyintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __nearbyintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 roundf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __roundf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 truncf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __truncf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 remquof128 (_Float128 __x, _Float128 __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __remquof128 (_Float128 __x, _Float128 __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrintf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lroundf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lroundf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llroundf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llroundf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 fdimf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __fdimf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 fmaxf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fmaxf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fminf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fminf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fmaf128 (_Float128 __x, _Float128 __y, _Float128 __z) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __fmaf128 (_Float128 __x, _Float128 __y, _Float128 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 roundevenf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __roundevenf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfpf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpxf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpxf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpxf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpxf128 (_Float128 __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalizef128 (_Float128 *__cx, const _Float128 *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float128 fmaxmagf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fmaxmagf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fminmagf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fminmagf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fmaximumf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fmaximumf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fminimumf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fminimumf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fmaximum_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fmaximum_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fminimum_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fminimum_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fmaximum_magf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fmaximum_magf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fminimum_magf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fminimum_magf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fmaximum_mag_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fmaximum_mag_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float128 fminimum_mag_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float128 __fminimum_mag_numf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorderf128 (const _Float128 *__x, const _Float128 *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermagf128 (const _Float128 *__x, const _Float128 *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern _Float128 getpayloadf128 (const _Float128 *__x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float128 __getpayloadf128 (const _Float128 *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadf128 (_Float128 *__x, _Float128 __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsigf128 (_Float128 *__x, _Float128 __payload) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x acosf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __acosf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x asinf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __asinf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x atanf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __atanf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x atan2f32x (_Float32x __y, _Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __atan2f32x (_Float32x __y, _Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x cosf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __cosf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x sinf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __sinf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x tanf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __tanf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x coshf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __coshf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x sinhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __sinhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x tanhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __tanhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincosf32x (_Float32x __x, _Float32x *__sinx, _Float32x *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincosf32x (_Float32x __x, _Float32x *__sinx, _Float32x *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x acoshf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __acoshf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x asinhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __asinhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x atanhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __atanhf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x expf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __expf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x frexpf32x (_Float32x __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __frexpf32x (_Float32x __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x ldexpf32x (_Float32x __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __ldexpf32x (_Float32x __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x logf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __logf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x log10f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __log10f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x modff32x (_Float32x __x, _Float32x *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __modff32x (_Float32x __x, _Float32x *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern _Float32x exp10f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __exp10f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x expm1f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __expm1f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x log1pf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __log1pf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x logbf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __logbf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x exp2f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __exp2f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x log2f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __log2f32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x powf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __powf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x sqrtf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __sqrtf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x hypotf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __hypotf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x cbrtf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __cbrtf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x ceilf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __ceilf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fabsf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fabsf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x floorf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __floorf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fmodf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __fmodf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x copysignf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __copysignf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x nanf32x (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __nanf32x (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x j0f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __j0f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x j1f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __j1f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x jnf32x (int, _Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __jnf32x (int, _Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x y0f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __y0f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x y1f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __y1f32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x ynf32x (int, _Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __ynf32x (int, _Float32x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x erff32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __erff32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float32x erfcf32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __erfcf32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x lgammaf32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __lgammaf32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x tgammaf32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __tgammaf32x (_Float32x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x lgammaf32x_r (_Float32x, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __lgammaf32x_r (_Float32x, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x rintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __rintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x nextafterf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __nextafterf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x nextdownf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __nextdownf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x nextupf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __nextupf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x remainderf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __remainderf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x scalbnf32x (_Float32x __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __scalbnf32x (_Float32x __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogbf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogbf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogbf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogbf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x scalblnf32x (_Float32x __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __scalblnf32x (_Float32x __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x nearbyintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __nearbyintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x roundf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __roundf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x truncf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __truncf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x remquof32x (_Float32x __x, _Float32x __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __remquof32x (_Float32x __x, _Float32x __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrintf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lroundf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lroundf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llroundf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llroundf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x fdimf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __fdimf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x fmaxf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fmaxf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fminf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fminf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fmaf32x (_Float32x __x, _Float32x __y, _Float32x __z) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __fmaf32x (_Float32x __x, _Float32x __y, _Float32x __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x roundevenf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __roundevenf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfpf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpxf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpxf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpxf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpxf32x (_Float32x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalizef32x (_Float32x *__cx, const _Float32x *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x fmaxmagf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fmaxmagf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fminmagf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fminmagf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fmaximumf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fmaximumf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fminimumf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fminimumf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fmaximum_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fmaximum_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fminimum_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fminimum_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fmaximum_magf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fmaximum_magf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fminimum_magf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fminimum_magf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fmaximum_mag_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fmaximum_mag_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float32x fminimum_mag_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float32x __fminimum_mag_numf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorderf32x (const _Float32x *__x, const _Float32x *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermagf32x (const _Float32x *__x, const _Float32x *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern _Float32x getpayloadf32x (const _Float32x *__x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float32x __getpayloadf32x (const _Float32x *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadf32x (_Float32x *__x, _Float32x __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsigf32x (_Float32x *__x, _Float32x __payload) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x acosf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __acosf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x asinf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __asinf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x atanf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __atanf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x atan2f64x (_Float64x __y, _Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __atan2f64x (_Float64x __y, _Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x cosf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __cosf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x sinf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __sinf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x tanf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __tanf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x coshf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __coshf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x sinhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __sinhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x tanhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __tanhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern void sincosf64x (_Float64x __x, _Float64x *__sinx, _Float64x *__cosx) __attribute__ ((__nothrow__ , __leaf__)); extern void __sincosf64x (_Float64x __x, _Float64x *__sinx, _Float64x *__cosx) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x acoshf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __acoshf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x asinhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __asinhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x atanhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __atanhf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x expf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __expf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x frexpf64x (_Float64x __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __frexpf64x (_Float64x __x, int *__exponent) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x ldexpf64x (_Float64x __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __ldexpf64x (_Float64x __x, int __exponent) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x logf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __logf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x log10f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __log10f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x modff64x (_Float64x __x, _Float64x *__iptr) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __modff64x (_Float64x __x, _Float64x *__iptr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+ extern _Float64x exp10f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __exp10f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x expm1f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __expm1f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x log1pf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __log1pf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x logbf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __logbf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x exp2f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __exp2f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x log2f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __log2f64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x powf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __powf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x sqrtf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __sqrtf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x hypotf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __hypotf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x cbrtf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __cbrtf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x ceilf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __ceilf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fabsf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fabsf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x floorf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __floorf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fmodf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __fmodf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x copysignf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __copysignf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x nanf64x (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __nanf64x (const char *__tagb) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x j0f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __j0f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x j1f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __j1f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x jnf64x (int, _Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __jnf64x (int, _Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x y0f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __y0f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x y1f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __y1f64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x ynf64x (int, _Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __ynf64x (int, _Float64x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x erff64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __erff64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+ extern _Float64x erfcf64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __erfcf64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x lgammaf64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __lgammaf64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x tgammaf64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __tgammaf64x (_Float64x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x lgammaf64x_r (_Float64x, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __lgammaf64x_r (_Float64x, int *__signgamp) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x rintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __rintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x nextafterf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __nextafterf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x nextdownf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __nextdownf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x nextupf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __nextupf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x remainderf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __remainderf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x scalbnf64x (_Float64x __x, int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __scalbnf64x (_Float64x __x, int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern int ilogbf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern int __ilogbf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int llogbf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __llogbf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x scalblnf64x (_Float64x __x, long int __n) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __scalblnf64x (_Float64x __x, long int __n) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x nearbyintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __nearbyintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x roundf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __roundf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x truncf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __truncf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x remquof64x (_Float64x __x, _Float64x __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __remquof64x (_Float64x __x, _Float64x __y, int *__quo) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lrintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lrintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llrintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llrintf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern long int lroundf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long int __lroundf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+__extension__
+extern long long int llroundf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)); extern long long int __llroundf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x fdimf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __fdimf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x fmaxf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fmaxf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fminf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fminf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fmaf64x (_Float64x __x, _Float64x __y, _Float64x __z) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __fmaf64x (_Float64x __x, _Float64x __y, _Float64x __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x roundevenf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __roundevenf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern __intmax_t fromfpf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __intmax_t fromfpxf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __intmax_t __fromfpxf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern __uintmax_t ufromfpxf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__)); extern __uintmax_t __ufromfpxf64x (_Float64x __x, int __round, unsigned int __width) __attribute__ ((__nothrow__ , __leaf__));
+extern int canonicalizef64x (_Float64x *__cx, const _Float64x *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x fmaxmagf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fmaxmagf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fminmagf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fminmagf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fmaximumf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fmaximumf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fminimumf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fminimumf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fmaximum_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fmaximum_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fminimum_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fminimum_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fmaximum_magf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fmaximum_magf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fminimum_magf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fminimum_magf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fmaximum_mag_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fmaximum_mag_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern _Float64x fminimum_mag_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__)); extern _Float64x __fminimum_mag_numf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int totalorderf64x (const _Float64x *__x, const _Float64x *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern int totalordermagf64x (const _Float64x *__x, const _Float64x *__y) __attribute__ ((__nothrow__ , __leaf__))
+     __attribute__ ((__pure__));
+extern _Float64x getpayloadf64x (const _Float64x *__x) __attribute__ ((__nothrow__ , __leaf__)); extern _Float64x __getpayloadf64x (const _Float64x *__x) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadf64x (_Float64x *__x, _Float64x __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern int setpayloadsigf64x (_Float64x *__x, _Float64x __payload) __attribute__ ((__nothrow__ , __leaf__));
+extern float fadd (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float fdiv (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float ffma (double __x, double __y, double __z) __attribute__ ((__nothrow__ , __leaf__));
+extern float fmul (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float fsqrt (double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float fsub (double __x, double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float faddl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float fdivl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float ffmal (long double __x, long double __y, long double __z) __attribute__ ((__nothrow__ , __leaf__));
+extern float fmull (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern float fsqrtl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern float fsubl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double daddl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double ddivl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double dfmal (long double __x, long double __y, long double __z) __attribute__ ((__nothrow__ , __leaf__));
+extern double dmull (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern double dsqrtl (long double __x) __attribute__ ((__nothrow__ , __leaf__));
+extern double dsubl (long double __x, long double __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32addf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32divf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32fmaf32x (_Float32x __x, _Float32x __y, _Float32x __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32mulf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32sqrtf32x (_Float32x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32subf32x (_Float32x __x, _Float32x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32addf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32divf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32fmaf64 (_Float64 __x, _Float64 __y, _Float64 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32mulf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32sqrtf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32subf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32addf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32divf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32fmaf64x (_Float64x __x, _Float64x __y, _Float64x __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32mulf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32sqrtf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32subf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32addf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32divf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32fmaf128 (_Float128 __x, _Float128 __y, _Float128 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32mulf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32sqrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32 f32subf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xaddf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xdivf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xfmaf64 (_Float64 __x, _Float64 __y, _Float64 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xmulf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xsqrtf64 (_Float64 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xsubf64 (_Float64 __x, _Float64 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xaddf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xdivf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xfmaf64x (_Float64x __x, _Float64x __y, _Float64x __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xmulf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xsqrtf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xsubf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xaddf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xdivf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xfmaf128 (_Float128 __x, _Float128 __y, _Float128 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xmulf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xsqrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float32x f32xsubf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64addf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64divf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64fmaf64x (_Float64x __x, _Float64x __y, _Float64x __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64mulf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64sqrtf64x (_Float64x __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64subf64x (_Float64x __x, _Float64x __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64addf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64divf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64fmaf128 (_Float128 __x, _Float128 __y, _Float128 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64mulf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64sqrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64 f64subf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x f64xaddf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x f64xdivf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x f64xfmaf128 (_Float128 __x, _Float128 __y, _Float128 __z) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x f64xmulf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x f64xsqrtf128 (_Float128 __x) __attribute__ ((__nothrow__ , __leaf__));
+extern _Float64x f64xsubf128 (_Float128 __x, _Float128 __y) __attribute__ ((__nothrow__ , __leaf__));
 extern int signgam;
-double j0(double);
-double j1(double);
-double jn(int, double);
-double y0(double);
-double y1(double);
-double yn(int, double);
-double drem(double, double);
-float dremf(float, float);
-int finite(double);
-int finitef(float);
-double scalb(double, double);
-float scalbf(float, float);
-double significand(double);
-float significandf(float);
-double lgamma_r(double, int*);
-float lgammaf_r(float, int*);
-float j0f(float);
-float j1f(float);
-float jnf(int, float);
-float y0f(float);
-float y1f(float);
-float ynf(int, float);
-long double lgammal_r(long double, int*);
-void sincos(double, double*, double*);
-void sincosf(float, float*, float*);
-void sincosl(long double, long double*, long double*);
-double exp10(double);
-float exp10f(float);
-long double exp10l(long double);
-double pow10(double);
-float pow10f(float);
-long double pow10l(long double);
-struct tm {
- int tm_sec;
- int tm_min;
- int tm_hour;
- int tm_mday;
- int tm_mon;
- int tm_year;
- int tm_wday;
- int tm_yday;
- int tm_isdst;
- long tm_gmtoff;
- const char *tm_zone;
+enum
+  {
+    FP_NAN =
+      0,
+    FP_INFINITE =
+      1,
+    FP_ZERO =
+      2,
+    FP_SUBNORMAL =
+      3,
+    FP_NORMAL =
+      4
+  };
+extern int __iscanonicall (long double __x)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+
+struct timex
+{
+  unsigned int modes;
+  __syscall_slong_t offset;
+  __syscall_slong_t freq;
+  __syscall_slong_t maxerror;
+  __syscall_slong_t esterror;
+  int status;
+  __syscall_slong_t constant;
+  __syscall_slong_t precision;
+  __syscall_slong_t tolerance;
+  struct timeval time;
+  __syscall_slong_t tick;
+  __syscall_slong_t ppsfreq;
+  __syscall_slong_t jitter;
+  int shift;
+  __syscall_slong_t stabil;
+  __syscall_slong_t jitcnt;
+  __syscall_slong_t calcnt;
+  __syscall_slong_t errcnt;
+  __syscall_slong_t stbcnt;
+  int tai;
+  int :32; int :32; int :32; int :32;
+  int :32; int :32; int :32; int :32;
+  int :32; int :32; int :32;
 };
-clock_t clock (void);
-time_t time (time_t *);
-double difftime (time_t, time_t);
-time_t mktime (struct tm *);
-size_t strftime (char *__restrict, size_t, const char *__restrict, const struct tm *__restrict);
-struct tm *gmtime (const time_t *);
-struct tm *localtime (const time_t *);
-char *asctime (const struct tm *);
-char *ctime (const time_t *);
-int timespec_get(struct timespec *, int);
-size_t strftime_l (char * __restrict, size_t, const char * __restrict, const struct tm * __restrict, locale_t);
-struct tm *gmtime_r (const time_t *__restrict, struct tm *__restrict);
-struct tm *localtime_r (const time_t *__restrict, struct tm *__restrict);
-char *asctime_r (const struct tm *__restrict, char *__restrict);
-char *ctime_r (const time_t *, char *);
-void tzset (void);
-struct itimerspec {
- struct timespec it_interval;
- struct timespec it_value;
+
+extern int clock_adjtime (__clockid_t __clock_id, struct timex *__utx) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+
+struct tm
+{
+  int tm_sec;
+  int tm_min;
+  int tm_hour;
+  int tm_mday;
+  int tm_mon;
+  int tm_year;
+  int tm_wday;
+  int tm_yday;
+  int tm_isdst;
+  long int tm_gmtoff;
+  const char *tm_zone;
 };
-int nanosleep (const struct timespec *, struct timespec *);
-int clock_getres (clockid_t, struct timespec *);
-int clock_gettime (clockid_t, struct timespec *);
-int clock_settime (clockid_t, const struct timespec *);
-int clock_nanosleep (clockid_t, int, const struct timespec *, struct timespec *);
-int clock_getcpuclockid (pid_t, clockid_t *);
+struct itimerspec
+  {
+    struct timespec it_interval;
+    struct timespec it_value;
+  };
 struct sigevent;
-int timer_create (clockid_t, struct sigevent *__restrict, timer_t *__restrict);
-int timer_delete (timer_t);
-int timer_settime (timer_t, int, const struct itimerspec *__restrict, struct itimerspec *__restrict);
-int timer_gettime (timer_t, struct itimerspec *);
-int timer_getoverrun (timer_t);
+
+extern clock_t clock (void) __attribute__ ((__nothrow__ , __leaf__));
+extern time_t time (time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern double difftime (time_t __time1, time_t __time0)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern time_t mktime (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern size_t strftime (char *__restrict __s, size_t __maxsize,
+   const char *__restrict __format,
+   const struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+extern char *strptime (const char *__restrict __s,
+         const char *__restrict __fmt, struct tm *__tp)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern size_t strftime_l (char *__restrict __s, size_t __maxsize,
+     const char *__restrict __format,
+     const struct tm *__restrict __tp,
+     locale_t __loc) __attribute__ ((__nothrow__ , __leaf__));
+extern char *strptime_l (const char *__restrict __s,
+    const char *__restrict __fmt, struct tm *__tp,
+    locale_t __loc) __attribute__ ((__nothrow__ , __leaf__));
+extern struct tm *gmtime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern struct tm *localtime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern struct tm *gmtime_r (const time_t *__restrict __timer,
+       struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+extern struct tm *localtime_r (const time_t *__restrict __timer,
+          struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+extern char *asctime (const struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern char *ctime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern char *asctime_r (const struct tm *__restrict __tp,
+   char *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__));
+extern char *ctime_r (const time_t *__restrict __timer,
+        char *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__));
+extern char *__tzname[2];
+extern int __daylight;
+extern long int __timezone;
 extern char *tzname[2];
-char *strptime (const char *__restrict, const char *__restrict, struct tm *__restrict);
+extern void tzset (void) __attribute__ ((__nothrow__ , __leaf__));
 extern int daylight;
-extern long timezone;
+extern long int timezone;
+extern time_t timegm (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern time_t timelocal (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern int dysize (int __year) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int nanosleep (const struct timespec *__requested_time,
+        struct timespec *__remaining);
+extern int clock_getres (clockid_t __clock_id, struct timespec *__res) __attribute__ ((__nothrow__ , __leaf__));
+extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int clock_settime (clockid_t __clock_id, const struct timespec *__tp)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int clock_nanosleep (clockid_t __clock_id, int __flags,
+       const struct timespec *__req,
+       struct timespec *__rem);
+extern int clock_getcpuclockid (pid_t __pid, clockid_t *__clock_id) __attribute__ ((__nothrow__ , __leaf__));
+extern int timer_create (clockid_t __clock_id,
+    struct sigevent *__restrict __evp,
+    timer_t *__restrict __timerid) __attribute__ ((__nothrow__ , __leaf__));
+extern int timer_delete (timer_t __timerid) __attribute__ ((__nothrow__ , __leaf__));
+extern int timer_settime (timer_t __timerid, int __flags,
+     const struct itimerspec *__restrict __value,
+     struct itimerspec *__restrict __ovalue) __attribute__ ((__nothrow__ , __leaf__));
+extern int timer_gettime (timer_t __timerid, struct itimerspec *__value)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int timer_getoverrun (timer_t __timerid) __attribute__ ((__nothrow__ , __leaf__));
+extern int timespec_get (struct timespec *__ts, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int timespec_getres (struct timespec *__ts, int __base)
+     __attribute__ ((__nothrow__ , __leaf__));
 extern int getdate_err;
-struct tm *getdate (const char *);
-int stime(const time_t *);
-time_t timegm(struct tm *);
-int gettimeofday (struct timeval *__restrict, void *__restrict);
-struct itimerval {
- struct timeval it_interval;
- struct timeval it_value;
-};
-int getitimer (int, struct itimerval *);
-int setitimer (int, const struct itimerval *__restrict, struct itimerval *__restrict);
-int utimes (const char *, const struct timeval [2]);
-struct timezone {
- int tz_minuteswest;
- int tz_dsttime;
-};
-int futimes(int, const struct timeval [2]);
-int futimesat(int, const char *, const struct timeval [2]);
-int lutimes(const char *, const struct timeval [2]);
-int settimeofday(const struct timeval *, const struct timezone *);
-int adjtime (const struct timeval *, struct timeval *);
+extern struct tm *getdate (const char *__string);
+extern int getdate_r (const char *__restrict __string,
+        struct tm *__restrict __resbufp);
 
 
+struct timezone
+  {
+    int tz_minuteswest;
+    int tz_dsttime;
+  };
+extern int gettimeofday (struct timeval *__restrict __tv,
+    void *__restrict __tz) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int settimeofday (const struct timeval *__tv,
+    const struct timezone *__tz)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int adjtime (const struct timeval *__delta,
+      struct timeval *__olddelta) __attribute__ ((__nothrow__ , __leaf__));
+enum __itimer_which
+  {
+    ITIMER_REAL = 0,
+    ITIMER_VIRTUAL = 1,
+    ITIMER_PROF = 2
+  };
+struct itimerval
+  {
+    struct timeval it_interval;
+    struct timeval it_value;
+  };
+typedef enum __itimer_which __itimer_which_t;
+extern int getitimer (__itimer_which_t __which,
+        struct itimerval *__value) __attribute__ ((__nothrow__ , __leaf__));
+extern int setitimer (__itimer_which_t __which,
+        const struct itimerval *__restrict __new,
+        struct itimerval *__restrict __old) __attribute__ ((__nothrow__ , __leaf__));
+extern int utimes (const char *__file, const struct timeval __tvp[2])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int lutimes (const char *__file, const struct timeval __tvp[2])
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int futimes (int __fd, const struct timeval __tvp[2]) __attribute__ ((__nothrow__ , __leaf__));
+extern int futimesat (int __fd, const char *__file,
+        const struct timeval __tvp[2]) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+extern size_t strlcpy(char *, const char*, size_t);
+extern size_t strlcat(char *, const char*, size_t);
 __attribute__((__format__(__printf__, 1, 2)))
 extern void setproctitle(const char *fmt, ...);
 
 
-_Noreturn void __assert_fail (const char *, const char *, int, const char *);
+
+extern long int __sysconf (int __name) __attribute__ ((__nothrow__ , __leaf__));
+
 typedef unsigned long VALUE;
 typedef unsigned long ID;
 __extension__ _Static_assert(4 == sizeof(int), "sizeof_int" ": " "SIZEOF_INT == sizeof(int)");
@@ -1037,7 +3736,7 @@ static inline _Bool
 RB_STATIC_SYM_P(VALUE obj)
 {
    
-    const VALUE mask = ~((2UL*0x7fffffffffffffffL +1) << RUBY_SPECIAL_SHIFT);
+    const VALUE mask = ~((0x7fffffffffffffffL * 2UL + 1UL) << RUBY_SPECIAL_SHIFT);
     return (obj & mask) == RUBY_SYMBOL_FLAG;
 }
 __attribute__((__const__))
@@ -1176,7 +3875,7 @@ rb_num2ulong_inline(VALUE x)
 static inline VALUE
 rb_long2num_inline(long v)
 {
-    if ((((v) < (0x7fffffffffffffffL / 2) + 1) && ((v) >= ((-0x7fffffffffffffffL -1) / 2))))
+    if ((((v) < (0x7fffffffffffffffL / 2) + 1) && ((v) >= ((-0x7fffffffffffffffL - 1L) / 2))))
         return RB_INT2FIX(v);
     else
         return rb_int2big(v);
@@ -1258,7 +3957,7 @@ RB_FIX2UINT(VALUE x)
 static inline VALUE
 rb_int2num_inline(int v)
 {
-    if ((((v) < (0x7fffffffffffffffL / 2) + 1) && ((v) >= ((-0x7fffffffffffffffL -1) / 2))))
+    if ((((v) < (0x7fffffffffffffffL / 2) + 1) && ((v) >= ((-0x7fffffffffffffffL - 1L) / 2))))
         return RB_INT2FIX(v);
     else
         return rb_int2big(v);
@@ -1994,7 +4693,7 @@ unsigned long long rb_num2ull(VALUE num);
 static inline VALUE
 rb_ll2num_inline(long long n)
 {
-    if ((((n) < (0x7fffffffffffffffL / 2) + 1) && ((n) >= ((-0x7fffffffffffffffL -1) / 2)))) return RB_INT2FIX((long)n);
+    if ((((n) < (0x7fffffffffffffffL / 2) + 1) && ((n) >= ((-0x7fffffffffffffffL - 1L) / 2)))) return RB_INT2FIX((long)n);
     return rb_ll2inum(n);
 }
 static inline VALUE
@@ -2114,7 +4813,7 @@ RB_ST2FIX(st_data_t i)
         x &= (0x7fffffffffffffffL / 2);
     }
     else {
-        x |= ((-0x7fffffffffffffffL -1) / 2);
+        x |= ((-0x7fffffffffffffffL - 1L) / 2);
     }
     ((void)0);
     unsigned long y = ((unsigned long)x);
@@ -2583,40 +5282,74 @@ rb_data_typed_object_alloc(VALUE klass, void *datap, const rb_data_type_t *type)
 {
     return rb_data_typed_object_wrap(klass, datap, type);
 }
-int isalnum(int);
-int isalpha(int);
-int isblank(int);
-int iscntrl(int);
-int isdigit(int);
-int isgraph(int);
-int islower(int);
-int isprint(int);
-int ispunct(int);
-int isspace(int);
-int isupper(int);
-int isxdigit(int);
-int tolower(int);
-int toupper(int);
-static inline int __isspace(int _c)
+
+enum
 {
- return _c == ' ' || (unsigned)_c-'\t' < 5;
+  _ISupper = ((0) < 8 ? ((1 << (0)) << 8) : ((1 << (0)) >> 8)),
+  _ISlower = ((1) < 8 ? ((1 << (1)) << 8) : ((1 << (1)) >> 8)),
+  _ISalpha = ((2) < 8 ? ((1 << (2)) << 8) : ((1 << (2)) >> 8)),
+  _ISdigit = ((3) < 8 ? ((1 << (3)) << 8) : ((1 << (3)) >> 8)),
+  _ISxdigit = ((4) < 8 ? ((1 << (4)) << 8) : ((1 << (4)) >> 8)),
+  _ISspace = ((5) < 8 ? ((1 << (5)) << 8) : ((1 << (5)) >> 8)),
+  _ISprint = ((6) < 8 ? ((1 << (6)) << 8) : ((1 << (6)) >> 8)),
+  _ISgraph = ((7) < 8 ? ((1 << (7)) << 8) : ((1 << (7)) >> 8)),
+  _ISblank = ((8) < 8 ? ((1 << (8)) << 8) : ((1 << (8)) >> 8)),
+  _IScntrl = ((9) < 8 ? ((1 << (9)) << 8) : ((1 << (9)) >> 8)),
+  _ISpunct = ((10) < 8 ? ((1 << (10)) << 8) : ((1 << (10)) >> 8)),
+  _ISalnum = ((11) < 8 ? ((1 << (11)) << 8) : ((1 << (11)) >> 8))
+};
+extern const unsigned short int **__ctype_b_loc (void)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern const __int32_t **__ctype_tolower_loc (void)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern const __int32_t **__ctype_toupper_loc (void)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int isalnum (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isalpha (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int iscntrl (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isdigit (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int islower (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isgraph (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isprint (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int ispunct (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isspace (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isupper (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isxdigit (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int tolower (int __c) __attribute__ ((__nothrow__ , __leaf__));
+extern int toupper (int __c) __attribute__ ((__nothrow__ , __leaf__));
+extern int isblank (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int isctype (int __c, int __mask) __attribute__ ((__nothrow__ , __leaf__));
+extern int isascii (int __c) __attribute__ ((__nothrow__ , __leaf__));
+extern int toascii (int __c) __attribute__ ((__nothrow__ , __leaf__));
+extern int _toupper (int) __attribute__ ((__nothrow__ , __leaf__));
+extern int _tolower (int) __attribute__ ((__nothrow__ , __leaf__));
+extern __inline __attribute__ ((__gnu_inline__)) int
+__attribute__ ((__nothrow__ , __leaf__)) tolower (int __c)
+{
+  return __c >= -128 && __c < 256 ? (*__ctype_tolower_loc ())[__c] : __c;
 }
-int isalnum_l(int, locale_t);
-int isalpha_l(int, locale_t);
-int isblank_l(int, locale_t);
-int iscntrl_l(int, locale_t);
-int isdigit_l(int, locale_t);
-int isgraph_l(int, locale_t);
-int islower_l(int, locale_t);
-int isprint_l(int, locale_t);
-int ispunct_l(int, locale_t);
-int isspace_l(int, locale_t);
-int isupper_l(int, locale_t);
-int isxdigit_l(int, locale_t);
-int tolower_l(int, locale_t);
-int toupper_l(int, locale_t);
-int isascii(int);
-int toascii(int);
+extern __inline __attribute__ ((__gnu_inline__)) int
+__attribute__ ((__nothrow__ , __leaf__)) toupper (int __c)
+{
+  return __c >= -128 && __c < 256 ? (*__ctype_toupper_loc ())[__c] : __c;
+}
+extern int isalnum_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isalpha_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int iscntrl_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isdigit_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int islower_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isgraph_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isprint_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int ispunct_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isspace_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isupper_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isxdigit_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int isblank_l (int, locale_t) __attribute__ ((__nothrow__ , __leaf__));
+extern int __tolower_l (int __c, locale_t __l) __attribute__ ((__nothrow__ , __leaf__));
+extern int tolower_l (int __c, locale_t __l) __attribute__ ((__nothrow__ , __leaf__));
+extern int __toupper_l (int __c, locale_t __l) __attribute__ ((__nothrow__ , __leaf__));
+extern int toupper_l (int __c, locale_t __l) __attribute__ ((__nothrow__ , __leaf__));
+
 
 
 __attribute__((__nonnull__ ()))
@@ -4339,194 +7072,469 @@ __attribute__((__format__(__printf__, 3, 0)))
 int ruby_vsnprintf(char *str, size_t n, char const *fmt, va_list ap);
 
 
-typedef struct sigaltstack stack_t;
-enum { REG_R8 = 0 };
-enum { REG_R9 = 1 };
-enum { REG_R10 = 2 };
-enum { REG_R11 = 3 };
-enum { REG_R12 = 4 };
-enum { REG_R13 = 5 };
-enum { REG_R14 = 6 };
-enum { REG_R15 = 7 };
-enum { REG_RDI = 8 };
-enum { REG_RSI = 9 };
-enum { REG_RBP = 10 };
-enum { REG_RBX = 11 };
-enum { REG_RDX = 12 };
-enum { REG_RAX = 13 };
-enum { REG_RCX = 14 };
-enum { REG_RSP = 15 };
-enum { REG_RIP = 16 };
-enum { REG_EFL = 17 };
-enum { REG_CSGSFS = 18 };
-enum { REG_ERR = 19 };
-enum { REG_TRAPNO = 20 };
-enum { REG_OLDMASK = 21 };
-enum { REG_CR2 = 22 };
-typedef long long greg_t, gregset_t[23];
-typedef struct _fpstate {
- unsigned short cwd, swd, ftw, fop;
- unsigned long long rip, rdp;
- unsigned mxcsr, mxcr_mask;
- struct {
-  unsigned short significand[4], exponent, padding[3];
- } _st[8];
- struct {
-  unsigned element[4];
- } _xmm[16];
- unsigned padding[24];
-} *fpregset_t;
-struct sigcontext {
- unsigned long r8, r9, r10, r11, r12, r13, r14, r15;
- unsigned long rdi, rsi, rbp, rbx, rdx, rax, rcx, rsp, rip, eflags;
- unsigned short cs, gs, fs, __pad0;
- unsigned long err, trapno, oldmask, cr2;
- struct _fpstate *fpstate;
- unsigned long __reserved1[8];
+
+typedef __sig_atomic_t sig_atomic_t;
+union sigval
+{
+  int sival_int;
+  void *sival_ptr;
 };
-typedef struct {
- gregset_t gregs;
- fpregset_t fpregs;
- unsigned long long __reserved1[8];
-} mcontext_t;
-struct sigaltstack {
- void *ss_sp;
- int ss_flags;
- size_t ss_size;
-};
-typedef struct ucontext {
- unsigned long uc_flags;
- struct ucontext *uc_link;
- stack_t uc_stack;
- mcontext_t uc_mcontext;
- sigset_t uc_sigmask;
- unsigned long __fpregs_mem[64];
-} ucontext_t;
-union sigval {
- int sival_int;
- void *sival_ptr;
-};
-typedef struct {
- int si_signo, si_errno, si_code;
- union {
-  char __pad[128 - 2*sizeof(int) - sizeof(long)];
-  struct {
-   union {
-    struct {
-     pid_t si_pid;
-     uid_t si_uid;
-    } __piduid;
-    struct {
-     int si_timerid;
+typedef union sigval __sigval_t;
+typedef struct
+  {
+    int si_signo;
+    int si_errno;
+    int si_code;
+    int __pad0;
+    union
+      {
+ int _pad[((128 / sizeof (int)) - 4)];
+ struct
+   {
+     __pid_t si_pid;
+     __uid_t si_uid;
+   } _kill;
+ struct
+   {
+     int si_tid;
      int si_overrun;
-    } __timer;
-   } __first;
-   union {
-    union sigval si_value;
-    struct {
+     __sigval_t si_sigval;
+   } _timer;
+ struct
+   {
+     __pid_t si_pid;
+     __uid_t si_uid;
+     __sigval_t si_sigval;
+   } _rt;
+ struct
+   {
+     __pid_t si_pid;
+     __uid_t si_uid;
      int si_status;
-     clock_t si_utime, si_stime;
-    } __sigchld;
-   } __second;
-  } __si_common;
-  struct {
-   void *si_addr;
-   short si_addr_lsb;
-   union {
-    struct {
-     void *si_lower;
-     void *si_upper;
-    } __addr_bnd;
-    unsigned si_pkey;
-   } __first;
-  } __sigfault;
-  struct {
-   long si_band;
-   int si_fd;
-  } __sigpoll;
-  struct {
-   void *si_call_addr;
-   int si_syscall;
-   unsigned si_arch;
-  } __sigsys;
- } __si_fields;
-} siginfo_t;
-struct sigaction {
- union {
-  void (*sa_handler)(int);
-  void (*sa_sigaction)(int, siginfo_t *, void *);
- } __sa_handler;
- sigset_t sa_mask;
- int sa_flags;
- void (*sa_restorer)(void);
+     __clock_t si_utime;
+     __clock_t si_stime;
+   } _sigchld;
+ struct
+   {
+     void *si_addr;
+    
+     short int si_addr_lsb;
+     union
+       {
+  struct
+    {
+      void *_lower;
+      void *_upper;
+    } _addr_bnd;
+  __uint32_t _pkey;
+       } _bounds;
+   } _sigfault;
+ struct
+   {
+     long int si_band;
+     int si_fd;
+   } _sigpoll;
+ struct
+   {
+     void *_call_addr;
+     int _syscall;
+     unsigned int _arch;
+   } _sigsys;
+      } _sifields;
+  } siginfo_t ;
+enum
+{
+  SI_ASYNCNL = -60,
+  SI_DETHREAD = -7,
+  SI_TKILL,
+  SI_SIGIO,
+  SI_ASYNCIO,
+  SI_MESGQ,
+  SI_TIMER,
+  SI_QUEUE,
+  SI_USER,
+  SI_KERNEL = 0x80
 };
-struct sigevent {
- union sigval sigev_value;
- int sigev_signo;
- int sigev_notify;
- union {
-  char __pad[64 - 2*sizeof(int) - sizeof(union sigval)];
-  pid_t sigev_notify_thread_id;
-  struct {
-   void (*sigev_notify_function)(union sigval);
-   pthread_attr_t *sigev_notify_attributes;
-  } __sev_thread;
- } __sev_fields;
+enum
+{
+  ILL_ILLOPC = 1,
+  ILL_ILLOPN,
+  ILL_ILLADR,
+  ILL_ILLTRP,
+  ILL_PRVOPC,
+  ILL_PRVREG,
+  ILL_COPROC,
+  ILL_BADSTK,
+  ILL_BADIADDR
 };
-int __libc_current_sigrtmin(void);
-int __libc_current_sigrtmax(void);
-int kill(pid_t, int);
-int sigemptyset(sigset_t *);
-int sigfillset(sigset_t *);
-int sigaddset(sigset_t *, int);
-int sigdelset(sigset_t *, int);
-int sigismember(const sigset_t *, int);
-int sigprocmask(int, const sigset_t *__restrict, sigset_t *__restrict);
-int sigsuspend(const sigset_t *);
-int sigaction(int, const struct sigaction *__restrict, struct sigaction *__restrict);
-int sigpending(sigset_t *);
-int sigwait(const sigset_t *__restrict, int *__restrict);
-int sigwaitinfo(const sigset_t *__restrict, siginfo_t *__restrict);
-int sigtimedwait(const sigset_t *__restrict, siginfo_t *__restrict, const struct timespec *__restrict);
-int sigqueue(pid_t, int, union sigval);
-int pthread_sigmask(int, const sigset_t *__restrict, sigset_t *__restrict);
-int pthread_kill(pthread_t, int);
-void psiginfo(const siginfo_t *, const char *);
-void psignal(int, const char *);
-int killpg(pid_t, int);
-int sigaltstack(const stack_t *__restrict, stack_t *__restrict);
-int sighold(int);
-int sigignore(int);
-int siginterrupt(int, int);
-int sigpause(int);
-int sigrelse(int);
-void (*sigset(int, void (*)(int)))(int);
-typedef void (*sig_t)(int);
-typedef void (*sighandler_t)(int);
-void (*bsd_signal(int, void (*)(int)))(int);
-int sigisemptyset(const sigset_t *);
-int sigorset (sigset_t *, const sigset_t *, const sigset_t *);
-int sigandset(sigset_t *, const sigset_t *, const sigset_t *);
-typedef int sig_atomic_t;
-void (*signal(int, void (*)(int)))(int);
-int raise(int);
-typedef unsigned long __jmp_buf[8];
-typedef struct __jmp_buf_tag {
- __jmp_buf __jb;
- unsigned long __fl;
- unsigned long __ss[128/sizeof(long)];
-} jmp_buf[1];
-typedef jmp_buf sigjmp_buf;
-int sigsetjmp (sigjmp_buf, int) __attribute__((__returns_twice__));
-_Noreturn void siglongjmp (sigjmp_buf, int);
-int _setjmp (jmp_buf) __attribute__((__returns_twice__));
-_Noreturn void _longjmp (jmp_buf, int);
-int setjmp (jmp_buf) __attribute__((__returns_twice__));
-_Noreturn void longjmp (jmp_buf, int);
-_Noreturn void __assert_fail (const char *, const char *, int, const char *);
+enum
+{
+  FPE_INTDIV = 1,
+  FPE_INTOVF,
+  FPE_FLTDIV,
+  FPE_FLTOVF,
+  FPE_FLTUND,
+  FPE_FLTRES,
+  FPE_FLTINV,
+  FPE_FLTSUB,
+  FPE_FLTUNK = 14,
+  FPE_CONDTRAP
+};
+enum
+{
+  SEGV_MAPERR = 1,
+  SEGV_ACCERR,
+  SEGV_BNDERR,
+  SEGV_PKUERR,
+  SEGV_ACCADI,
+  SEGV_ADIDERR,
+  SEGV_ADIPERR,
+  SEGV_MTEAERR,
+  SEGV_MTESERR
+};
+enum
+{
+  BUS_ADRALN = 1,
+  BUS_ADRERR,
+  BUS_OBJERR,
+  BUS_MCEERR_AR,
+  BUS_MCEERR_AO
+};
+enum
+{
+  TRAP_BRKPT = 1,
+  TRAP_TRACE,
+  TRAP_BRANCH,
+  TRAP_HWBKPT,
+  TRAP_UNK
+};
+enum
+{
+  CLD_EXITED = 1,
+  CLD_KILLED,
+  CLD_DUMPED,
+  CLD_TRAPPED,
+  CLD_STOPPED,
+  CLD_CONTINUED
+};
+enum
+{
+  POLL_IN = 1,
+  POLL_OUT,
+  POLL_MSG,
+  POLL_ERR,
+  POLL_PRI,
+  POLL_HUP
+};
+typedef __sigval_t sigval_t;
+typedef struct sigevent
+  {
+    __sigval_t sigev_value;
+    int sigev_signo;
+    int sigev_notify;
+    union
+      {
+ int _pad[((64 / sizeof (int)) - 4)];
+ __pid_t _tid;
+ struct
+   {
+     void (*_function) (__sigval_t);
+     pthread_attr_t *_attribute;
+   } _sigev_thread;
+      } _sigev_un;
+  } sigevent_t;
+enum
+{
+  SIGEV_SIGNAL = 0,
+  SIGEV_NONE,
+  SIGEV_THREAD,
+  SIGEV_THREAD_ID = 4
+};
+typedef void (*__sighandler_t) (int);
+extern __sighandler_t __sysv_signal (int __sig, __sighandler_t __handler)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern __sighandler_t sysv_signal (int __sig, __sighandler_t __handler)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern __sighandler_t signal (int __sig, __sighandler_t __handler)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int kill (__pid_t __pid, int __sig) __attribute__ ((__nothrow__ , __leaf__));
+extern int killpg (__pid_t __pgrp, int __sig) __attribute__ ((__nothrow__ , __leaf__));
+extern int raise (int __sig) __attribute__ ((__nothrow__ , __leaf__));
+extern __sighandler_t ssignal (int __sig, __sighandler_t __handler)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int gsignal (int __sig) __attribute__ ((__nothrow__ , __leaf__));
+extern void psignal (int __sig, const char *__s);
+extern void psiginfo (const siginfo_t *__pinfo, const char *__s);
+extern int sigpause (int __sig) __asm__ ("__xpg_sigpause")
+  __attribute__ ((__deprecated__ ("Use the sigsuspend function instead")));
+extern int sigblock (int __mask) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__deprecated__));
+extern int sigsetmask (int __mask) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__deprecated__));
+extern int siggetmask (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__deprecated__));
+typedef __sighandler_t sighandler_t;
+typedef __sighandler_t sig_t;
+extern int sigemptyset (sigset_t *__set) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int sigfillset (sigset_t *__set) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int sigaddset (sigset_t *__set, int __signo) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int sigdelset (sigset_t *__set, int __signo) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int sigismember (const sigset_t *__set, int __signo)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int sigisemptyset (const sigset_t *__set) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int sigandset (sigset_t *__set, const sigset_t *__left,
+        const sigset_t *__right) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2, 3)));
+extern int sigorset (sigset_t *__set, const sigset_t *__left,
+       const sigset_t *__right) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2, 3)));
+struct sigaction
+  {
+    union
+      {
+ __sighandler_t sa_handler;
+ void (*sa_sigaction) (int, siginfo_t *, void *);
+      }
+    __sigaction_handler;
+    __sigset_t sa_mask;
+    int sa_flags;
+    void (*sa_restorer) (void);
+  };
+extern int sigprocmask (int __how, const sigset_t *__restrict __set,
+   sigset_t *__restrict __oset) __attribute__ ((__nothrow__ , __leaf__));
+extern int sigsuspend (const sigset_t *__set) __attribute__ ((__nonnull__ (1)));
+extern int sigaction (int __sig, const struct sigaction *__restrict __act,
+        struct sigaction *__restrict __oact) __attribute__ ((__nothrow__ , __leaf__));
+extern int sigpending (sigset_t *__set) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int sigwait (const sigset_t *__restrict __set, int *__restrict __sig)
+     __attribute__ ((__nonnull__ (1, 2)));
+extern int sigwaitinfo (const sigset_t *__restrict __set,
+   siginfo_t *__restrict __info) __attribute__ ((__nonnull__ (1)));
+extern int sigtimedwait (const sigset_t *__restrict __set,
+    siginfo_t *__restrict __info,
+    const struct timespec *__restrict __timeout)
+     __attribute__ ((__nonnull__ (1)));
+extern int sigqueue (__pid_t __pid, int __sig, const union sigval __val)
+     __attribute__ ((__nothrow__ , __leaf__));
+struct _fpx_sw_bytes
+{
+  __uint32_t magic1;
+  __uint32_t extended_size;
+  __uint64_t xstate_bv;
+  __uint32_t xstate_size;
+  __uint32_t __glibc_reserved1[7];
+};
+struct _fpreg
+{
+  unsigned short significand[4];
+  unsigned short exponent;
+};
+struct _fpxreg
+{
+  unsigned short significand[4];
+  unsigned short exponent;
+  unsigned short __glibc_reserved1[3];
+};
+struct _xmmreg
+{
+  __uint32_t element[4];
+};
+struct _fpstate
+{
+  __uint16_t cwd;
+  __uint16_t swd;
+  __uint16_t ftw;
+  __uint16_t fop;
+  __uint64_t rip;
+  __uint64_t rdp;
+  __uint32_t mxcsr;
+  __uint32_t mxcr_mask;
+  struct _fpxreg _st[8];
+  struct _xmmreg _xmm[16];
+  __uint32_t __glibc_reserved1[24];
+};
+struct sigcontext
+{
+  __uint64_t r8;
+  __uint64_t r9;
+  __uint64_t r10;
+  __uint64_t r11;
+  __uint64_t r12;
+  __uint64_t r13;
+  __uint64_t r14;
+  __uint64_t r15;
+  __uint64_t rdi;
+  __uint64_t rsi;
+  __uint64_t rbp;
+  __uint64_t rbx;
+  __uint64_t rdx;
+  __uint64_t rax;
+  __uint64_t rcx;
+  __uint64_t rsp;
+  __uint64_t rip;
+  __uint64_t eflags;
+  unsigned short cs;
+  unsigned short gs;
+  unsigned short fs;
+  unsigned short __pad0;
+  __uint64_t err;
+  __uint64_t trapno;
+  __uint64_t oldmask;
+  __uint64_t cr2;
+  __extension__ union
+    {
+      struct _fpstate * fpstate;
+      __uint64_t __fpstate_word;
+    };
+  __uint64_t __reserved1 [8];
+};
+struct _xsave_hdr
+{
+  __uint64_t xstate_bv;
+  __uint64_t __glibc_reserved1[2];
+  __uint64_t __glibc_reserved2[5];
+};
+struct _ymmh_state
+{
+  __uint32_t ymmh_space[64];
+};
+struct _xstate
+{
+  struct _fpstate fpstate;
+  struct _xsave_hdr xstate_hdr;
+  struct _ymmh_state ymmh;
+};
+extern int sigreturn (struct sigcontext *__scp) __attribute__ ((__nothrow__ , __leaf__));
+typedef struct
+  {
+    void *ss_sp;
+    int ss_flags;
+    size_t ss_size;
+  } stack_t;
+__extension__ typedef long long int greg_t;
+typedef greg_t gregset_t[23];
+enum
+{
+  REG_R8 = 0,
+  REG_R9,
+  REG_R10,
+  REG_R11,
+  REG_R12,
+  REG_R13,
+  REG_R14,
+  REG_R15,
+  REG_RDI,
+  REG_RSI,
+  REG_RBP,
+  REG_RBX,
+  REG_RDX,
+  REG_RAX,
+  REG_RCX,
+  REG_RSP,
+  REG_RIP,
+  REG_EFL,
+  REG_CSGSFS,
+  REG_ERR,
+  REG_TRAPNO,
+  REG_OLDMASK,
+  REG_CR2
+};
+struct _libc_fpxreg
+{
+  unsigned short int significand[4];
+  unsigned short int exponent;
+  unsigned short int __glibc_reserved1[3];
+};
+struct _libc_xmmreg
+{
+  __uint32_t element[4];
+};
+struct _libc_fpstate
+{
+  __uint16_t cwd;
+  __uint16_t swd;
+  __uint16_t ftw;
+  __uint16_t fop;
+  __uint64_t rip;
+  __uint64_t rdp;
+  __uint32_t mxcsr;
+  __uint32_t mxcr_mask;
+  struct _libc_fpxreg _st[8];
+  struct _libc_xmmreg _xmm[16];
+  __uint32_t __glibc_reserved1[24];
+};
+typedef struct _libc_fpstate *fpregset_t;
+typedef struct
+  {
+    gregset_t gregs;
+    fpregset_t fpregs;
+    __extension__ unsigned long long __reserved1 [8];
+} mcontext_t;
+typedef struct ucontext_t
+  {
+    unsigned long int uc_flags;
+    struct ucontext_t *uc_link;
+    stack_t uc_stack;
+    mcontext_t uc_mcontext;
+    sigset_t uc_sigmask;
+    struct _libc_fpstate __fpregs_mem;
+    __extension__ unsigned long long int __ssp[4];
+  } ucontext_t;
+extern int siginterrupt (int __sig, int __interrupt) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__deprecated__ ("Use sigaction with SA_RESTART instead")));
+enum
+{
+  SS_ONSTACK = 1,
+  SS_DISABLE
+};
+extern int sigaltstack (const stack_t *__restrict __ss,
+   stack_t *__restrict __oss) __attribute__ ((__nothrow__ , __leaf__));
+struct sigstack
+  {
+    void *ss_sp;
+    int ss_onstack;
+  };
+extern int sigstack (struct sigstack *__ss, struct sigstack *__oss)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__deprecated__));
+extern int sighold (int __sig) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__deprecated__ ("Use the sigprocmask function instead")));
+extern int sigrelse (int __sig) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__deprecated__ ("Use the sigprocmask function instead")));
+extern int sigignore (int __sig) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__deprecated__ ("Use the signal function instead")));
+extern __sighandler_t sigset (int __sig, __sighandler_t __disp) __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__deprecated__ ("Use the signal and sigprocmask functions instead")));
+extern int pthread_sigmask (int __how,
+       const __sigset_t *__restrict __newmask,
+       __sigset_t *__restrict __oldmask)__attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_kill (pthread_t __threadid, int __signo) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_sigqueue (pthread_t __threadid, int __signo,
+        const union sigval __value) __attribute__ ((__nothrow__ , __leaf__));
+extern int __libc_current_sigrtmin (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int __libc_current_sigrtmax (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int tgkill (__pid_t __tgid, __pid_t __tid, int __signal);
+
+
+typedef long int __jmp_buf[8];
+struct __jmp_buf_tag
+  {
+    __jmp_buf __jmpbuf;
+    int __mask_was_saved;
+    __sigset_t __saved_mask;
+  };
+typedef struct __jmp_buf_tag jmp_buf[1];
+extern int setjmp (jmp_buf __env) __attribute__ ((__nothrow__));
+extern int __sigsetjmp (struct __jmp_buf_tag __env[1], int __savemask) __attribute__ ((__nothrow__));
+extern int _setjmp (struct __jmp_buf_tag __env[1]) __attribute__ ((__nothrow__));
+extern void longjmp (struct __jmp_buf_tag __env[1], int __val)
+     __attribute__ ((__nothrow__)) __attribute__ ((__noreturn__));
+extern void _longjmp (struct __jmp_buf_tag __env[1], int __val)
+     __attribute__ ((__nothrow__)) __attribute__ ((__noreturn__));
+typedef struct __jmp_buf_tag sigjmp_buf[1];
+extern void siglongjmp (sigjmp_buf __env, int __val)
+     __attribute__ ((__nothrow__)) __attribute__ ((__noreturn__));
+extern void longjmp (struct __jmp_buf_tag __env[1], int __val) __asm__ ("" "__longjmp_chk") __attribute__ ((__nothrow__)) __attribute__ ((__noreturn__));
+extern void _longjmp (struct __jmp_buf_tag __env[1], int __val) __asm__ ("" "__longjmp_chk") __attribute__ ((__nothrow__)) __attribute__ ((__noreturn__));
+extern void siglongjmp (struct __jmp_buf_tag __env[1], int __val) __asm__ ("" "__longjmp_chk") __attribute__ ((__nothrow__)) __attribute__ ((__noreturn__));
+
 static inline char *container_of_or_null_(void *member_ptr, size_t offset)
 {
- return member_ptr ? (char *)member_ptr - offset : ((void*)0);
+ return member_ptr ? (char *)member_ptr - offset : ((void *)0);
 }
 struct list_node
 {
@@ -4600,7 +7608,7 @@ static inline void list_del_init_(struct list_node *n, const char *abortstr)
 }
 static inline void list_del_from(struct list_head *h, struct list_node *n)
 {
- (void)0;
+ ((void) (0));
  list_del_(n, "./ccan/list/list.h" ":" "329");
 }
 static inline void list_swap_(struct list_node *o,
@@ -4615,14 +7623,14 @@ static inline void list_swap_(struct list_node *o,
 static inline const void *list_top_(const struct list_head *h, size_t off)
 {
  if (list_empty_(h, "./ccan/list/list.h" ":" "399"))
-  return ((void*)0);
+  return ((void *)0);
  return (const char *)h->n.next - off;
 }
 static inline const void *list_pop_(const struct list_head *h, size_t off)
 {
  struct list_node *n;
  if (list_empty_(h, "./ccan/list/list.h" ":" "425"))
-  return ((void*)0);
+  return ((void *)0);
  n = h->n.next;
  list_del_(n, "./ccan/list/list.h" ":" "428");
  return (const char *)n - off;
@@ -4630,7 +7638,7 @@ static inline const void *list_pop_(const struct list_head *h, size_t off)
 static inline const void *list_tail_(const struct list_head *h, size_t off)
 {
  if (list_empty_(h, "./ccan/list/list.h" ":" "451"))
-  return ((void*)0);
+  return ((void *)0);
  return (const char *)h->n.prev - off;
 }
 static inline void list_append_list_(struct list_head *to,
@@ -4672,7 +7680,7 @@ static inline void *list_entry_or_null(const struct list_head *h,
            size_t off)
 {
  if (n == &h->n)
-  return ((void*)0);
+  return ((void *)0);
  return (char *)n - off;
 }
 enum ruby_id_types {
@@ -5415,7 +8423,7 @@ struct rb_method_definition_struct {
 };
 struct rb_id_table;
 typedef struct rb_method_definition_struct rb_method_definition_t;
-__extension__ _Static_assert(__builtin_offsetof(rb_method_definition_t, body)==8, "sizeof_method_def" ": " "offsetof(rb_method_definition_t, body)==8");
+__extension__ _Static_assert(__builtin_offsetof (rb_method_definition_t, body)==8, "sizeof_method_def" ": " "offsetof(rb_method_definition_t, body)==8");
 void rb_add_method(VALUE klass, ID mid, rb_method_type_t type, void *option, rb_method_visibility_t visi);
 void rb_add_method_cfunc(VALUE klass, ID mid, VALUE (*func)(), int argc, rb_method_visibility_t visi);
 void rb_add_method_iseq(VALUE klass, ID mid, const rb_iseq_t *iseq, rb_cref_t *cref, rb_method_visibility_t visi);
@@ -5915,7 +8923,7 @@ rb_darray_ensure_space(void *ptr_to_ary, size_t header_size, size_t element_size
     if (new_buffer_size <= current_buffer_size) return 0;
     rb_darray_meta_t *doubled_ary = realloc(meta, new_buffer_size);
     if (!doubled_ary) return 0;
-    if (meta == ((void*)0)) {
+    if (meta == ((void *)0)) {
         doubled_ary->size = 0;
     }
     doubled_ary->capa = new_capa;
@@ -5928,7 +8936,7 @@ rb_darray_make_impl(void *ptr_to_ary, int32_t array_size, size_t header_size, si
     rb_darray_meta_t **ptr_to_ptr_to_meta = ptr_to_ary;
     if (array_size < 0) return 0;
     if (array_size == 0) {
-        *ptr_to_ptr_to_meta = ((void*)0);
+        *ptr_to_ptr_to_meta = ((void *)0);
         return 1;
     }
     size_t buffer_size = rb_darray_buffer_size(array_size, header_size, element_size);
@@ -5939,155 +8947,469 @@ rb_darray_make_impl(void *ptr_to_ary, int32_t array_size, size_t header_size, si
     ruby_nonempty_memcpy(ptr_to_ary, &meta, sizeof(meta));
     return 1;
 }
-struct sched_param {
- int sched_priority;
- int __reserved1;
- struct {
-  time_t __reserved1;
-  long __reserved2;
- } __reserved2[2];
- int __reserved3;
+struct sched_param
+{
+  int sched_priority;
 };
-int sched_get_priority_max(int);
-int sched_get_priority_min(int);
-int sched_getparam(pid_t, struct sched_param *);
-int sched_getscheduler(pid_t);
-int sched_rr_get_interval(pid_t, struct timespec *);
-int sched_setparam(pid_t, const struct sched_param *);
-int sched_setscheduler(pid_t, int, const struct sched_param *);
-int sched_yield(void);
-int clone (int (*)(void *), void *, int, void *, ...);
-int unshare(int);
-int setns(int, int);
-void *ruby_nonempty_memcpy(void *__restrict, const void *__restrict, size_t);
-int memcmp(const void *, const void *, size_t);
-void *memset (void *, int, size_t);
-void *calloc(size_t, size_t);
-void free(void *);
-typedef struct cpu_set_t { unsigned long __bits[128/sizeof(long)]; } cpu_set_t;
-int __sched_cpucount(size_t, const cpu_set_t *);
-int sched_getcpu(void);
-int sched_getaffinity(pid_t, size_t, cpu_set_t *);
-int sched_setaffinity(pid_t, size_t, const cpu_set_t *);
-static inline void __CPU_AND_S(size_t __size, cpu_set_t *__dest, const cpu_set_t *__src1, const cpu_set_t *__src2) { size_t __i; for (__i=0; __i<__size/sizeof(long); __i++) ((unsigned long *)__dest)[__i] = ((unsigned long *)__src1)[__i] & ((unsigned long *)__src2)[__i] ; }
-static inline void __CPU_OR_S(size_t __size, cpu_set_t *__dest, const cpu_set_t *__src1, const cpu_set_t *__src2) { size_t __i; for (__i=0; __i<__size/sizeof(long); __i++) ((unsigned long *)__dest)[__i] = ((unsigned long *)__src1)[__i] | ((unsigned long *)__src2)[__i] ; }
-static inline void __CPU_XOR_S(size_t __size, cpu_set_t *__dest, const cpu_set_t *__src1, const cpu_set_t *__src2) { size_t __i; for (__i=0; __i<__size/sizeof(long); __i++) ((unsigned long *)__dest)[__i] = ((unsigned long *)__src1)[__i] ^ ((unsigned long *)__src2)[__i] ; }
-int pthread_create(pthread_t *__restrict, const pthread_attr_t *__restrict, void *(*)(void *), void *__restrict);
-int pthread_detach(pthread_t);
-_Noreturn void pthread_exit(void *);
-int pthread_join(pthread_t, void **);
-__attribute__((const))
-pthread_t pthread_self(void);
-int pthread_equal(pthread_t, pthread_t);
-int pthread_setcancelstate(int, int *);
-int pthread_setcanceltype(int, int *);
-void pthread_testcancel(void);
-int pthread_cancel(pthread_t);
-int pthread_getschedparam(pthread_t, int *__restrict, struct sched_param *__restrict);
-int pthread_setschedparam(pthread_t, int, const struct sched_param *);
-int pthread_setschedprio(pthread_t, int);
-int pthread_once(pthread_once_t *, void (*)(void));
-int pthread_mutex_init(pthread_mutex_t *__restrict, const pthread_mutexattr_t *__restrict);
-int pthread_mutex_lock(pthread_mutex_t *);
-int pthread_mutex_unlock(pthread_mutex_t *);
-int pthread_mutex_trylock(pthread_mutex_t *);
-int pthread_mutex_timedlock(pthread_mutex_t *__restrict, const struct timespec *__restrict);
-int pthread_mutex_destroy(pthread_mutex_t *);
-int pthread_mutex_consistent(pthread_mutex_t *);
-int pthread_mutex_getprioceiling(const pthread_mutex_t *__restrict, int *__restrict);
-int pthread_mutex_setprioceiling(pthread_mutex_t *__restrict, int, int *__restrict);
-int pthread_cond_init(pthread_cond_t *__restrict, const pthread_condattr_t *__restrict);
-int pthread_cond_destroy(pthread_cond_t *);
-int pthread_cond_wait(pthread_cond_t *__restrict, pthread_mutex_t *__restrict);
-int pthread_cond_timedwait(pthread_cond_t *__restrict, pthread_mutex_t *__restrict, const struct timespec *__restrict);
-int pthread_cond_broadcast(pthread_cond_t *);
-int pthread_cond_signal(pthread_cond_t *);
-int pthread_rwlock_init(pthread_rwlock_t *__restrict, const pthread_rwlockattr_t *__restrict);
-int pthread_rwlock_destroy(pthread_rwlock_t *);
-int pthread_rwlock_rdlock(pthread_rwlock_t *);
-int pthread_rwlock_tryrdlock(pthread_rwlock_t *);
-int pthread_rwlock_timedrdlock(pthread_rwlock_t *__restrict, const struct timespec *__restrict);
-int pthread_rwlock_wrlock(pthread_rwlock_t *);
-int pthread_rwlock_trywrlock(pthread_rwlock_t *);
-int pthread_rwlock_timedwrlock(pthread_rwlock_t *__restrict, const struct timespec *__restrict);
-int pthread_rwlock_unlock(pthread_rwlock_t *);
-int pthread_spin_init(pthread_spinlock_t *, int);
-int pthread_spin_destroy(pthread_spinlock_t *);
-int pthread_spin_lock(pthread_spinlock_t *);
-int pthread_spin_trylock(pthread_spinlock_t *);
-int pthread_spin_unlock(pthread_spinlock_t *);
-int pthread_barrier_init(pthread_barrier_t *__restrict, const pthread_barrierattr_t *__restrict, unsigned);
-int pthread_barrier_destroy(pthread_barrier_t *);
-int pthread_barrier_wait(pthread_barrier_t *);
-int pthread_key_create(pthread_key_t *, void (*)(void *));
-int pthread_key_delete(pthread_key_t);
-void *pthread_getspecific(pthread_key_t);
-int pthread_setspecific(pthread_key_t, const void *);
-int pthread_attr_init(pthread_attr_t *);
-int pthread_attr_destroy(pthread_attr_t *);
-int pthread_attr_getguardsize(const pthread_attr_t *__restrict, size_t *__restrict);
-int pthread_attr_setguardsize(pthread_attr_t *, size_t);
-int pthread_attr_getstacksize(const pthread_attr_t *__restrict, size_t *__restrict);
-int pthread_attr_setstacksize(pthread_attr_t *, size_t);
-int pthread_attr_getdetachstate(const pthread_attr_t *, int *);
-int pthread_attr_setdetachstate(pthread_attr_t *, int);
-int pthread_attr_getstack(const pthread_attr_t *__restrict, void **__restrict, size_t *__restrict);
-int pthread_attr_setstack(pthread_attr_t *, void *, size_t);
-int pthread_attr_getscope(const pthread_attr_t *__restrict, int *__restrict);
-int pthread_attr_setscope(pthread_attr_t *, int);
-int pthread_attr_getschedpolicy(const pthread_attr_t *__restrict, int *__restrict);
-int pthread_attr_setschedpolicy(pthread_attr_t *, int);
-int pthread_attr_getschedparam(const pthread_attr_t *__restrict, struct sched_param *__restrict);
-int pthread_attr_setschedparam(pthread_attr_t *__restrict, const struct sched_param *__restrict);
-int pthread_attr_getinheritsched(const pthread_attr_t *__restrict, int *__restrict);
-int pthread_attr_setinheritsched(pthread_attr_t *, int);
-int pthread_mutexattr_destroy(pthread_mutexattr_t *);
-int pthread_mutexattr_getprioceiling(const pthread_mutexattr_t *__restrict, int *__restrict);
-int pthread_mutexattr_getprotocol(const pthread_mutexattr_t *__restrict, int *__restrict);
-int pthread_mutexattr_getpshared(const pthread_mutexattr_t *__restrict, int *__restrict);
-int pthread_mutexattr_getrobust(const pthread_mutexattr_t *__restrict, int *__restrict);
-int pthread_mutexattr_gettype(const pthread_mutexattr_t *__restrict, int *__restrict);
-int pthread_mutexattr_init(pthread_mutexattr_t *);
-int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *, int);
-int pthread_mutexattr_setprotocol(pthread_mutexattr_t *, int);
-int pthread_mutexattr_setpshared(pthread_mutexattr_t *, int);
-int pthread_mutexattr_setrobust(pthread_mutexattr_t *, int);
-int pthread_mutexattr_settype(pthread_mutexattr_t *, int);
-int pthread_condattr_init(pthread_condattr_t *);
-int pthread_condattr_destroy(pthread_condattr_t *);
-int pthread_condattr_setclock(pthread_condattr_t *, clockid_t);
-int pthread_condattr_setpshared(pthread_condattr_t *, int);
-int pthread_condattr_getclock(const pthread_condattr_t *__restrict, clockid_t *__restrict);
-int pthread_condattr_getpshared(const pthread_condattr_t *__restrict, int *__restrict);
-int pthread_rwlockattr_init(pthread_rwlockattr_t *);
-int pthread_rwlockattr_destroy(pthread_rwlockattr_t *);
-int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *, int);
-int pthread_rwlockattr_getpshared(const pthread_rwlockattr_t *__restrict, int *__restrict);
-int pthread_barrierattr_destroy(pthread_barrierattr_t *);
-int pthread_barrierattr_getpshared(const pthread_barrierattr_t *__restrict, int *__restrict);
-int pthread_barrierattr_init(pthread_barrierattr_t *);
-int pthread_barrierattr_setpshared(pthread_barrierattr_t *, int);
-int pthread_atfork(void (*)(void), void (*)(void), void (*)(void));
-int pthread_getconcurrency(void);
-int pthread_setconcurrency(int);
-int pthread_getcpuclockid(pthread_t, clockid_t *);
-struct __ptcb {
- void (*__f)(void *);
- void *__x;
- struct __ptcb *__next;
+
+extern int clone (int (*__fn) (void *__arg), void *__child_stack,
+    int __flags, void *__arg, ...) __attribute__ ((__nothrow__ , __leaf__));
+extern int unshare (int __flags) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_getcpu (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int getcpu (unsigned int *, unsigned int *) __attribute__ ((__nothrow__ , __leaf__));
+extern int setns (int __fd, int __nstype) __attribute__ ((__nothrow__ , __leaf__));
+
+typedef unsigned long int __cpu_mask;
+typedef struct
+{
+  __cpu_mask __bits[1024 / (8 * sizeof (__cpu_mask))];
+} cpu_set_t;
+
+extern int __sched_cpucount (size_t __setsize, const cpu_set_t *__setp)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern cpu_set_t *__sched_cpualloc (size_t __count) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__warn_unused_result__));
+extern void __sched_cpufree (cpu_set_t *__set) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_setparam (__pid_t __pid, const struct sched_param *__param)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_getparam (__pid_t __pid, struct sched_param *__param) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_setscheduler (__pid_t __pid, int __policy,
+          const struct sched_param *__param) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_getscheduler (__pid_t __pid) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_yield (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_get_priority_max (int __algorithm) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_get_priority_min (int __algorithm) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_rr_get_interval (__pid_t __pid, struct timespec *__t) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_setaffinity (__pid_t __pid, size_t __cpusetsize,
+         const cpu_set_t *__cpuset) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_getaffinity (__pid_t __pid, size_t __cpusetsize,
+         cpu_set_t *__cpuset) __attribute__ ((__nothrow__ , __leaf__));
+
+enum
+{
+  PTHREAD_CREATE_JOINABLE,
+  PTHREAD_CREATE_DETACHED
 };
-void _pthread_cleanup_push(struct __ptcb *, void (*)(void *), void *);
-void _pthread_cleanup_pop(struct __ptcb *, int);
-struct cpu_set_t;
-int pthread_getaffinity_np(pthread_t, size_t, struct cpu_set_t *);
-int pthread_setaffinity_np(pthread_t, size_t, const struct cpu_set_t *);
-int pthread_getattr_np(pthread_t, pthread_attr_t *);
-int pthread_setname_np(pthread_t, const char *);
-int pthread_getname_np(pthread_t, char *, size_t);
-int pthread_getattr_default_np(pthread_attr_t *);
-int pthread_setattr_default_np(const pthread_attr_t *);
-int pthread_tryjoin_np(pthread_t, void **);
-int pthread_timedjoin_np(pthread_t, void **, const struct timespec *);
+enum
+{
+  PTHREAD_MUTEX_TIMED_NP,
+  PTHREAD_MUTEX_RECURSIVE_NP,
+  PTHREAD_MUTEX_ERRORCHECK_NP,
+  PTHREAD_MUTEX_ADAPTIVE_NP
+  ,
+  PTHREAD_MUTEX_NORMAL = PTHREAD_MUTEX_TIMED_NP,
+  PTHREAD_MUTEX_RECURSIVE = PTHREAD_MUTEX_RECURSIVE_NP,
+  PTHREAD_MUTEX_ERRORCHECK = PTHREAD_MUTEX_ERRORCHECK_NP,
+  PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL
+  , PTHREAD_MUTEX_FAST_NP = PTHREAD_MUTEX_TIMED_NP
+};
+enum
+{
+  PTHREAD_MUTEX_STALLED,
+  PTHREAD_MUTEX_STALLED_NP = PTHREAD_MUTEX_STALLED,
+  PTHREAD_MUTEX_ROBUST,
+  PTHREAD_MUTEX_ROBUST_NP = PTHREAD_MUTEX_ROBUST
+};
+enum
+{
+  PTHREAD_PRIO_NONE,
+  PTHREAD_PRIO_INHERIT,
+  PTHREAD_PRIO_PROTECT
+};
+enum
+{
+  PTHREAD_RWLOCK_PREFER_READER_NP,
+  PTHREAD_RWLOCK_PREFER_WRITER_NP,
+  PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP,
+  PTHREAD_RWLOCK_DEFAULT_NP = PTHREAD_RWLOCK_PREFER_READER_NP
+};
+enum
+{
+  PTHREAD_INHERIT_SCHED,
+  PTHREAD_EXPLICIT_SCHED
+};
+enum
+{
+  PTHREAD_SCOPE_SYSTEM,
+  PTHREAD_SCOPE_PROCESS
+};
+enum
+{
+  PTHREAD_PROCESS_PRIVATE,
+  PTHREAD_PROCESS_SHARED
+};
+struct _pthread_cleanup_buffer
+{
+  void (*__routine) (void *);
+  void *__arg;
+  int __canceltype;
+  struct _pthread_cleanup_buffer *__prev;
+};
+enum
+{
+  PTHREAD_CANCEL_ENABLE,
+  PTHREAD_CANCEL_DISABLE
+};
+enum
+{
+  PTHREAD_CANCEL_DEFERRED,
+  PTHREAD_CANCEL_ASYNCHRONOUS
+};
+
+extern int pthread_create (pthread_t *__restrict __newthread,
+      const pthread_attr_t *__restrict __attr,
+      void *(*__start_routine) (void *),
+      void *__restrict __arg) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 3)));
+extern void pthread_exit (void *__retval) __attribute__ ((__noreturn__));
+extern int pthread_join (pthread_t __th, void **__thread_return);
+extern int pthread_tryjoin_np (pthread_t __th, void **__thread_return) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_timedjoin_np (pthread_t __th, void **__thread_return,
+     const struct timespec *__abstime);
+extern int pthread_clockjoin_np (pthread_t __th, void **__thread_return,
+                                 clockid_t __clockid,
+     const struct timespec *__abstime);
+extern int pthread_detach (pthread_t __th) __attribute__ ((__nothrow__ , __leaf__));
+extern pthread_t pthread_self (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int pthread_equal (pthread_t __thread1, pthread_t __thread2)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern int pthread_attr_init (pthread_attr_t *__attr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_destroy (pthread_attr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_getdetachstate (const pthread_attr_t *__attr,
+     int *__detachstate)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_setdetachstate (pthread_attr_t *__attr,
+     int __detachstate)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_getguardsize (const pthread_attr_t *__attr,
+          size_t *__guardsize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_setguardsize (pthread_attr_t *__attr,
+          size_t __guardsize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_getschedparam (const pthread_attr_t *__restrict __attr,
+           struct sched_param *__restrict __param)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_setschedparam (pthread_attr_t *__restrict __attr,
+           const struct sched_param *__restrict
+           __param) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_getschedpolicy (const pthread_attr_t *__restrict
+     __attr, int *__restrict __policy)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_setschedpolicy (pthread_attr_t *__attr, int __policy)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_getinheritsched (const pthread_attr_t *__restrict
+      __attr, int *__restrict __inherit)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_setinheritsched (pthread_attr_t *__attr,
+      int __inherit)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_getscope (const pthread_attr_t *__restrict __attr,
+      int *__restrict __scope)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_setscope (pthread_attr_t *__attr, int __scope)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_getstackaddr (const pthread_attr_t *__restrict
+          __attr, void **__restrict __stackaddr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__deprecated__));
+extern int pthread_attr_setstackaddr (pthread_attr_t *__attr,
+          void *__stackaddr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__deprecated__));
+extern int pthread_attr_getstacksize (const pthread_attr_t *__restrict
+          __attr, size_t *__restrict __stacksize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_attr_setstacksize (pthread_attr_t *__attr,
+          size_t __stacksize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_getstack (const pthread_attr_t *__restrict __attr,
+      void **__restrict __stackaddr,
+      size_t *__restrict __stacksize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2, 3)));
+extern int pthread_attr_setstack (pthread_attr_t *__attr, void *__stackaddr,
+      size_t __stacksize) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_setaffinity_np (pthread_attr_t *__attr,
+     size_t __cpusetsize,
+     const cpu_set_t *__cpuset)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern int pthread_attr_getaffinity_np (const pthread_attr_t *__attr,
+     size_t __cpusetsize,
+     cpu_set_t *__cpuset)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern int pthread_getattr_default_np (pthread_attr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_setsigmask_np (pthread_attr_t *__attr,
+           const __sigset_t *sigmask);
+extern int pthread_attr_getsigmask_np (const pthread_attr_t *__attr,
+           __sigset_t *sigmask);
+extern int pthread_setattr_default_np (const pthread_attr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_getattr_np (pthread_t __th, pthread_attr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int pthread_setschedparam (pthread_t __target_thread, int __policy,
+      const struct sched_param *__param)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int pthread_getschedparam (pthread_t __target_thread,
+      int *__restrict __policy,
+      struct sched_param *__restrict __param)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+extern int pthread_setschedprio (pthread_t __target_thread, int __prio)
+     __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_getname_np (pthread_t __target_thread, char *__buf,
+          size_t __buflen)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int pthread_setname_np (pthread_t __target_thread, const char *__name)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int pthread_getconcurrency (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_setconcurrency (int __level) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_yield (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_yield (void) __asm__ ("" "sched_yield") __attribute__ ((__nothrow__ , __leaf__))
+  __attribute__ ((__deprecated__ ("pthread_yield is deprecated, use sched_yield instead")));
+extern int pthread_setaffinity_np (pthread_t __th, size_t __cpusetsize,
+       const cpu_set_t *__cpuset)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int pthread_getaffinity_np (pthread_t __th, size_t __cpusetsize,
+       cpu_set_t *__cpuset)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+extern int pthread_once (pthread_once_t *__once_control,
+    void (*__init_routine) (void)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_setcancelstate (int __state, int *__oldstate);
+extern int pthread_setcanceltype (int __type, int *__oldtype);
+extern int pthread_cancel (pthread_t __th);
+extern void pthread_testcancel (void);
+struct __cancel_jmp_buf_tag
+{
+  __jmp_buf __cancel_jmp_buf;
+  int __mask_was_saved;
+};
+typedef struct
+{
+  struct __cancel_jmp_buf_tag __cancel_jmp_buf[1];
+  void *__pad[4];
+} __pthread_unwind_buf_t __attribute__ ((__aligned__));
+struct __pthread_cleanup_frame
+{
+  void (*__cancel_routine) (void *);
+  void *__cancel_arg;
+  int __do_it;
+  int __cancel_type;
+};
+extern void __pthread_register_cancel (__pthread_unwind_buf_t *__buf)
+     ;
+extern void __pthread_unregister_cancel (__pthread_unwind_buf_t *__buf)
+  ;
+extern void __pthread_register_cancel_defer (__pthread_unwind_buf_t *__buf)
+     ;
+extern void __pthread_unregister_cancel_restore (__pthread_unwind_buf_t *__buf)
+  ;
+extern void __pthread_unwind_next (__pthread_unwind_buf_t *__buf)
+     __attribute__ ((__noreturn__))
+     __attribute__ ((__weak__))
+     ;
+extern int __sigsetjmp_cancel (struct __cancel_jmp_buf_tag __env[1], int __savemask) __asm__ ("" "__sigsetjmp") __attribute__ ((__nothrow__)) __attribute__ ((__returns_twice__));
+extern int pthread_mutex_init (pthread_mutex_t *__mutex,
+          const pthread_mutexattr_t *__mutexattr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutex_destroy (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutex_trylock (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutex_lock (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutex_timedlock (pthread_mutex_t *__restrict __mutex,
+        const struct timespec *__restrict
+        __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_mutex_clocklock (pthread_mutex_t *__restrict __mutex,
+        clockid_t __clockid,
+        const struct timespec *__restrict
+        __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 3)));
+extern int pthread_mutex_unlock (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutex_getprioceiling (const pthread_mutex_t *
+      __restrict __mutex,
+      int *__restrict __prioceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_mutex_setprioceiling (pthread_mutex_t *__restrict __mutex,
+      int __prioceiling,
+      int *__restrict __old_ceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+extern int pthread_mutex_consistent (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutex_consistent_np (pthread_mutex_t *) __asm__ ("" "pthread_mutex_consistent") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)))
+  __attribute__ ((__deprecated__ ("pthread_mutex_consistent_np is deprecated, use pthread_mutex_consistent")));
+extern int pthread_mutexattr_init (pthread_mutexattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutexattr_destroy (pthread_mutexattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutexattr_getpshared (const pthread_mutexattr_t *
+      __restrict __attr,
+      int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_mutexattr_setpshared (pthread_mutexattr_t *__attr,
+      int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutexattr_gettype (const pthread_mutexattr_t *__restrict
+          __attr, int *__restrict __kind)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutexattr_getprotocol (const pthread_mutexattr_t *
+       __restrict __attr,
+       int *__restrict __protocol)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_mutexattr_setprotocol (pthread_mutexattr_t *__attr,
+       int __protocol)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutexattr_getprioceiling (const pthread_mutexattr_t *
+          __restrict __attr,
+          int *__restrict __prioceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_mutexattr_setprioceiling (pthread_mutexattr_t *__attr,
+          int __prioceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutexattr_getrobust (const pthread_mutexattr_t *__attr,
+     int *__robustness)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_mutexattr_getrobust_np (pthread_mutexattr_t *, int *) __asm__ ("" "pthread_mutexattr_getrobust") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)))
+  __attribute__ ((__deprecated__ ("pthread_mutexattr_getrobust_np is deprecated, use pthread_mutexattr_getrobust")));
+extern int pthread_mutexattr_setrobust (pthread_mutexattr_t *__attr,
+     int __robustness)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_mutexattr_setrobust_np (pthread_mutexattr_t *, int) __asm__ ("" "pthread_mutexattr_setrobust") __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)))
+  __attribute__ ((__deprecated__ ("pthread_mutexattr_setrobust_np is deprecated, use pthread_mutexattr_setrobust")));
+extern int pthread_rwlock_init (pthread_rwlock_t *__restrict __rwlock,
+    const pthread_rwlockattr_t *__restrict
+    __attr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlock_destroy (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlock_rdlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlock_tryrdlock (pthread_rwlock_t *__rwlock)
+  __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlock_timedrdlock (pthread_rwlock_t *__restrict __rwlock,
+           const struct timespec *__restrict
+           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_rwlock_clockrdlock (pthread_rwlock_t *__restrict __rwlock,
+           clockid_t __clockid,
+           const struct timespec *__restrict
+           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 3)));
+extern int pthread_rwlock_wrlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlock_trywrlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlock_timedwrlock (pthread_rwlock_t *__restrict __rwlock,
+           const struct timespec *__restrict
+           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_rwlock_clockwrlock (pthread_rwlock_t *__restrict __rwlock,
+           clockid_t __clockid,
+           const struct timespec *__restrict
+           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 3)));
+extern int pthread_rwlock_unlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlockattr_init (pthread_rwlockattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlockattr_destroy (pthread_rwlockattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlockattr_getpshared (const pthread_rwlockattr_t *
+       __restrict __attr,
+       int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_rwlockattr_setpshared (pthread_rwlockattr_t *__attr,
+       int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_rwlockattr_getkind_np (const pthread_rwlockattr_t *
+       __restrict __attr,
+       int *__restrict __pref)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_rwlockattr_setkind_np (pthread_rwlockattr_t *__attr,
+       int __pref) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_cond_init (pthread_cond_t *__restrict __cond,
+         const pthread_condattr_t *__restrict __cond_attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_cond_destroy (pthread_cond_t *__cond)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_cond_signal (pthread_cond_t *__cond)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_cond_broadcast (pthread_cond_t *__cond)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_cond_wait (pthread_cond_t *__restrict __cond,
+         pthread_mutex_t *__restrict __mutex)
+     __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_cond_timedwait (pthread_cond_t *__restrict __cond,
+       pthread_mutex_t *__restrict __mutex,
+       const struct timespec *__restrict __abstime)
+     __attribute__ ((__nonnull__ (1, 2, 3)));
+extern int pthread_cond_clockwait (pthread_cond_t *__restrict __cond,
+       pthread_mutex_t *__restrict __mutex,
+       __clockid_t __clock_id,
+       const struct timespec *__restrict __abstime)
+     __attribute__ ((__nonnull__ (1, 2, 4)));
+extern int pthread_condattr_init (pthread_condattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_condattr_destroy (pthread_condattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_condattr_getpshared (const pthread_condattr_t *
+     __restrict __attr,
+     int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_condattr_setpshared (pthread_condattr_t *__attr,
+     int __pshared) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_condattr_getclock (const pthread_condattr_t *
+          __restrict __attr,
+          __clockid_t *__restrict __clock_id)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_condattr_setclock (pthread_condattr_t *__attr,
+          __clockid_t __clock_id)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_spin_init (pthread_spinlock_t *__lock, int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_spin_destroy (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_spin_lock (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_spin_trylock (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_spin_unlock (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_barrier_init (pthread_barrier_t *__restrict __barrier,
+     const pthread_barrierattr_t *__restrict
+     __attr, unsigned int __count)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_barrier_destroy (pthread_barrier_t *__barrier)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_barrier_wait (pthread_barrier_t *__barrier)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_barrierattr_init (pthread_barrierattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_barrierattr_destroy (pthread_barrierattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_barrierattr_getpshared (const pthread_barrierattr_t *
+        __restrict __attr,
+        int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+extern int pthread_barrierattr_setpshared (pthread_barrierattr_t *__attr,
+        int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_key_create (pthread_key_t *__key,
+          void (*__destr_function) (void *))
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_key_delete (pthread_key_t __key) __attribute__ ((__nothrow__ , __leaf__));
+extern void *pthread_getspecific (pthread_key_t __key) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_setspecific (pthread_key_t __key,
+    const void *__pointer)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__access__ (__none__, 2)));
+extern int pthread_getcpuclockid (pthread_t __thread_id,
+      __clockid_t *__clock_id)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+extern int pthread_atfork (void (*__prepare) (void),
+      void (*__parent) (void),
+      void (*__child) (void)) __attribute__ ((__nothrow__ , __leaf__));
+extern __inline __attribute__ ((__gnu_inline__)) int
+__attribute__ ((__nothrow__ , __leaf__)) pthread_equal (pthread_t __thread1, pthread_t __thread2)
+{
+  return __thread1 == __thread2;
+}
+
 typedef pthread_t rb_nativethread_id_t;
 typedef pthread_mutex_t rb_nativethread_lock_t;
 typedef pthread_cond_t rb_nativethread_cond_t;
@@ -6116,7 +9438,7 @@ typedef struct native_thread_data_struct {
         struct list_node ubf;
         struct list_node gvl;
     } node;
-    struct
+    union
     {
         rb_nativethread_cond_t intr;
         rb_nativethread_cond_t gvlq;
@@ -6172,7 +9494,7 @@ struct iseq_inline_constant_cache_entry {
     union ic_serial_entry ic_serial;
     const rb_cref_t *ic_cref;
 };
-__extension__ _Static_assert((__builtin_offsetof(struct iseq_inline_constant_cache_entry, ic_cref) + sizeof(const rb_cref_t *)) <= sizeof(struct RObject), "sizeof_iseq_inline_constant_cache_entry" ": " "(offsetof(struct iseq_inline_constant_cache_entry, ic_cref) + sizeof(const rb_cref_t *)) <= sizeof(struct RObject)");
+__extension__ _Static_assert((__builtin_offsetof (struct iseq_inline_constant_cache_entry, ic_cref) + sizeof(const rb_cref_t *)) <= sizeof(struct RObject), "sizeof_iseq_inline_constant_cache_entry" ": " "(offsetof(struct iseq_inline_constant_cache_entry, ic_cref) + sizeof(const rb_cref_t *)) <= sizeof(struct RObject)");
 struct iseq_inline_constant_cache {
     struct iseq_inline_constant_cache_entry *entry;
     unsigned get_insn_idx;
@@ -6438,7 +9760,7 @@ typedef struct rb_vm_struct {
     struct st_table *loaded_features_index;
     struct st_table *loading_table;
     struct {
- VALUE cmd[65];
+ VALUE cmd[(64 + 1)];
     } trap_list;
     struct st_table *ensure_rollback_table;
     struct rb_postponed_job_struct *postponed_job_buffer;
@@ -6526,8 +9848,8 @@ struct rb_vm_tag {
     enum ruby_tag_type state;
     unsigned int lock_rec;
 };
-__extension__ _Static_assert(__builtin_offsetof(struct rb_vm_tag, buf) > 0, "rb_vm_tag_buf_offset" ": " "offsetof(struct rb_vm_tag, buf) > 0");
-__extension__ _Static_assert(__builtin_offsetof(struct rb_vm_tag, buf) + sizeof(rb_jmpbuf_t) < sizeof(struct rb_vm_tag), "rb_vm_tag_buf_end" ": " "offsetof(struct rb_vm_tag, buf) + sizeof(rb_jmpbuf_t) < sizeof(struct rb_vm_tag)");
+__extension__ _Static_assert(__builtin_offsetof (struct rb_vm_tag, buf) > 0, "rb_vm_tag_buf_offset" ": " "offsetof(struct rb_vm_tag, buf) > 0");
+__extension__ _Static_assert(__builtin_offsetof (struct rb_vm_tag, buf) + sizeof(rb_jmpbuf_t) < sizeof(struct rb_vm_tag), "rb_vm_tag_buf_end" ": " "offsetof(struct rb_vm_tag, buf) + sizeof(rb_jmpbuf_t) < sizeof(struct rb_vm_tag)");
 struct rb_unblock_callback {
     rb_unblock_function_t *func;
     void *arg;
@@ -7015,10 +10337,10 @@ vm_block_iseq(const struct rb_block *block)
       case block_type_iseq: return rb_iseq_check(block->as.captured.code.iseq);
       case block_type_proc: return vm_proc_iseq(block->as.proc);
       case block_type_ifunc:
-      case block_type_symbol: return ((void*)0);
+      case block_type_symbol: return ((void *)0);
     }
     __builtin_unreachable();
-    return ((void*)0);
+    return ((void *)0);
 }
 static inline const VALUE *
 vm_block_ep(const struct rb_block *block)
@@ -7027,10 +10349,10 @@ vm_block_ep(const struct rb_block *block)
       case block_type_iseq:
       case block_type_ifunc: return block->as.captured.ep;
       case block_type_proc: return vm_proc_ep(block->as.proc);
-      case block_type_symbol: return ((void*)0);
+      case block_type_symbol: return ((void *)0);
     }
     __builtin_unreachable();
-    return ((void*)0);
+    return ((void *)0);
 }
 static inline VALUE
 vm_block_self(const struct rb_block *block)
@@ -7169,7 +10491,7 @@ rb_ec_ractor_ptr(const rb_execution_context_t *ec)
  return th->ractor;
     }
     else {
-        return ((void*)0);
+        return ((void *)0);
     }
 }
 static inline rb_vm_t *
@@ -7180,7 +10502,7 @@ rb_ec_vm_ptr(const rb_execution_context_t *ec)
  return th->vm;
     }
     else {
- return ((void*)0);
+ return ((void *)0);
     }
 }
 static inline rb_execution_context_t *
@@ -7347,39 +10669,12 @@ pass_passed_block_handler(rb_execution_context_t *ec)
     vm_passed_block_handler_set(ec, block_handler);
     VM_ENV_FLAGS_SET(ec->cfp->ep, VM_FRAME_FLAG_PASSED);
 }
-__attribute__((const))
-int *__errno_location(void);
-extern char *program_invocation_short_name, *program_invocation_name;
-typedef unsigned long long rlim_t;
-struct rlimit {
- rlim_t rlim_cur;
- rlim_t rlim_max;
-};
-struct rusage {
- struct timeval ru_utime;
- struct timeval ru_stime;
- long ru_maxrss;
- long ru_ixrss;
- long ru_idrss;
- long ru_isrss;
- long ru_minflt;
- long ru_majflt;
- long ru_nswap;
- long ru_inblock;
- long ru_oublock;
- long ru_msgsnd;
- long ru_msgrcv;
- long ru_nsignals;
- long ru_nvcsw;
- long ru_nivcsw;
- long __reserved[16];
-};
-int getrlimit (int, struct rlimit *);
-int setrlimit (int, const struct rlimit *);
-int getrusage (int, struct rusage *);
-int getpriority (int, id_t);
-int setpriority (int, id_t, int);
-int prlimit(pid_t, int, const struct rlimit *, struct rlimit *);
+
+extern int *__errno_location (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern char *program_invocation_name;
+extern char *program_invocation_short_name;
+typedef int error_t;
+
 static inline void
 rb_ec_vm_lock_rec_check(const rb_execution_context_t *ec, unsigned int recorded_lock_rec)
 {
@@ -8783,6 +12078,97 @@ int ruby_thread_has_gvl_p(void);
 int rb_threadptr_execute_interrupts(struct rb_thread_struct *th, int blocking_timing);
 
 
+typedef struct {
+  int coverage_sandboxed;
+  intptr_t coverage_fd;
+  unsigned int coverage_max_block_size;
+} __sanitizer_sandbox_arguments;
+void __sanitizer_set_report_path(const char *path);
+void __sanitizer_set_report_fd(void *fd);
+const char *__sanitizer_get_report_path();
+void __sanitizer_sandbox_on_notify(__sanitizer_sandbox_arguments *args);
+void __sanitizer_report_error_summary(const char *error_summary);
+uint16_t __sanitizer_unaligned_load16(const void *p);
+uint32_t __sanitizer_unaligned_load32(const void *p);
+uint64_t __sanitizer_unaligned_load64(const void *p);
+void __sanitizer_unaligned_store16(void *p, uint16_t x);
+void __sanitizer_unaligned_store32(void *p, uint32_t x);
+void __sanitizer_unaligned_store64(void *p, uint64_t x);
+int __sanitizer_acquire_crash_state();
+void __sanitizer_annotate_contiguous_container(const void *beg,
+                                               const void *end,
+                                               const void *old_mid,
+                                               const void *new_mid);
+int __sanitizer_verify_contiguous_container(const void *beg, const void *mid,
+                                            const void *end);
+const void *__sanitizer_contiguous_container_find_bad_address(const void *beg,
+                                                              const void *mid,
+                                                              const void *end);
+void __sanitizer_print_stack_trace(void);
+void __sanitizer_symbolize_pc(void *pc, const char *fmt, char *out_buf,
+                              size_t out_buf_size);
+void __sanitizer_symbolize_global(void *data_ptr, const char *fmt,
+                                  char *out_buf, size_t out_buf_size);
+void __sanitizer_set_death_callback(void (*callback)(void));
+void __sanitizer_weak_hook_memcmp(void *called_pc, const void *s1,
+                                  const void *s2, size_t n, int result);
+void __sanitizer_weak_hook_strncmp(void *called_pc, const char *s1,
+                                  const char *s2, size_t n, int result);
+void __sanitizer_weak_hook_strncasecmp(void *called_pc, const char *s1,
+                                       const char *s2, size_t n, int result);
+void __sanitizer_weak_hook_strcmp(void *called_pc, const char *s1,
+                                  const char *s2, int result);
+void __sanitizer_weak_hook_strcasecmp(void *called_pc, const char *s1,
+                                      const char *s2, int result);
+void __sanitizer_weak_hook_strstr(void *called_pc, const char *s1,
+                                  const char *s2, char *result);
+void __sanitizer_weak_hook_strcasestr(void *called_pc, const char *s1,
+                                      const char *s2, char *result);
+void __sanitizer_weak_hook_memmem(void *called_pc,
+                                  const void *s1, size_t len1,
+                                  const void *s2, size_t len2, void *result);
+void __sanitizer_print_memory_profile(size_t top_percent,
+                                      size_t max_number_of_contexts);
+void __sanitizer_start_switch_fiber(void **fake_stack_save,
+                                    const void *bottom, size_t size);
+void __sanitizer_finish_switch_fiber(void *fake_stack_save,
+                                     const void **bottom_old,
+                                     size_t *size_old);
+int __sanitizer_get_module_and_offset_for_pc(void *pc, char *module_path,
+                                             size_t module_path_len,
+                                             void **pc_offset);
+void __asan_poison_memory_region(void const volatile *addr, size_t size);
+void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
+int __asan_address_is_poisoned(void const volatile *addr);
+void *__asan_region_is_poisoned(void *beg, size_t size);
+void __asan_describe_address(void *addr);
+int __asan_report_present(void);
+void *__asan_get_report_pc(void);
+void *__asan_get_report_bp(void);
+void *__asan_get_report_sp(void);
+void *__asan_get_report_address(void);
+int __asan_get_report_access_type(void);
+size_t __asan_get_report_access_size(void);
+const char *__asan_get_report_description(void);
+const char *__asan_locate_address(void *addr, char *name, size_t name_size,
+                                  void **region_address, size_t *region_size);
+size_t __asan_get_alloc_stack(void *addr, void **trace, size_t size,
+                              int *thread_id);
+size_t __asan_get_free_stack(void *addr, void **trace, size_t size,
+                             int *thread_id);
+void __asan_get_shadow_mapping(size_t *shadow_scale, size_t *shadow_offset);
+void __asan_report_error(void *pc, void *bp, void *sp,
+                         void *addr, int is_write, size_t access_size);
+void __asan_set_death_callback(void (*callback)(void));
+void __asan_set_error_report_callback(void (*callback)(const char *));
+void __asan_on_error(void);
+void __asan_print_accumulated_stats(void);
+const char* __asan_default_options(void);
+void *__asan_get_current_fake_stack(void);
+void *__asan_addr_is_in_fake_stack(void *fake_stack, void *addr, void **beg,
+                                   void **end);
+void __asan_handle_no_return(void);
+int __asan_update_allocation_context(void* addr);
 extern const int ruby_api_version[];
 extern const ID rb_iseq_shared_exc_local_tbl[];
 static inline rb_snum_t
@@ -8801,7 +12187,7 @@ static inline void
 ISEQ_ORIGINAL_ISEQ_CLEAR(const rb_iseq_t *iseq)
 {
     void *ptr = iseq->body->variable.original_iseq;
-    iseq->body->variable.original_iseq = ((void*)0);
+    iseq->body->variable.original_iseq = ((void *)0);
     if (ptr) {
         ruby_xfree(ptr);
     }
@@ -8847,7 +12233,7 @@ ISEQ_COMPILE_DATA(const rb_iseq_t *iseq)
  return iseq->aux.compile_data;
     }
     else {
- return ((void*)0);
+ return ((void *)0);
     }
 }
 static inline void
@@ -8860,7 +12246,7 @@ static inline void
 ISEQ_COMPILE_DATA_CLEAR(rb_iseq_t *iseq)
 {
     iseq->flags &= ~((VALUE)RUBY_FL_USER6);
-    iseq->aux.compile_data = ((void*)0);
+    iseq->aux.compile_data = ((void *)0);
 }
 static inline rb_iseq_t *
 iseq_imemo_alloc(void)
@@ -8947,10 +12333,10 @@ iseq_catch_table_bytes(int n)
 {
     enum {
  catch_table_entry_size = sizeof(struct iseq_catch_table_entry),
- catch_table_entries_max = (0x7fffffff - __builtin_offsetof(struct iseq_catch_table, entries)) / catch_table_entry_size
+ catch_table_entries_max = (0x7fffffff - __builtin_offsetof (struct iseq_catch_table, entries)) / catch_table_entry_size
     };
     if (n > catch_table_entries_max) rb_fatal("too large iseq_catch_table - %d", n);
-    return (int)(__builtin_offsetof(struct iseq_catch_table, entries) +
+    return (int)(__builtin_offsetof (struct iseq_catch_table, entries) +
    n * catch_table_entry_size);
 }
 struct iseq_compile_data_storage {
@@ -9450,7 +12836,7 @@ static inline const struct rb_callinfo_kwarg *
 vm_ci_kwarg(const struct rb_callinfo *ci)
 {
     if (vm_ci_packed_p(ci)) {
-        return ((void*)0);
+        return ((void *)0);
     }
     else {
         return ci->kwarg;
@@ -10120,7 +13506,7 @@ static inline const rb_control_frame_t *
 rb_vm_search_cf_from_ep(const rb_execution_context_t *ec, const rb_control_frame_t *cfp, const VALUE * const ep)
 {
     if (!ep) {
- return ((void*)0);
+ return ((void *)0);
     }
     else {
  const rb_control_frame_t * const eocfp = RUBY_VM_END_CONTROL_FRAME(ec);
@@ -10130,7 +13516,7 @@ rb_vm_search_cf_from_ep(const rb_execution_context_t *ec, const rb_control_frame
      }
      cfp = ((cfp)+1);
  }
- return ((void*)0);
+ return ((void *)0);
     }
 }static inline 
 const VALUE *
@@ -10206,7 +13592,7 @@ vm_cref_new0(VALUE klass, rb_method_visibility_t visi, int module_func, rb_cref_
     } scope_visi;
     scope_visi.visi.method_visi = visi;
     scope_visi.visi.module_func = module_func;
-    if (prev_cref != ((void*)0) && prev_cref != (void *)1 ) {
+    if (prev_cref != ((void *)0) && prev_cref != (void *)1 ) {
  refinements = CREF_REFINEMENTS(prev_cref);
  if (!RB_NIL_P(refinements)) {
      omod_shared = 1;
@@ -10268,7 +13654,7 @@ rb_vm_cref_dup_without_refinements(const rb_cref_t *cref)
 static rb_cref_t *
 vm_cref_new_toplevel(rb_execution_context_t *ec)
 {
-    rb_cref_t *cref = vm_cref_new(rb_cObject, METHOD_VISI_PRIVATE , 0, ((void*)0), 0, 0);
+    rb_cref_t *cref = vm_cref_new(rb_cObject, METHOD_VISI_PRIVATE , 0, ((void *)0), 0, 0);
     VALUE top_wrapper = rb_ec_thread_ptr(ec)->top_wrapper;
     if (top_wrapper) {
  cref = vm_cref_new(top_wrapper, METHOD_VISI_PRIVATE, 0, cref, 0, 0);
@@ -10472,7 +13858,7 @@ static inline void
 RHASH_ST_CLEAR(VALUE h)
 {
     RB_FL_UNSET_RAW(h, RHASH_ST_TABLE_FLAG);
-    ((struct RHash *)(h))->as.ar = ((void*)0);
+    ((struct RHash *)(h))->as.ar = ((void *)0);
 }
 static inline unsigned
 RHASH_AR_TABLE_SIZE_RAW(VALUE h)
@@ -10878,7 +14264,7 @@ rb_fix_mul_fix(VALUE x, VALUE y)
 {
     long lx = rb_fix2long(x);
     long ly = rb_fix2long(y);
-    return (((((__int128)lx * (__int128)ly) < (0x7fffffffffffffffL / 2) + 1) && (((__int128)lx * (__int128)ly) >= ((-0x7fffffffffffffffL -1) / 2))) ? RB_INT2FIX((__int128)lx * (__int128)ly) : rb_int128t2big((__int128)lx * (__int128)ly));
+    return (((((__int128)lx * (__int128)ly) < (0x7fffffffffffffffL / 2) + 1) && (((__int128)lx * (__int128)ly) >= ((-0x7fffffffffffffffL - 1L) / 2))) ? RB_INT2FIX((__int128)lx * (__int128)ly) : rb_int128t2big((__int128)lx * (__int128)ly));
 }
 static inline void
 rb_fix_divmod_fix(VALUE a, VALUE b, VALUE *divp, VALUE *modp)
@@ -10886,8 +14272,8 @@ rb_fix_divmod_fix(VALUE a, VALUE b, VALUE *divp, VALUE *modp)
     long x = rb_fix2long(a);
     long y = rb_fix2long(b);
     long div, mod;
-    if (x == ((-0x7fffffffffffffffL -1) / 2) && y == -1) {
-        if (divp) *divp = rb_long2num_inline(-((-0x7fffffffffffffffL -1) / 2));
+    if (x == ((-0x7fffffffffffffffL - 1L) / 2) && y == -1) {
+        if (divp) *divp = rb_long2num_inline(-((-0x7fffffffffffffffL - 1L) / 2));
         if (modp) *modp = RB_INT2FIX(0);
         return;
     }
@@ -10904,14 +14290,14 @@ static inline VALUE
 rb_fix_div_fix(VALUE x, VALUE y)
 {
     VALUE div;
-    rb_fix_divmod_fix(x, y, &div, ((void*)0));
+    rb_fix_divmod_fix(x, y, &div, ((void *)0));
     return div;
 }
 static inline VALUE
 rb_fix_mod_fix(VALUE x, VALUE y)
 {
     VALUE mod;
-    rb_fix_divmod_fix(x, y, ((void*)0), &mod);
+    rb_fix_divmod_fix(x, y, ((void *)0), &mod);
     return mod;
 }
 static inline _Bool
@@ -11556,9 +14942,9 @@ vm_push_frame(rb_execution_context_t *ec,
         .iseq = iseq,
         .self = self,
         .ep = sp - 1,
-        .block_code = ((void*)0),
+        .block_code = ((void *)0),
         .__bp__ = sp,
-        .jit_return = ((void*)0)
+        .jit_return = ((void *)0)
     };
     ec->cfp = cfp;
     if (0 == 2) {
@@ -11645,7 +15031,7 @@ static inline struct vm_svar *
 lep_svar(const rb_execution_context_t *ec, const VALUE *lep)
 {
     VALUE svar;
-    if (lep && (ec == ((void*)0) || ec->root_lep != lep)) {
+    if (lep && (ec == ((void *)0) || ec->root_lep != lep)) {
  svar = lep[(-2)];
     }
     else {
@@ -11658,7 +15044,7 @@ static inline void
 lep_svar_write(const rb_execution_context_t *ec, const VALUE *lep, const struct vm_svar *svar)
 {
     ((void)0);
-    if (lep && (ec == ((void*)0) || ec->root_lep != lep)) {
+    if (lep && (ec == ((void *)0) || ec->root_lep != lep)) {
  vm_env_write(lep, (-2), (VALUE)svar);
     }
     else {
@@ -11763,18 +15149,18 @@ __attribute__((__pure__)) static rb_callable_method_entry_t *check_method_entry(
 static rb_callable_method_entry_t *
 check_method_entry(VALUE obj, int can_be_svar)
 {
-    if (obj == ((VALUE)RUBY_Qfalse)) return ((void*)0);
+    if (obj == ((VALUE)RUBY_Qfalse)) return ((void *)0);
     switch (imemo_type(obj)) {
       case imemo_ment:
  return (rb_callable_method_entry_t *)obj;
       case imemo_cref:
- return ((void*)0);
+ return ((void *)0);
       case imemo_svar:
  if (can_be_svar) {
      return check_method_entry(((struct vm_svar *)obj)->cref_or_me, 0);
  }
       default:
- return ((void*)0);
+ return ((void *)0);
     }
 }
 static const rb_callable_method_entry_t *
@@ -11783,7 +15169,7 @@ rb_vm_frame_method_entry(const rb_control_frame_t *cfp)
     const VALUE *ep = cfp->ep;
     rb_callable_method_entry_t *me;
     while (!VM_ENV_LOCAL_P(ep)) {
- if ((me = check_method_entry(ep[(-2)], 0)) != ((void*)0)) return me;
+ if ((me = check_method_entry(ep[(-2)], 0)) != ((void *)0)) return me;
  ep = VM_ENV_PREV_EP(ep);
     }
     return check_method_entry(ep[(-2)], 1);
@@ -11795,7 +15181,7 @@ method_entry_iseqptr(const rb_callable_method_entry_t *me)
       case VM_METHOD_TYPE_ISEQ:
         return me->def->body.iseq.iseqptr;
       default:
-        return ((void*)0);
+        return ((void *)0);
     }
 }
 static rb_cref_t *
@@ -11805,14 +15191,14 @@ method_entry_cref(const rb_callable_method_entry_t *me)
       case VM_METHOD_TYPE_ISEQ:
  return me->def->body.iseq.cref;
       default:
- return ((void*)0);
+ return ((void *)0);
     }
 }
 __attribute__((__pure__)) static rb_cref_t *check_cref(VALUE, int);
 static rb_cref_t *
 check_cref(VALUE obj, int can_be_svar)
 {
-    if (obj == ((VALUE)RUBY_Qfalse)) return ((void*)0);
+    if (obj == ((VALUE)RUBY_Qfalse)) return ((void *)0);
     switch (imemo_type(obj)) {
       case imemo_ment:
  return method_entry_cref((rb_callable_method_entry_t *)obj);
@@ -11823,7 +15209,7 @@ check_cref(VALUE obj, int can_be_svar)
      return check_cref(((struct vm_svar *)obj)->cref_or_me, 0);
  }
       default:
- return ((void*)0);
+ return ((void *)0);
     }
 }
 static inline rb_cref_t *
@@ -11831,7 +15217,7 @@ vm_env_cref(const VALUE *ep)
 {
     rb_cref_t *cref;
     while (!VM_ENV_LOCAL_P(ep)) {
- if ((cref = check_cref(ep[(-2)], 0)) != ((void*)0)) return cref;
+ if ((cref = check_cref(ep[(-2)], 0)) != ((void *)0)) return cref;
  ep = VM_ENV_PREV_EP(ep);
     }
     return check_cref(ep[(-2)], 1);
@@ -11900,7 +15286,7 @@ vm_cref_replace_with_duplicated_cref(const VALUE *ep)
  VALUE envval;
  while (!VM_ENV_LOCAL_P(ep)) {
      envval = VM_ENV_ESCAPED_P(ep) ? VM_ENV_ENVVAL(ep) : ((VALUE)RUBY_Qfalse);
-     if ((cref = cref_replace_with_duplicated_cref_each_frame(&ep[(-2)], 0, envval)) != ((void*)0)) {
+     if ((cref = cref_replace_with_duplicated_cref_each_frame(&ep[(-2)], 0, envval)) != ((void *)0)) {
   return cref;
      }
      ep = VM_ENV_PREV_EP(ep);
@@ -11916,7 +15302,7 @@ static rb_cref_t *
 vm_get_cref(const VALUE *ep)
 {
     rb_cref_t *cref = vm_env_cref(ep);
-    if (cref != ((void*)0)) {
+    if (cref != ((void *)0)) {
  return cref;
     }
     else {
@@ -11932,8 +15318,8 @@ static rb_cref_t *
 vm_ec_cref(const rb_execution_context_t *ec)
 {
     const rb_control_frame_t *cfp = rb_vm_get_ruby_level_next_cfp(ec, ec->cfp);
-    if (cfp == ((void*)0)) {
-        return ((void*)0);
+    if (cfp == ((void *)0)) {
+        return ((void *)0);
     }
     return vm_get_cref(cfp->ep);
 }
@@ -11949,7 +15335,7 @@ vm_get_const_key_cref(const VALUE *ep)
  }
  cref = CREF_NEXT(cref);
     }
-    return ((void*)0);
+    return ((void *)0);
 }static inline 
 void
 rb_vm_rewrite_cref(rb_cref_t *cref, VALUE old_klass, VALUE new_klass, rb_cref_t **new_cref_ptr)
@@ -11966,12 +15352,12 @@ rb_vm_rewrite_cref(rb_cref_t *cref, VALUE old_klass, VALUE new_klass, rb_cref_t 
  *new_cref_ptr = new_cref;
  new_cref_ptr = &new_cref->next;
     }
-    *new_cref_ptr = ((void*)0);
+    *new_cref_ptr = ((void *)0);
 }
 static rb_cref_t *
 vm_cref_push(const rb_execution_context_t *ec, VALUE klass, const VALUE *ep, int pushed_by_eval, int singleton)
 {
-    rb_cref_t *prev_cref = ((void*)0);
+    rb_cref_t *prev_cref = ((void *)0);
     if (ep) {
  prev_cref = vm_env_cref(ep);
     }
@@ -12052,7 +15438,7 @@ vm_get_ev_const(rb_execution_context_t *ec, VALUE orig_klass, ID id, _Bool allow
    if (am == klass) break;
    am = klass;
    if (is_defined) return 1;
-   if (rb_autoloading_value(klass, id, &av, ((void*)0))) return av;
+   if (rb_autoloading_value(klass, id, &av, ((void *)0))) return av;
    rb_autoload_load(klass, id);
    goto search_continue;
       }
@@ -12135,7 +15521,7 @@ iv_index_tbl_lookup(struct st_table *iv_index_tbl, ID id, struct rb_iv_index_tbl
 {
     int found;
     st_data_t ent_data;
-    if (iv_index_tbl == ((void*)0)) return 0;
+    if (iv_index_tbl == ((void *)0)) return 0;
     { unsigned int _lev; rb_vm_lock_enter(&_lev, "./vm_insnhelper.c", 1090);;
     {
         found = rb_st_lookup(iv_index_tbl, (st_data_t)id, &ent_data);
@@ -12255,12 +15641,12 @@ vm_setivar_slowpath(VALUE obj, ID id, VALUE val, const rb_iseq_t *iseq, IVC ic, 
 static VALUE
 vm_setivar_slowpath_ivar(VALUE obj, ID id, VALUE val, const rb_iseq_t *iseq, IVC ic)
 {
-    return vm_setivar_slowpath(obj, id, val, iseq, ic, ((void*)0), 0);
+    return vm_setivar_slowpath(obj, id, val, iseq, ic, ((void *)0), 0);
 }
 static VALUE
 vm_setivar_slowpath_attr(VALUE obj, ID id, VALUE val, const struct rb_callcache *cc)
 {
-    return vm_setivar_slowpath(obj, id, val, ((void*)0), ((void*)0), cc, 1);
+    return vm_setivar_slowpath(obj, id, val, ((void *)0), ((void *)0), cc, 1);
 }
 static inline VALUE
 vm_setivar(VALUE obj, ID id, VALUE val, const rb_iseq_t *iseq, IVC ic, const struct rb_callcache *cc, int is_attr)
@@ -12357,7 +15743,7 @@ rb_vm_setclassvariable(const rb_iseq_t *iseq, const rb_control_frame_t *cfp, ID 
 static inline VALUE
 vm_getinstancevariable(const rb_iseq_t *iseq, VALUE obj, ID id, IVC ic)
 {
-    return vm_getivar(obj, id, iseq, ic, ((void*)0), 0);
+    return vm_getivar(obj, id, iseq, ic, ((void *)0), 0);
 }
 static inline void
 vm_setinstancevariable(const rb_iseq_t *iseq, VALUE obj, ID id, VALUE val, IVC ic)
@@ -12406,7 +15792,7 @@ static VALUE
 vm_throw_start(const rb_execution_context_t *ec, rb_control_frame_t *const reg_cfp, enum ruby_tag_type state,
                const int flag, const VALUE throwobj)
 {
-    const rb_control_frame_t *escape_cfp = ((void*)0);
+    const rb_control_frame_t *escape_cfp = ((void *)0);
     const rb_control_frame_t * const eocfp = RUBY_VM_END_CONTROL_FRAME(ec);
     if (flag != 0) {
     }
@@ -12471,12 +15857,12 @@ vm_throw_start(const rb_execution_context_t *ec, rb_control_frame_t *const reg_c
     }
     else if (state == RUBY_TAG_RETURN) {
  const VALUE *current_ep = ((((reg_cfp)->ep)));
-        const VALUE *target_ep = ((void*)0), *target_lep, *ep = current_ep;
+        const VALUE *target_ep = ((void *)0), *target_lep, *ep = current_ep;
  int in_class_frame = 0;
  int toplevel = 1;
  escape_cfp = reg_cfp;
         while (!VM_ENV_LOCAL_P(ep)) {
-            if (VM_ENV_FLAGS(ep, VM_FRAME_FLAG_LAMBDA) && target_ep == ((void*)0)) {
+            if (VM_ENV_FLAGS(ep, VM_FRAME_FLAG_LAMBDA) && target_ep == ((void *)0)) {
                 target_ep = ep;
             }
             ep = VM_ENV_PREV_EP(ep);
@@ -12520,7 +15906,7 @@ vm_throw_start(const rb_execution_context_t *ec, rb_control_frame_t *const reg_c
         case ISEQ_TYPE_MAIN:
                         if (toplevel) {
                             if (in_class_frame) goto unexpected_return;
-                            if (target_ep == ((void*)0)) {
+                            if (target_ep == ((void *)0)) {
                                 goto valid_return;
                             }
                             else {
@@ -12538,7 +15924,7 @@ vm_throw_start(const rb_execution_context_t *ec, rb_control_frame_t *const reg_c
   }
      }
      if (escape_cfp->ep == target_lep && escape_cfp->iseq->body->type == ISEQ_TYPE_METHOD) {
-                if (target_ep == ((void*)0)) {
+                if (target_ep == ((void *)0)) {
                     goto valid_return;
                 }
                 else {
@@ -12641,7 +16027,7 @@ vm_ccs_create(VALUE klass, const rb_callable_method_entry_t *cme)
    ; __typeof__((VALUE *)(&ccs->cme)) unaligned_member_access_result = ((VALUE *)(&ccs->cme));
    ; unaligned_member_access_result; }), (VALUE)(cme), "./vm_insnhelper.c", 1700);
     (((rb_callable_method_entry_t *)cme)->flags |= ((VALUE)RUBY_FL_USER8));
-    ccs->entries = ((void*)0);
+    ccs->entries = ((void *)0);
     return ccs;
 }
 static void
@@ -13236,20 +16622,20 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
  args->kw_arg = vm_ci_kwarg(ci);
  if (iseq->body->param.flags.has_kw) {
      int kw_len = args->kw_arg->keyword_len;
-     args->kw_argv = ((VALUE *)__builtin_alloca(rbimpl_size_mul_or_raise(sizeof(VALUE), (kw_len))));
+     args->kw_argv = ((VALUE *)__builtin_alloca (rbimpl_size_mul_or_raise(sizeof(VALUE), (kw_len))));
      args->argc -= kw_len;
      given_argc -= kw_len;
      ruby_nonempty_memcpy((args->kw_argv), (locals + args->argc), rbimpl_size_mul_or_raise(sizeof(VALUE), (kw_len)));
  }
  else {
-     args->kw_argv = ((void*)0);
+     args->kw_argv = ((void *)0);
      given_argc = args_kw_argv_to_hash(args);
             kw_flag |= (0x01 << VM_CALL_KW_SPLAT_bit) | (0x01 << VM_CALL_KW_SPLAT_MUT_bit);
  }
     }
     else {
- args->kw_arg = ((void*)0);
- args->kw_argv = ((void*)0);
+ args->kw_arg = ((void *)0);
+ args->kw_argv = ((void *)0);
     }
     if (vm_ci_flag(ci) & (0x01 << VM_CALL_ARGS_SPLAT_bit)) {
         VALUE rest_last = 0;
@@ -13375,14 +16761,14 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
     }
     if (iseq->body->param.flags.has_kw) {
  VALUE * const klocals = locals + iseq->body->param.keyword->bits_start - iseq->body->param.keyword->num;
- if (args->kw_argv != ((void*)0)) {
+ if (args->kw_argv != ((void *)0)) {
      const struct rb_callinfo_kwarg *kw_arg = args->kw_arg;
      args_setup_kw_parameters(ec, iseq, args->kw_argv, kw_arg->keyword_len, kw_arg->keywords, klocals);
  }
  else if (!RB_NIL_P(keyword_hash)) {
      int kw_len = rb_long2int_inline(RHASH_SIZE(keyword_hash));
      struct fill_values_arg arg;
-     arg.keys = args->kw_argv = ((VALUE *)__builtin_alloca(rbimpl_size_mul_or_raise(sizeof(VALUE), (kw_len * 2))));
+     arg.keys = args->kw_argv = ((VALUE *)__builtin_alloca (rbimpl_size_mul_or_raise(sizeof(VALUE), (kw_len * 2))));
      arg.vals = arg.keys + kw_len;
      arg.argc = 0;
      rb_hash_foreach(keyword_hash, fill_keys_values, (VALUE)&arg);
@@ -13391,7 +16777,7 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
  }
  else {
      ((void)0);
-     args_setup_kw_parameters(ec, iseq, ((void*)0), 0, ((void*)0), klocals);
+     args_setup_kw_parameters(ec, iseq, ((void *)0), 0, ((void *)0), klocals);
  }
     }
     else if (iseq->body->param.flags.has_kwrest) {
@@ -13499,9 +16885,9 @@ vm_to_proc(VALUE proc)
     if ((__builtin_expect(!!(!rb_obj_is_proc(proc)), 0))) {
  VALUE b;
  const rb_callable_method_entry_t *me =
-     rb_callable_method_entry_with_refinements(rb_class_of(proc), idTo_proc, ((void*)0));
+     rb_callable_method_entry_with_refinements(rb_class_of(proc), idTo_proc, ((void *)0));
  if (me) {
-            b = rb_vm_call0(rb_current_execution_context(1), proc, idTo_proc, 0, ((void*)0), me, 0);
+            b = rb_vm_call0(rb_current_execution_context(1), proc, idTo_proc, 0, ((void *)0), me, 0);
  }
  else {
      b = rb_check_convert_type_with_id(proc, RUBY_T_DATA, "Proc", idTo_proc);
@@ -13585,7 +16971,7 @@ vm_caller_setup_arg_block(const rb_execution_context_t *ec, rb_control_frame_t *
             return vm_to_proc(block_code);
         }
     }
-    else if (blockiseq != ((void*)0)) {
+    else if (blockiseq != ((void *)0)) {
  struct rb_captured_block *captured = VM_CFP_TO_CAPTURED_BLOCK(reg_cfp);
  captured->code.iseq = blockiseq;
         return VM_BH_FROM_ISEQ_BLOCK(captured);
@@ -13656,14 +17042,14 @@ rb_iseq_only_kwparam_p(const rb_iseq_t *iseq)
            iseq->body->param.flags.has_block == 0;
 }
 static _Bool
-rb_splat_or_kwargs_p(const struct rb_callinfo *restrict ci)
+rb_splat_or_kwargs_p(const struct rb_callinfo *__restrict ci)
 {
     return (vm_ci_flag(ci) & (0x01 << VM_CALL_ARGS_SPLAT_bit)) || (vm_ci_flag(ci) & ((0x01 << VM_CALL_KWARG_bit) | (0x01 << VM_CALL_KW_SPLAT_bit)));
 }
 static inline void
-CALLER_SETUP_ARG(struct rb_control_frame_struct *restrict cfp,
-                 struct rb_calling_info *restrict calling,
-                 const struct rb_callinfo *restrict ci)
+CALLER_SETUP_ARG(struct rb_control_frame_struct *__restrict cfp,
+                 struct rb_calling_info *__restrict calling,
+                 const struct rb_callinfo *__restrict ci)
 {
     if ((__builtin_expect(!!((vm_ci_flag(ci) & (0x01 << VM_CALL_ARGS_SPLAT_bit))), 0))) {
         VALUE final_hash;
@@ -13692,9 +17078,9 @@ CALLER_SETUP_ARG(struct rb_control_frame_struct *restrict cfp,
     }
 }
 static inline void
-CALLER_REMOVE_EMPTY_KW_SPLAT(struct rb_control_frame_struct *restrict cfp,
-                             struct rb_calling_info *restrict calling,
-                             const struct rb_callinfo *restrict ci)
+CALLER_REMOVE_EMPTY_KW_SPLAT(struct rb_control_frame_struct *__restrict cfp,
+                             struct rb_calling_info *__restrict calling,
+                             const struct rb_callinfo *__restrict ci)
 {
     if ((__builtin_expect(!!(calling->kw_splat), 0))) {
         if (RHASH_EMPTY_P(cfp->sp[-1])) {
@@ -13752,7 +17138,7 @@ vm_call_iseq_setup_kwparm_kwarg(rb_execution_context_t *ec, rb_control_frame_t *
     VALUE *argv = cfp->sp - calling->argc;
     VALUE *const klocals = argv + kw_param->bits_start - kw_param->num;
     const int lead_num = iseq->body->param.lead_num;
-    VALUE * const ci_kws = ((VALUE *)__builtin_alloca(rbimpl_size_mul_or_raise(sizeof(VALUE), (ci_kw_len))));
+    VALUE * const ci_kws = ((VALUE *)__builtin_alloca (rbimpl_size_mul_or_raise(sizeof(VALUE), (ci_kw_len))));
     ruby_nonempty_memcpy((ci_kws), (argv + lead_num), rbimpl_size_mul_or_raise(sizeof(VALUE), (ci_kw_len)));
     args_setup_kw_parameters(ec, iseq, ci_kws, ci_kw_len, ci_keywords, klocals);
     int param = iseq->body->param.size;
@@ -13836,7 +17222,7 @@ vm_callee_setup_arg(rb_execution_context_t *ec, struct rb_calling_info *calling,
                 if (argc - kw_arg->keyword_len == lead_num) {
                     const int ci_kw_len = kw_arg->keyword_len;
                     const VALUE * const ci_keywords = kw_arg->keywords;
-                    VALUE * const ci_kws = ((VALUE *)__builtin_alloca(rbimpl_size_mul_or_raise(sizeof(VALUE), (ci_kw_len))));
+                    VALUE * const ci_kws = ((VALUE *)__builtin_alloca (rbimpl_size_mul_or_raise(sizeof(VALUE), (ci_kw_len))));
                     ruby_nonempty_memcpy((ci_kws), (argv + lead_num), rbimpl_size_mul_or_raise(sizeof(VALUE), (ci_kw_len)));
                     VALUE *const klocals = argv + kw_param->bits_start - kw_param->num;
                     args_setup_kw_parameters(ec, iseq, ci_kws, ci_kw_len, ci_keywords, klocals);
@@ -13847,7 +17233,7 @@ vm_callee_setup_arg(rb_execution_context_t *ec, struct rb_calling_info *calling,
             }
             else if (argc == lead_num) {
                 VALUE *const klocals = argv + kw_param->bits_start - kw_param->num;
-                args_setup_kw_parameters(ec, iseq, ((void*)0), 0, ((void*)0), klocals);
+                args_setup_kw_parameters(ec, iseq, ((void *)0), 0, ((void *)0), klocals);
                 if (klocals[kw_param->num] == __builtin_choose_expr( __builtin_constant_p(0), ((VALUE)(0)) << 1 | RUBY_FIXNUM_FLAG, RB_INT2FIX(0))) {
                     CC_SET_FASTPATH(cc, vm_call_iseq_setup_kwparm_nokwarg,
                                     cacheable_ci && !((rb_method_visibility_t)(((vm_cc_cme(cc))->flags & (((VALUE)RUBY_FL_USER4) | ((VALUE)RUBY_FL_USER5))) >> ((((VALUE)RUBY_FL_USHIFT) + 4)+0)) == METHOD_VISI_PROTECTED));
@@ -14209,7 +17595,7 @@ vm_call_cfunc_with_frame(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp
     }
     do { if ((__builtin_expect(!!(0), 0))) { struct ruby_dtrace_method_hook_args args; if (rb_dtrace_setup(ec, me->owner, me->def->original_id, &args)) { do {} while (0); } } } while (0);
     do { const rb_event_flag_t flag_arg_ = (0x0020); rb_hook_list_t *hooks_arg_ = (rb_ec_ractor_hooks(ec)); if ((__builtin_expect(!!((hooks_arg_)->events & (flag_arg_)), 0))) { rb_exec_event_hook_orig(ec, hooks_arg_, flag_arg_, recv, me->def->original_id, vm_ci_mid(ci), me->owner, ((VALUE)RUBY_Qundef), 0); } } while (0);
-    vm_push_frame(ec, ((void*)0), frame_type, recv,
+    vm_push_frame(ec, ((void *)0), frame_type, recv,
     block_handler, (VALUE)me,
     0, ec->cfp->sp, 0, 0);
     if (len >= 0) rb_check_arity(argc, len, len);
@@ -14237,7 +17623,7 @@ vm_call_ivar(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_call
     const struct rb_callcache *cc = calling->cc;
     ((void)0);
     cfp->sp -= 1;
-    return vm_getivar(calling->recv, vm_cc_cme(cc)->def->body.attr.id, ((void*)0), ((void*)0), cc, 1);
+    return vm_getivar(calling->recv, vm_cc_cme(cc)->def->body.attr.id, ((void *)0), ((void *)0), cc, 1);
 }
 static VALUE
 vm_call_attrset(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_calling_info *calling)
@@ -14246,7 +17632,7 @@ vm_call_attrset(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_c
     ((void)0);
     VALUE val = *(cfp->sp - 1);
     cfp->sp -= 2;
-    return vm_setivar(calling->recv, vm_cc_cme(cc)->def->body.attr.id, val, ((void*)0), ((void*)0), cc, 1);
+    return vm_setivar(calling->recv, vm_cc_cme(cc)->def->body.attr.id, val, ((void *)0), ((void *)0), cc, 1);
 }static inline 
 _Bool
 rb_vm_call_ivar_attrset_p(const vm_call_handler ch)
@@ -14278,7 +17664,7 @@ vm_call_bmethod(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_c
     const struct rb_callinfo *ci = calling->ci;
     CALLER_SETUP_ARG(cfp, calling, ci);
     argc = calling->argc;
-    argv = ((VALUE *)__builtin_alloca(rbimpl_size_mul_or_raise(sizeof(VALUE), (argc))));
+    argv = ((VALUE *)__builtin_alloca (rbimpl_size_mul_or_raise(sizeof(VALUE), (argc))));
     ruby_nonempty_memcpy((argv), (cfp->sp - argc), rbimpl_size_mul_or_raise(sizeof(VALUE), (argc)));
     cfp->sp += - argc - 1;
     return vm_call_bmethod_body(ec, calling, argv);
@@ -14382,7 +17768,7 @@ vm_call_symbol(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp,
         }
     }
     calling->ci = &(struct rb_callinfo) { .flags = RUBY_T_IMEMO | (imemo_callinfo << ((VALUE)RUBY_FL_USHIFT)) | ((VALUE)RUBY_FL_USER4), .mid = mid, .flag = flags, .argc = argc, .kwarg = vm_ci_kwarg(ci), };
-    calling->cc = &(struct rb_callcache) { .flags = RUBY_T_IMEMO | (imemo_callcache << ((VALUE)RUBY_FL_USHIFT)) | ((VALUE)RUBY_FL_USER4) | ((VALUE)RUBY_FL_USER5), .klass = klass, .cme_ = rb_callable_method_entry_with_refinements(klass, mid, ((void*)0)), .call_ = vm_call_general, .aux_ = { .method_missing_reason = missing_reason }, };
+    calling->cc = &(struct rb_callcache) { .flags = RUBY_T_IMEMO | (imemo_callcache << ((VALUE)RUBY_FL_USHIFT)) | ((VALUE)RUBY_FL_USER4) | ((VALUE)RUBY_FL_USER5), .klass = klass, .cme_ = rb_callable_method_entry_with_refinements(klass, mid, ((void *)0)), .call_ = vm_call_general, .aux_ = { .method_missing_reason = missing_reason }, };
     return vm_call_method(ec, reg_cfp, calling);
 }
 static VALUE
@@ -14426,7 +17812,7 @@ vm_call_method_missing_body(rb_execution_context_t *ec, rb_control_frame_t *reg_
     (((reg_cfp)->sp) += (((1))));
     ec->method_missing_reason = reason;
     calling->ci = &(struct rb_callinfo) { .flags = RUBY_T_IMEMO | (imemo_callinfo << ((VALUE)RUBY_FL_USHIFT)) | ((VALUE)RUBY_FL_USER4), .mid = idMethodMissing, .flag = flag, .argc = argc, .kwarg = vm_ci_kwarg(orig_ci), };
-    calling->cc = &(struct rb_callcache) { .flags = RUBY_T_IMEMO | (imemo_callcache << ((VALUE)RUBY_FL_USHIFT)) | ((VALUE)RUBY_FL_USER4) | ((VALUE)RUBY_FL_USER5), .klass = ((VALUE)RUBY_Qundef), .cme_ = rb_callable_method_entry_without_refinements(rb_class_of(calling->recv), idMethodMissing, ((void*)0)), .call_ = vm_call_general, .aux_ = { 0 }, };
+    calling->cc = &(struct rb_callcache) { .flags = RUBY_T_IMEMO | (imemo_callcache << ((VALUE)RUBY_FL_USHIFT)) | ((VALUE)RUBY_FL_USER4) | ((VALUE)RUBY_FL_USER5), .klass = ((VALUE)RUBY_Qundef), .cme_ = rb_callable_method_entry_without_refinements(rb_class_of(calling->recv), idMethodMissing, ((void *)0)), .call_ = vm_call_general, .aux_ = { 0 }, };
     return vm_call_method(ec, reg_cfp, calling);
 }
 static VALUE
@@ -14439,8 +17825,8 @@ static VALUE
 vm_call_zsuper(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_calling_info *calling, VALUE klass)
 {
     klass = RCLASS_SUPER(klass);
-    const rb_callable_method_entry_t *cme = klass ? rb_callable_method_entry(klass, vm_ci_mid(calling->ci)) : ((void*)0);
-    if (cme == ((void*)0)) {
+    const rb_callable_method_entry_t *cme = klass ? rb_callable_method_entry(klass, vm_ci_mid(calling->ci)) : ((void *)0);
+    if (cme == ((void *)0)) {
         return vm_call_method_nome(ec, cfp, calling);
     }
     if (cme->def->type == VM_METHOD_TYPE_REFINED &&
@@ -14480,7 +17866,7 @@ refined_method_callable_without_refinement(const rb_callable_method_entry_t *me)
     const rb_method_entry_t *orig_me = me->def->body.refined.orig_me;
     const rb_callable_method_entry_t *cme;
     if (orig_me->defined_class == 0) {
- cme = ((void*)0);
+ cme = ((void *)0);
  rb_notimplement();
     }
     else {
@@ -14488,7 +17874,7 @@ refined_method_callable_without_refinement(const rb_callable_method_entry_t *me)
     }
     ((void)0);
     if ((!(cme) || !(cme)->def || (cme)->def->type == VM_METHOD_TYPE_UNDEF)) {
- cme = ((void*)0);
+ cme = ((void *)0);
     }
     return cme;
 }
@@ -14521,7 +17907,7 @@ search_refined_method(rb_execution_context_t *ec, rb_control_frame_t *cfp, struc
             }
         }
         else {
-            return ((void*)0);
+            return ((void *)0);
         }
     }
     if (vm_cc_cme(cc)->def->body.refined.orig_me) {
@@ -14529,7 +17915,7 @@ search_refined_method(rb_execution_context_t *ec, rb_control_frame_t *cfp, struc
     }
     else {
         VALUE klass = RCLASS_SUPER(vm_cc_cme(cc)->defined_class);
-        const rb_callable_method_entry_t *cme = klass ? rb_callable_method_entry(klass, mid) : ((void*)0);
+        const rb_callable_method_entry_t *cme = klass ? rb_callable_method_entry(klass, mid) : ((void *)0);
         return cme;
     }
 }
@@ -14720,7 +18106,7 @@ vm_call_method(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_ca
     const struct rb_callinfo *ci = calling->ci;
     const struct rb_callcache *cc = calling->cc;
     ((void)0);
-    if (vm_cc_cme(cc) != ((void*)0)) {
+    if (vm_cc_cme(cc) != ((void *)0)) {
  switch ((rb_method_visibility_t)(((vm_cc_cme(cc))->flags & (((VALUE)RUBY_FL_USER4) | ((VALUE)RUBY_FL_USER5))) >> ((((VALUE)RUBY_FL_USHIFT) + 4)+0))) {
    case METHOD_VISI_PUBLIC:
             return vm_call_method_each_type(ec, cfp, calling);
@@ -14773,7 +18159,7 @@ static VALUE
 vm_call_super_method(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp, struct rb_calling_info *calling)
 {
     ((void)0);
-    if (ec == ((void*)0)) rb_bug("unreachable");
+    if (ec == ((void *)0)) rb_bug("unreachable");
     ((void)0);
     return vm_call_method(ec, reg_cfp, calling);
 }
@@ -14835,7 +18221,7 @@ vm_search_super_method(const rb_control_frame_t *reg_cfp, struct rb_call_data *c
     const struct rb_callcache *cc;
     VALUE klass = vm_search_normal_superclass(me->defined_class);
     if (!klass) {
-        cc = vm_cc_new(klass, ((void*)0), vm_call_method_missing);
+        cc = vm_cc_new(klass, ((void *)0), vm_call_method_missing);
         rb_obj_write((VALUE)(reg_cfp->iseq), __extension__({
        ;
        ; __typeof__((VALUE *)(&cd->cc)) unaligned_member_access_result = ((VALUE *)(&cd->cc));
@@ -14844,7 +18230,7 @@ vm_search_super_method(const rb_control_frame_t *reg_cfp, struct rb_call_data *c
     else {
         cc = vm_search_method_fastpath((VALUE)reg_cfp->iseq, cd, klass);
         const rb_callable_method_entry_t *cached_cme = vm_cc_cme(cc);
-        if (cached_cme == ((void*)0)) {
+        if (cached_cme == ((void *)0)) {
             cd->cc = empty_cc_for_super();
         }
         else if (cached_cme->called_id != mid) {
@@ -15040,7 +18426,7 @@ vm_invoke_ifunc_block(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp,
     CALLER_SETUP_ARG(ec->cfp, calling, ci);
     CALLER_REMOVE_EMPTY_KW_SPLAT(ec->cfp, calling, ci);
     argc = calling->argc;
-    val = vm_yield_with_cfunc(ec, captured, captured->self, argc, (((((reg_cfp)->sp)))-(argc)), calling->kw_splat, calling->block_handler, ((void*)0));
+    val = vm_yield_with_cfunc(ec, captured, captured->self, argc, (((((reg_cfp)->sp)))-(argc)), calling->kw_splat, calling->block_handler, ((void *)0));
     ((((reg_cfp)->sp) -= (((argc)))));
     return val;
 }
@@ -15113,7 +18499,7 @@ static VALUE
 vm_once_clear(VALUE data)
 {
     union iseq_inline_storage_entry *is = (union iseq_inline_storage_entry *)data;
-    is->once.running_thread = ((void*)0);
+    is->once.running_thread = ((void *)0);
     return ((VALUE)RUBY_Qnil);
 }
 static _Bool
@@ -15161,7 +18547,7 @@ vm_defined(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp, rb_num_t op_
  break;
       case DEFINED_METHOD:{
  VALUE klass = rb_class_of(v);
- const rb_method_entry_t *me = rb_method_entry_with_refinements(klass, rb_sym2id(obj), ((void*)0));
+ const rb_method_entry_t *me = rb_method_entry_with_refinements(klass, rb_sym2id(obj), ((void *)0));
  if (me) {
      switch ((rb_method_visibility_t)(((me)->flags & (((VALUE)RUBY_FL_USER4) | ((VALUE)RUBY_FL_USER5))) >> ((((VALUE)RUBY_FL_USHIFT) + 4)+0))) {
        case METHOD_VISI_PRIVATE:
@@ -15664,7 +19050,7 @@ vm_opt_newarray_max(rb_execution_context_t *ec, rb_num_t num, const VALUE *ptr)
  }
     }
     else {
-        return rb_vm_call_with_refinements(ec, rb_ary_new_from_values(num, ptr), idMax, 0, ((void*)0), 0);
+        return rb_vm_call_with_refinements(ec, rb_ary_new_from_values(num, ptr), idMax, 0, ((void *)0), 0);
     }
 }
 static VALUE
@@ -15688,7 +19074,7 @@ vm_opt_newarray_min(rb_execution_context_t *ec, rb_num_t num, const VALUE *ptr)
  }
     }
     else {
-        return rb_vm_call_with_refinements(ec, rb_ary_new_from_values(num, ptr), idMin, 0, ((void*)0), 0);
+        return rb_vm_call_with_refinements(ec, rb_ary_new_from_values(num, ptr), idMin, 0, ((void *)0), 0);
     }
 }
 static inline _Bool
@@ -15697,7 +19083,7 @@ vm_inlined_ic_hit_p(VALUE flags, VALUE value, const rb_cref_t *ic_cref, rb_seria
     if (ic_serial == (ruby_vm_global_constant_state) &&
         ((flags & ((VALUE)RUBY_FL_USER4)) || rb_ractor_main_p())) {
         ((void)0);
-        return (ic_cref == ((void*)0) ||
+        return (ic_cref == ((void *)0) ||
                 ic_cref == vm_get_cref(reg_ep));
     }
     return 0;
@@ -15738,7 +19124,7 @@ vm_once_dispatch(rb_execution_context_t *ec, ISEQ iseq, ISE is)
     if (is->once.running_thread == RUNNING_THREAD_ONCE_DONE) {
  return is->once.value;
     }
-    else if (is->once.running_thread == ((void*)0)) {
+    else if (is->once.running_thread == ((void *)0)) {
  VALUE val;
  is->once.running_thread = th;
  val = rb_ensure(vm_once_exec, (VALUE)iseq, vm_once_clear, (VALUE)is);
@@ -15771,8 +19157,8 @@ vm_case_dispatch(CDHASH hash, OFFSET else_offset, VALUE key)
      st_data_t val;
      if (RB_FLOAT_TYPE_P(key)) {
   double kval = rb_float_value_inline(key);
-  if (!( sizeof(kval) == sizeof(float) ? (__FLOAT_BITS(kval) & 0x7fffffff) == 0x7f800000 : sizeof(kval) == sizeof(double) ? (__DOUBLE_BITS(kval) & -1ULL>>1) == 0x7ffULL<<52 : __fpclassifyl(kval) == 1) && modf(kval, &kval) == 0.0) {
-      key = (((kval) < (0x7fffffffffffffffL / 2) + 1) && ((kval) >= ((-0x7fffffffffffffffL -1) / 2))) ? RB_INT2FIX((long)kval) : rb_dbl2big(kval);
+  if (!__builtin_isinf_sign (kval) && modf(kval, &kval) == 0.0) {
+      key = (((kval) < (0x7fffffffffffffffL / 2) + 1) && ((kval) >= ((-0x7fffffffffffffffL - 1L) / 2))) ? RB_INT2FIX((long)kval) : rb_dbl2big(kval);
   }
      }
             if (rb_hash_stlike_lookup(hash, key, &val)) {
@@ -16293,7 +19679,7 @@ vm_trace_hook(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp, const VAL
         rb_exec_event_hook_orig(ec, global_hooks, event, self, 0, 0, 0 , val, 0);
         reg_cfp->pc--;
     }
-    if (local_hooks != ((void*)0)) {
+    if (local_hooks != ((void *)0)) {
         if (event & local_hooks->events) {
             reg_cfp->pc++;
             rb_exec_event_hook_orig(ec, local_hooks, event, self, 0, 0, 0 , val, 0);
@@ -16329,8 +19715,8 @@ vm_trace(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp)
  size_t pos = pc - iseq->body->iseq_encoded;
         rb_event_flag_t pc_events = rb_iseq_event_flags(iseq, pos);
         rb_hook_list_t *local_hooks = iseq->aux.exec.local_hooks;
-        rb_event_flag_t iseq_local_events = local_hooks != ((void*)0) ? local_hooks->events : 0;
-        rb_hook_list_t *bmethod_local_hooks = ((void*)0);
+        rb_event_flag_t iseq_local_events = local_hooks != ((void *)0) ? local_hooks->events : 0;
+        rb_hook_list_t *bmethod_local_hooks = ((void *)0);
         rb_event_flag_t bmethod_local_events = 0;
         _Bool bmethod_frame = VM_FRAME_BMETHOD_P(reg_cfp);
         enabled_flags |= iseq_local_events;
@@ -16346,7 +19732,7 @@ vm_trace(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp)
         if ((pc_events & enabled_flags) == 0 && !bmethod_frame) {
      return;
         }
-        else if (ec->trace_arg != ((void*)0)) {
+        else if (ec->trace_arg != ((void *)0)) {
             return;
         }
         else {
@@ -16515,14 +19901,14 @@ static VALUE
 vm_invoke_builtin_delegate(rb_execution_context_t *ec, rb_control_frame_t *cfp, const struct rb_builtin_function *bf, unsigned int start_index)
 {
     if (0) {
-        fputs("vm_invoke_builtin_delegate: passing -> ", (stderr));
+        fputs("vm_invoke_builtin_delegate: passing -> ", stderr);
         for (int i=0; i<bf->argc; i++) {
             ruby_debug_printf(":%s ", rb_id2name(cfp->iseq->body->local_table[i+start_index]));
         }
         ruby_debug_printf("\n" "%s %s(%d):%p\n", __func__, bf->name, bf->argc, bf->func_ptr);
     }
     if (bf->argc == 0) {
-        return invoke_bf(ec, cfp, bf, ((void*)0));
+        return invoke_bf(ec, cfp, bf, ((void *)0));
     }
     else {
         const VALUE *argv = cfp->ep - cfp->iseq->body->local_table_size - ( 3) + 1 + start_index;
@@ -16621,8 +20007,13 @@ method_missing(rb_execution_context_t *ec, VALUE obj, ID id, int argc, const VAL
     if (id == idMethodMissing) {
         goto missing;
     }
-    nargv = ((VALUE *) (((size_t)(argc + 1) < 1024 / sizeof(VALUE)) ? ((work) = 0, __builtin_alloca((argc + 1) * sizeof(VALUE))) : rb_alloc_tmp_buffer2(&(work), (argc + 1), sizeof(VALUE))));
+    nargv = ((VALUE *) (((size_t)(argc + 1) < 1024 / sizeof(VALUE)) ? ((work) = 0, __builtin_alloca ((argc + 1) * sizeof(VALUE))) : rb_alloc_tmp_buffer2(&(work), (argc + 1), sizeof(VALUE))));
     nargv[0] = rb_id2sym(id);
+    if (!argv) {
+        static const VALUE buf = ((VALUE)RUBY_Qfalse);
+        ((void)0);
+        argv = &buf;
+    }
     ruby_nonempty_memcpy((nargv + 1), (argv), rbimpl_size_mul_or_raise(sizeof(VALUE), (argc)));
     ++argc;
     argv = nargv;
@@ -16866,11 +20257,12 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define _FORTIFY_SOURCE 2
 #define RUBY_EXPORT 1
 #define NDEBUG 1
-#define _STDC_PREDEF_H 
-#define __STDC_ISO_10646__ 201206L
+#define _STDC_PREDEF_H 1
 #define __STDC_IEC_559__ 1
-#define __STDC_UTF_16__ 1
-#define __STDC_UTF_32__ 1
+#define __STDC_IEC_60559_BFP__ 201404L
+#define __STDC_IEC_559_COMPLEX__ 1
+#define __STDC_IEC_60559_COMPLEX__ 201404L
+#define __STDC_ISO_10646__ 201706L
 #define vm_exec rb_vm_exec
 #define RUBY_EVAL_INTERN_H 
 #define RUBY_RUBY_H 1
@@ -16908,6 +20300,7 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_LOCALE_H 1
 #define HAVE_MALLOC_H 1
 #define HAVE_PWD_H 1
+#define HAVE_SANITIZER_ASAN_INTERFACE_H 1
 #define HAVE_STDALIGN_H 1
 #define HAVE_SYS_EVENTFD_H 1
 #define HAVE_SYS_FCNTL_H 1
@@ -16991,9 +20384,9 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_RLIM_T 1
 #define rb_rlim_t rlim_t
 #define SIGNEDNESS_OF_RLIM_T +1
-#define RLIM2NUM(v) ULL2NUM(v)
-#define NUM2RLIM(v) NUM2ULL(v)
-#define PRI_RLIM_PREFIX PRI_LL_PREFIX
+#define RLIM2NUM(v) ULONG2NUM(v)
+#define NUM2RLIM(v) NUM2ULONG(v)
+#define PRI_RLIM_PREFIX PRI_LONG_PREFIX
 #define HAVE_OFF_T 1
 #define rb_off_t off_t
 #define SIGNEDNESS_OF_OFF_T -1
@@ -17055,6 +20448,7 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_STRUCT_STAT_ST_ATIM 1
 #define HAVE_STRUCT_STAT_ST_MTIM 1
 #define HAVE_STRUCT_STAT_ST_CTIM 1
+#define HAVE_STRUCT_STATX_STX_BTIME 1
 #define HAVE_STRUCT_TIMEVAL 1
 #define SIZEOF_STRUCT_TIMEVAL_TV_SEC SIZEOF_TIME_T
 #define HAVE_STRUCT_TIMESPEC 1
@@ -17088,6 +20482,7 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define SIZEOF_UINTPTR_T 8
 #define HAVE_SSIZE_T 1
 #define SIZEOF_SSIZE_T 8
+#define STACK_END_ADDRESS __libc_stack_end
 #define GETGROUPS_T gid_t
 #define HAVE_ALLOCA_H 1
 #define HAVE_ALLOCA 1
@@ -17107,8 +20502,6 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_NEXTAFTER 1
 #define HAVE_STRCHR 1
 #define HAVE_STRERROR 1
-#define HAVE_STRLCAT 1
-#define HAVE_STRLCPY 1
 #define HAVE_STRSTR 1
 #define HAVE_TGAMMA 1
 #define HAVE_ISFINITE 1
@@ -17119,6 +20512,7 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_WORKING_VFORK 1
 #define HAVE_WORKING_FORK 1
 #define HAVE__LONGJMP 1
+#define HAVE_ARC4RANDOM_BUF 1
 #define HAVE_ATAN2L 1
 #define HAVE_ATAN2F 1
 #define HAVE_CHROOT 1
@@ -17168,7 +20562,6 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_GRANTPT 1
 #define HAVE_INITGROUPS 1
 #define HAVE_IOCTL 1
-#define HAVE_ISSETUGID 1
 #define HAVE_KILLPG 1
 #define HAVE_LCHMOD 1
 #define HAVE_LCHOWN 1
@@ -17236,6 +20629,7 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_UTIMES 1
 #define HAVE_WAIT4 1
 #define HAVE_WAITPID 1
+#define HAVE_STATX 1
 #define HAVE_CRYPT_H 1
 #define HAVE_STRUCT_CRYPT_DATA_INITIALIZED 1
 #define HAVE_BUILTIN___BUILTIN_ALLOCA_WITH_ALIGN 1
@@ -17293,6 +20687,8 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define SET_CURRENT_THREAD_NAME(name) pthread_setname_np(pthread_self(), name)
 #define SET_ANOTHER_THREAD_NAME(thid,name) pthread_setname_np(thid, name)
 #define DEFINE_MCONTEXT_PTR(mc,uc) mcontext_t *mc = &(uc)->uc_mcontext
+#define HAVE_GETCONTEXT 1
+#define HAVE_SETCONTEXT 1
 #define HAVE_SYS_USER_H 1
 #define HAVE_CONST_PAGE_SIZE 1
 #define IOCTL_REQ_TYPE unsigned long
@@ -17300,18 +20696,18 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define USE_ELF 1
 #define HAVE_ELF_H 1
 #define HAVE_LIBZ 1
+#define HAVE_BACKTRACE 1
 #define DLEXT_MAXLEN 3
 #define DLEXT ".so"
 #define EXTSTATIC 1
 #define HAVE__SETJMP 1
-#define HAVE_SIGSETJMP 1
 #define RUBY_SETJMP(env) __builtin_setjmp((env))
 #define RUBY_LONGJMP(env,val) __builtin_longjmp((env),val)
 #define USE_MJIT 1
 #define HAVE_PTHREAD_H 1
 #define THREAD_IMPL_H "thread_pthread.h"
 #define THREAD_IMPL_SRC "thread_pthread.c"
-#define RUBY_PLATFORM "x86_64-linux-musl"
+#define RUBY_PLATFORM "x86_64-linux-gnu"
 #define RBIMPL_COMPILER_SINCE_H 
 #define RBIMPL_COMPILER_IS_H 
 #define RBIMPL_COMPILER_IS(cc) RBIMPL_COMPILER_IS_ ## cc
@@ -17350,978 +20746,1517 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #undef RBIMPL_TEST3
 #define USE_RVARGC 0
 #define _STDARG_H 
-#define __NEED_va_list 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#define __DEFINED_va_list 
-#undef _Addr
-#undef _Int64
-#undef _Reg
+#define _ANSI_STDARG_H_ 
+#undef __need___va_list
+#define __GNUC_VA_LIST 
 #define va_start(v,l) __builtin_va_start(v,l)
 #define va_end(v) __builtin_va_end(v)
 #define va_arg(v,l) __builtin_va_arg(v,l)
 #define va_copy(d,s) __builtin_va_copy(d,s)
+#define __va_copy(d,s) __builtin_va_copy(d,s)
+#define _VA_LIST_ 
+#define _VA_LIST 
+#define _VA_LIST_DEFINED 
+#define _VA_LIST_T_H 
+#define __va_list__ 
 #define RUBY_DEFINES_H 1
-#define _STDIO_H 
-#define _FEATURES_H 
-#define __restrict restrict
-#define __inline inline
-#define __REDIR(x,y) __typeof__(x) x __asm__(#y)
-#define __NEED_FILE 
-#define __NEED___isoc_va_list 
-#define __NEED_size_t 
-#define __NEED_ssize_t 
-#define __NEED_off_t 
-#define __NEED_va_list 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
+#define _STDIO_H 1
+#define __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION 
+#undef __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION
+#define _FEATURES_H 1
+#undef __USE_ISOC11
+#undef __USE_ISOC99
+#undef __USE_ISOC95
+#undef __USE_ISOCXX11
+#undef __USE_POSIX
+#undef __USE_POSIX2
+#undef __USE_POSIX199309
+#undef __USE_POSIX199506
+#undef __USE_XOPEN
+#undef __USE_XOPEN_EXTENDED
+#undef __USE_UNIX98
+#undef __USE_XOPEN2K
+#undef __USE_XOPEN2KXSI
+#undef __USE_XOPEN2K8
+#undef __USE_XOPEN2K8XSI
+#undef __USE_LARGEFILE
+#undef __USE_LARGEFILE64
+#undef __USE_FILE_OFFSET64
+#undef __USE_MISC
+#undef __USE_ATFILE
+#undef __USE_DYNAMIC_STACK_SIZE
+#undef __USE_GNU
+#undef __USE_FORTIFY_LEVEL
+#undef __KERNEL_STRICT_NAMES
+#undef __GLIBC_USE_ISOC2X
+#undef __GLIBC_USE_DEPRECATED_GETS
+#undef __GLIBC_USE_DEPRECATED_SCANF
+#define __KERNEL_STRICT_NAMES 
+#define __GNUC_PREREQ(maj,min) ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+#define __glibc_clang_prereq(maj,min) 0
+#define __GLIBC_USE(F) __GLIBC_USE_ ## F
+#undef _ISOC95_SOURCE
+#define _ISOC95_SOURCE 1
+#undef _ISOC99_SOURCE
+#define _ISOC99_SOURCE 1
+#undef _ISOC11_SOURCE
+#define _ISOC11_SOURCE 1
+#undef _ISOC2X_SOURCE
+#define _ISOC2X_SOURCE 1
+#undef _POSIX_SOURCE
+#define _POSIX_SOURCE 1
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#undef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 700
+#undef _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED 1
+#undef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE 1
+#undef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE 1
+#undef _ATFILE_SOURCE
+#define _ATFILE_SOURCE 1
+#undef _DYNAMIC_STACK_SIZE_SOURCE
+#define _DYNAMIC_STACK_SIZE_SOURCE 1
+#undef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE 1
+#define __GLIBC_USE_ISOC2X 1
+#define __USE_ISOC11 1
+#define __USE_ISOC99 1
+#define __USE_ISOC95 1
+#undef _POSIX_SOURCE
+#define _POSIX_SOURCE 1
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#define __USE_POSIX 1
+#define __USE_POSIX2 1
+#define __USE_POSIX199309 1
+#define __USE_POSIX199506 1
+#define __USE_XOPEN2K 1
+#undef __USE_ISOC95
+#define __USE_ISOC95 1
+#undef __USE_ISOC99
+#define __USE_ISOC99 1
+#define __USE_XOPEN2K8 1
+#undef _ATFILE_SOURCE
+#define _ATFILE_SOURCE 1
+#define __USE_XOPEN 1
+#define __USE_XOPEN_EXTENDED 1
+#define __USE_UNIX98 1
+#undef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE 1
+#define __USE_XOPEN2K8 1
+#define __USE_XOPEN2K8XSI 1
+#define __USE_XOPEN2K 1
+#define __USE_XOPEN2KXSI 1
+#undef __USE_ISOC95
+#define __USE_ISOC95 1
+#undef __USE_ISOC99
+#define __USE_ISOC99 1
+#define __USE_LARGEFILE 1
+#define __USE_LARGEFILE64 1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __TIMESIZE __WORDSIZE
+#define __USE_MISC 1
+#define __USE_ATFILE 1
+#define __USE_DYNAMIC_STACK_SIZE 1
+#define __USE_GNU 1
+#define __USE_FORTIFY_LEVEL 2
+#define __GLIBC_USE_DEPRECATED_GETS 0
+#define __GLIBC_USE_DEPRECATED_SCANF 0
+#undef __GNU_LIBRARY__
+#define __GNU_LIBRARY__ 6
+#define __GLIBC__ 2
+#define __GLIBC_MINOR__ 36
+#define __GLIBC_PREREQ(maj,min) ((__GLIBC__ << 16) + __GLIBC_MINOR__ >= ((maj) << 16) + (min))
+#define _SYS_CDEFS_H 1
+#undef __P
+#undef __PMT
+#define __glibc_has_attribute(attr) __has_attribute (attr)
+#define __glibc_has_builtin(name) __has_builtin (name)
+#define __glibc_has_extension(ext) 0
+#define __LEAF , __leaf__
+#define __LEAF_ATTR __attribute__ ((__leaf__))
+#define __THROW __attribute__ ((__nothrow__ __LEAF))
+#define __THROWNL __attribute__ ((__nothrow__))
+#define __NTH(fct) __attribute__ ((__nothrow__ __LEAF)) fct
+#define __NTHNL(fct) __attribute__ ((__nothrow__)) fct
+#define __P(args) args
+#define __PMT(args) args
+#define __CONCAT(x,y) x ## y
+#define __STRING(x) #x
+#define __ptr_t void *
+#define __BEGIN_DECLS 
+#define __END_DECLS 
+#define __bos(ptr) __builtin_object_size (ptr, __USE_FORTIFY_LEVEL > 1)
+#define __bos0(ptr) __builtin_object_size (ptr, 0)
+#define __glibc_objsize0(__o) __bos0 (__o)
+#define __glibc_objsize(__o) __bos (__o)
+#define __glibc_safe_len_cond(__l,__s,__osz) ((__l) <= (__osz) / (__s))
+#define __glibc_unsigned_or_positive(__l) ((__typeof (__l)) 0 < (__typeof (__l)) -1 || (__builtin_constant_p (__l) && (__l) > 0))
+#define __glibc_safe_or_unknown_len(__l,__s,__osz) ((__builtin_constant_p (__osz) && (__osz) == (__SIZE_TYPE__) -1) || (__glibc_unsigned_or_positive (__l) && __builtin_constant_p (__glibc_safe_len_cond ((__SIZE_TYPE__) (__l), (__s), (__osz))) && __glibc_safe_len_cond ((__SIZE_TYPE__) (__l), (__s), (__osz))))
+#define __glibc_unsafe_len(__l,__s,__osz) (__glibc_unsigned_or_positive (__l) && __builtin_constant_p (__glibc_safe_len_cond ((__SIZE_TYPE__) (__l), __s, __osz)) && !__glibc_safe_len_cond ((__SIZE_TYPE__) (__l), __s, __osz))
+#define __glibc_fortify(f,__l,__s,__osz,...) (__glibc_safe_or_unknown_len (__l, __s, __osz) ? __ ## f ## _alias (__VA_ARGS__) : (__glibc_unsafe_len (__l, __s, __osz) ? __ ## f ## _chk_warn (__VA_ARGS__, __osz) : __ ## f ## _chk (__VA_ARGS__, __osz)))
+#define __glibc_fortify_n(f,__l,__s,__osz,...) (__glibc_safe_or_unknown_len (__l, __s, __osz) ? __ ## f ## _alias (__VA_ARGS__) : (__glibc_unsafe_len (__l, __s, __osz) ? __ ## f ## _chk_warn (__VA_ARGS__, (__osz) / (__s)) : __ ## f ## _chk (__VA_ARGS__, (__osz) / (__s))))
+#define __warnattr(msg) __attribute__((__warning__ (msg)))
+#define __errordecl(name,msg) extern void name (void) __attribute__((__error__ (msg)))
+#define __flexarr []
+#define __glibc_c99_flexarr_available 1
+#define __REDIRECT(name,proto,alias) name proto __asm__ (__ASMNAME (#alias))
+#define __REDIRECT_NTH(name,proto,alias) name proto __asm__ (__ASMNAME (#alias)) __THROW
+#define __REDIRECT_NTHNL(name,proto,alias) name proto __asm__ (__ASMNAME (#alias)) __THROWNL
+#define __ASMNAME(cname) __ASMNAME2 (__USER_LABEL_PREFIX__, cname)
+#define __ASMNAME2(prefix,cname) __STRING (prefix) cname
+#define __attribute_malloc__ __attribute__ ((__malloc__))
+#define __attribute_alloc_size__(params) __attribute__ ((__alloc_size__ params))
+#define __attribute_alloc_align__(param) __attribute__ ((__alloc_align__ param))
+#define __attribute_pure__ __attribute__ ((__pure__))
+#define __attribute_const__ __attribute__ ((__const__))
+#define __attribute_maybe_unused__ __attribute__ ((__unused__))
+#define __attribute_used__ __attribute__ ((__used__))
+#define __attribute_noinline__ __attribute__ ((__noinline__))
+#define __attribute_deprecated__ __attribute__ ((__deprecated__))
+#define __attribute_deprecated_msg__(msg) __attribute__ ((__deprecated__ (msg)))
+#define __attribute_format_arg__(x) __attribute__ ((__format_arg__ (x)))
+#define __attribute_format_strfmon__(a,b) __attribute__ ((__format__ (__strfmon__, a, b)))
+#define __attribute_nonnull__(params) __attribute__ ((__nonnull__ params))
+#define __nonnull(params) __attribute_nonnull__ (params)
+#define __returns_nonnull __attribute__ ((__returns_nonnull__))
+#define __attribute_warn_unused_result__ __attribute__ ((__warn_unused_result__))
+#define __wur __attribute_warn_unused_result__
+#undef __always_inline
+#define __always_inline __inline __attribute__ ((__always_inline__))
+#define __attribute_artificial__ __attribute__ ((__artificial__))
+#define __extern_inline extern __inline __attribute__ ((__gnu_inline__))
+#define __extern_always_inline extern __always_inline __attribute__ ((__gnu_inline__))
+#define __fortify_function __extern_always_inline __attribute_artificial__
+#define __va_arg_pack() __builtin_va_arg_pack ()
+#define __va_arg_pack_len() __builtin_va_arg_pack_len ()
+#define __restrict_arr __restrict
+#define __glibc_unlikely(cond) __builtin_expect ((cond), 0)
+#define __glibc_likely(cond) __builtin_expect ((cond), 1)
+#define __attribute_nonstring__ __attribute__ ((__nonstring__))
+#undef __attribute_copy__
+#define __attribute_copy__(arg) __attribute__ ((__copy__ (arg)))
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI 0
+#define __LDBL_REDIR1(name,proto,alias) name proto
+#define __LDBL_REDIR(name,proto) name proto
+#define __LDBL_REDIR1_NTH(name,proto,alias) name proto __THROW
+#define __LDBL_REDIR_NTH(name,proto) name proto __THROW
+#define __LDBL_REDIR2_DECL(name) 
+#define __LDBL_REDIR_DECL(name) 
+#define __REDIRECT_LDBL(name,proto,alias) __REDIRECT (name, proto, alias)
+#define __REDIRECT_NTH_LDBL(name,proto,alias) __REDIRECT_NTH (name, proto, alias)
+#define __glibc_macro_warning1(message) _Pragma (#message)
+#define __glibc_macro_warning(message) __glibc_macro_warning1 (GCC warning message)
+#define __HAVE_GENERIC_SELECTION 1
+#define __attr_access(x) __attribute__ ((__access__ x))
+#define __fortified_attr_access(a,o,s) __attr_access ((a, o, s))
+#define __attr_access_none(argno) __attribute__ ((__access__ (__none__, argno)))
+#define __attr_dealloc(dealloc,argno) __attribute__ ((__malloc__ (dealloc, argno)))
+#define __attr_dealloc_free __attr_dealloc (__builtin_free, 1)
+#define __attribute_returns_twice__ __attribute__ ((__returns_twice__))
+#define __USE_EXTERN_INLINES 1
+#define __stub___compat_bdflush 
+#define __stub_chflags 
+#define __stub_fchflags 
+#define __stub_gtty 
+#define __stub_revoke 
+#define __stub_setlogin 
+#define __stub_sigreturn 
+#define __stub_stty 
+#undef __GLIBC_USE_LIB_EXT2
+#define __GLIBC_USE_LIB_EXT2 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT
+#define __GLIBC_USE_IEC_60559_BFP_EXT 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT_C2X
+#define __GLIBC_USE_IEC_60559_BFP_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_EXT
+#define __GLIBC_USE_IEC_60559_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_TYPES_EXT
+#define __GLIBC_USE_IEC_60559_TYPES_EXT 1
+#define __need_size_t 
+#define __need_NULL 
+#define __size_t__ 
+#define __SIZE_T__ 
+#define _SIZE_T 
+#define _SYS_SIZE_T_H 
+#define _T_SIZE_ 
+#define _T_SIZE 
+#define __SIZE_T 
+#define _SIZE_T_ 
+#define _BSD_SIZE_T_ 
+#define _SIZE_T_DEFINED_ 
+#define _SIZE_T_DEFINED 
+#define _BSD_SIZE_T_DEFINED_ 
+#define _SIZE_T_DECLARED 
 #define __DEFINED_size_t 
-#define __DEFINED_ssize_t 
-#define __DEFINED_off_t 
-#define __DEFINED_FILE 
-#define __DEFINED___isoc_va_list 
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define NULL ((void*)0)
-#undef EOF
-#define EOF (-1)
-#undef SEEK_SET
-#undef SEEK_CUR
-#undef SEEK_END
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
+#define ___int_size_t_h 
+#define _GCC_SIZE_T 
+#define _SIZET_ 
+#define __size_t 
+#undef __need_size_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define __need___va_list 
+#define _BITS_TYPES_H 1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __TIMESIZE __WORDSIZE
+#define __S16_TYPE short int
+#define __U16_TYPE unsigned short int
+#define __S32_TYPE int
+#define __U32_TYPE unsigned int
+#define __SLONGWORD_TYPE long int
+#define __ULONGWORD_TYPE unsigned long int
+#define __SQUAD_TYPE long int
+#define __UQUAD_TYPE unsigned long int
+#define __SWORD_TYPE long int
+#define __UWORD_TYPE unsigned long int
+#define __SLONG32_TYPE int
+#define __ULONG32_TYPE unsigned int
+#define __S64_TYPE long int
+#define __U64_TYPE unsigned long int
+#define __STD_TYPE typedef
+#define _BITS_TYPESIZES_H 1
+#define __SYSCALL_SLONG_TYPE __SLONGWORD_TYPE
+#define __SYSCALL_ULONG_TYPE __ULONGWORD_TYPE
+#define __DEV_T_TYPE __UQUAD_TYPE
+#define __UID_T_TYPE __U32_TYPE
+#define __GID_T_TYPE __U32_TYPE
+#define __INO_T_TYPE __SYSCALL_ULONG_TYPE
+#define __INO64_T_TYPE __UQUAD_TYPE
+#define __MODE_T_TYPE __U32_TYPE
+#define __NLINK_T_TYPE __SYSCALL_ULONG_TYPE
+#define __FSWORD_T_TYPE __SYSCALL_SLONG_TYPE
+#define __OFF_T_TYPE __SYSCALL_SLONG_TYPE
+#define __OFF64_T_TYPE __SQUAD_TYPE
+#define __PID_T_TYPE __S32_TYPE
+#define __RLIM_T_TYPE __SYSCALL_ULONG_TYPE
+#define __RLIM64_T_TYPE __UQUAD_TYPE
+#define __BLKCNT_T_TYPE __SYSCALL_SLONG_TYPE
+#define __BLKCNT64_T_TYPE __SQUAD_TYPE
+#define __FSBLKCNT_T_TYPE __SYSCALL_ULONG_TYPE
+#define __FSBLKCNT64_T_TYPE __UQUAD_TYPE
+#define __FSFILCNT_T_TYPE __SYSCALL_ULONG_TYPE
+#define __FSFILCNT64_T_TYPE __UQUAD_TYPE
+#define __ID_T_TYPE __U32_TYPE
+#define __CLOCK_T_TYPE __SYSCALL_SLONG_TYPE
+#define __TIME_T_TYPE __SYSCALL_SLONG_TYPE
+#define __USECONDS_T_TYPE __U32_TYPE
+#define __SUSECONDS_T_TYPE __SYSCALL_SLONG_TYPE
+#define __SUSECONDS64_T_TYPE __SQUAD_TYPE
+#define __DADDR_T_TYPE __S32_TYPE
+#define __KEY_T_TYPE __S32_TYPE
+#define __CLOCKID_T_TYPE __S32_TYPE
+#define __TIMER_T_TYPE void *
+#define __BLKSIZE_T_TYPE __SYSCALL_SLONG_TYPE
+#define __FSID_T_TYPE struct { int __val[2]; }
+#define __SSIZE_T_TYPE __SWORD_TYPE
+#define __CPU_MASK_TYPE __SYSCALL_ULONG_TYPE
+#define __OFF_T_MATCHES_OFF64_T 1
+#define __INO_T_MATCHES_INO64_T 1
+#define __RLIM_T_MATCHES_RLIM64_T 1
+#define __STATFS_MATCHES_STATFS64 1
+#define __KERNEL_OLD_TIMEVAL_MATCHES_TIMEVAL64 1
+#define __FD_SETSIZE 1024
+#define _BITS_TIME64_H 1
+#define __TIME64_T_TYPE __TIME_T_TYPE
+#undef __STD_TYPE
+#define _____fpos_t_defined 1
+#define ____mbstate_t_defined 1
+#define _____fpos64_t_defined 1
+#define ____FILE_defined 1
+#define __FILE_defined 1
+#define __struct_FILE_defined 1
+#define __getc_unlocked_body(_fp) (__glibc_unlikely ((_fp)->_IO_read_ptr >= (_fp)->_IO_read_end) ? __uflow (_fp) : *(unsigned char *) (_fp)->_IO_read_ptr++)
+#define __putc_unlocked_body(_ch,_fp) (__glibc_unlikely ((_fp)->_IO_write_ptr >= (_fp)->_IO_write_end) ? __overflow (_fp, (unsigned char) (_ch)) : (unsigned char) (*(_fp)->_IO_write_ptr++ = (_ch)))
+#define _IO_EOF_SEEN 0x0010
+#define __feof_unlocked_body(_fp) (((_fp)->_flags & _IO_EOF_SEEN) != 0)
+#define _IO_ERR_SEEN 0x0020
+#define __ferror_unlocked_body(_fp) (((_fp)->_flags & _IO_ERR_SEEN) != 0)
+#define _IO_USER_LOCK 0x8000
+#define __cookie_io_functions_t_defined 1
+#define __off_t_defined 
+#define __off64_t_defined 
+#define __ssize_t_defined 
 #define _IOFBF 0
 #define _IOLBF 1
 #define _IONBF 2
-#define BUFSIZ 1024
-#define FILENAME_MAX 4096
-#define FOPEN_MAX 1000
-#define TMP_MAX 10000
-#define L_tmpnam 20
-#define stdin (stdin)
-#define stdout (stdout)
-#define stderr (stderr)
-#define L_ctermid 20
-#define P_tmpdir "/tmp"
-#define L_cuserid 20
-#define tmpfile64 tmpfile
-#define fopen64 fopen
-#define freopen64 freopen
-#define fseeko64 fseeko
-#define ftello64 ftello
-#define fgetpos64 fgetpos
-#define fsetpos64 fsetpos
-#define fpos64_t fpos_t
-#define off64_t off_t
-#define _SYS_TYPES_H 
-#define __NEED_ino_t 
-#define __NEED_dev_t 
-#define __NEED_uid_t 
-#define __NEED_gid_t 
-#define __NEED_mode_t 
-#define __NEED_nlink_t 
-#define __NEED_off_t 
-#define __NEED_pid_t 
-#define __NEED_size_t 
-#define __NEED_ssize_t 
-#define __NEED_time_t 
-#define __NEED_timer_t 
-#define __NEED_clockid_t 
-#define __NEED_blkcnt_t 
-#define __NEED_fsblkcnt_t 
-#define __NEED_fsfilcnt_t 
-#define __NEED_id_t 
-#define __NEED_key_t 
-#define __NEED_clock_t 
-#define __NEED_suseconds_t 
-#define __NEED_blksize_t 
-#define __NEED_pthread_t 
-#define __NEED_pthread_attr_t 
-#define __NEED_pthread_mutexattr_t 
-#define __NEED_pthread_condattr_t 
-#define __NEED_pthread_rwlockattr_t 
-#define __NEED_pthread_barrierattr_t 
-#define __NEED_pthread_mutex_t 
-#define __NEED_pthread_cond_t 
-#define __NEED_pthread_rwlock_t 
-#define __NEED_pthread_barrier_t 
-#define __NEED_pthread_spinlock_t 
-#define __NEED_pthread_key_t 
-#define __NEED_pthread_once_t 
-#define __NEED_useconds_t 
-#define __NEED_int8_t 
-#define __NEED_int16_t 
-#define __NEED_int32_t 
-#define __NEED_int64_t 
-#define __NEED_u_int64_t 
-#define __NEED_register_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#define __DEFINED_register_t 
-#define __DEFINED_time_t 
-#define __DEFINED_suseconds_t 
-#define __DEFINED_int8_t 
-#define __DEFINED_int16_t 
-#define __DEFINED_int32_t 
-#define __DEFINED_int64_t 
-#define __DEFINED_u_int64_t 
-#define __DEFINED_mode_t 
-#define __DEFINED_nlink_t 
-#define __DEFINED_ino_t 
-#define __DEFINED_dev_t 
-#define __DEFINED_blksize_t 
-#define __DEFINED_blkcnt_t 
-#define __DEFINED_fsblkcnt_t 
-#define __DEFINED_fsfilcnt_t 
-#define __DEFINED_timer_t 
-#define __DEFINED_clockid_t 
-#define __DEFINED_clock_t 
-#define __DEFINED_pid_t 
-#define __DEFINED_id_t 
-#define __DEFINED_uid_t 
-#define __DEFINED_gid_t 
-#define __DEFINED_key_t 
-#define __DEFINED_useconds_t 
-#define __DEFINED_pthread_t 
-#define __DEFINED_pthread_once_t 
-#define __DEFINED_pthread_key_t 
-#define __DEFINED_pthread_spinlock_t 
-#define __DEFINED_pthread_mutexattr_t 
-#define __DEFINED_pthread_condattr_t 
-#define __DEFINED_pthread_barrierattr_t 
-#define __DEFINED_pthread_rwlockattr_t 
-#define __DEFINED_pthread_attr_t 
-#define __DEFINED_pthread_mutex_t 
-#define __DEFINED_pthread_cond_t 
-#define __DEFINED_pthread_rwlock_t 
-#define __DEFINED_pthread_barrier_t 
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define _ENDIAN_H 
-#define __NEED_uint16_t 
-#define __NEED_uint32_t 
-#define __NEED_uint64_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#define __DEFINED_uint16_t 
-#define __DEFINED_uint32_t 
-#define __DEFINED_uint64_t 
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define __PDP_ENDIAN 3412
-#define BIG_ENDIAN __BIG_ENDIAN
-#define LITTLE_ENDIAN __LITTLE_ENDIAN
-#define PDP_ENDIAN __PDP_ENDIAN
-#define BYTE_ORDER __BYTE_ORDER
-#define htobe16(x) __bswap16(x)
-#define be16toh(x) __bswap16(x)
-#define htobe32(x) __bswap32(x)
-#define be32toh(x) __bswap32(x)
-#define htobe64(x) __bswap64(x)
-#define be64toh(x) __bswap64(x)
-#define htole16(x) (uint16_t)(x)
-#define le16toh(x) (uint16_t)(x)
-#define htole32(x) (uint32_t)(x)
-#define le32toh(x) (uint32_t)(x)
-#define htole64(x) (uint64_t)(x)
-#define le64toh(x) (uint64_t)(x)
-#define betoh16(x) __bswap16(x)
-#define betoh32(x) __bswap32(x)
-#define betoh64(x) __bswap64(x)
-#define letoh16(x) (uint16_t)(x)
-#define letoh32(x) (uint32_t)(x)
-#define letoh64(x) (uint64_t)(x)
-#define _SYS_SELECT_H 
-#define __NEED_size_t 
-#define __NEED_time_t 
-#define __NEED_suseconds_t 
-#define __NEED_struct_timeval 
-#define __NEED_struct_timespec 
-#define __NEED_sigset_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#define __DEFINED_struct_timeval 
-#define __DEFINED_struct_timespec 
-#define __DEFINED_sigset_t 
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define FD_SETSIZE 1024
-#define FD_ZERO(s) do { int __i; unsigned long *__b=(s)->fds_bits; for(__i=sizeof (fd_set)/sizeof (long); __i; __i--) *__b++=0; } while(0)
-#define FD_SET(d,s) ((s)->fds_bits[(d)/(8*sizeof(long))] |= (1UL<<((d)%(8*sizeof(long)))))
-#define FD_CLR(d,s) ((s)->fds_bits[(d)/(8*sizeof(long))] &= ~(1UL<<((d)%(8*sizeof(long)))))
-#define FD_ISSET(d,s) !!((s)->fds_bits[(d)/(8*sizeof(long))] & (1UL<<((d)%(8*sizeof(long)))))
-#define NFDBITS (8*(int)sizeof(long))
-#define blkcnt64_t blkcnt_t
-#define fsblkcnt64_t fsblkcnt_t
-#define fsfilcnt64_t fsfilcnt_t
-#define ino64_t ino_t
-#define off64_t off_t
-#define _SYS_STAT_H 
-#define __NEED_dev_t 
-#define __NEED_ino_t 
-#define __NEED_mode_t 
-#define __NEED_nlink_t 
-#define __NEED_uid_t 
-#define __NEED_gid_t 
-#define __NEED_off_t 
-#define __NEED_time_t 
-#define __NEED_blksize_t 
-#define __NEED_blkcnt_t 
-#define __NEED_struct_timespec 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define st_atime st_atim.tv_sec
-#define st_mtime st_mtim.tv_sec
-#define st_ctime st_ctim.tv_sec
-#define S_IFMT 0170000
-#define S_IFDIR 0040000
-#define S_IFCHR 0020000
-#define S_IFBLK 0060000
-#define S_IFREG 0100000
-#define S_IFIFO 0010000
-#define S_IFLNK 0120000
-#define S_IFSOCK 0140000
-#define S_TYPEISMQ(buf) 0
-#define S_TYPEISSEM(buf) 0
-#define S_TYPEISSHM(buf) 0
-#define S_TYPEISTMO(buf) 0
-#define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
-#define S_ISCHR(mode) (((mode) & S_IFMT) == S_IFCHR)
-#define S_ISBLK(mode) (((mode) & S_IFMT) == S_IFBLK)
-#define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
-#define S_ISFIFO(mode) (((mode) & S_IFMT) == S_IFIFO)
-#define S_ISLNK(mode) (((mode) & S_IFMT) == S_IFLNK)
-#define S_ISSOCK(mode) (((mode) & S_IFMT) == S_IFSOCK)
-#define S_ISUID 04000
-#define S_ISGID 02000
-#define S_ISVTX 01000
-#define S_IRUSR 0400
-#define S_IWUSR 0200
-#define S_IXUSR 0100
-#define S_IRWXU 0700
-#define S_IRGRP 0040
-#define S_IWGRP 0020
-#define S_IXGRP 0010
-#define S_IRWXG 0070
-#define S_IROTH 0004
-#define S_IWOTH 0002
-#define S_IXOTH 0001
-#define S_IRWXO 0007
-#define UTIME_NOW 0x3fffffff
-#define UTIME_OMIT 0x3ffffffe
-#define S_IREAD S_IRUSR
-#define S_IWRITE S_IWUSR
-#define S_IEXEC S_IXUSR
-#define stat64 stat
-#define fstat64 fstat
-#define lstat64 lstat
-#define fstatat64 fstatat
-#define blkcnt64_t blkcnt_t
-#define fsblkcnt64_t fsblkcnt_t
-#define fsfilcnt64_t fsfilcnt_t
-#define ino64_t ino_t
-#define off64_t off_t
-#define _STDLIB_H 
-#define NULL ((void*)0)
-#define __NEED_size_t 
-#define __NEED_wchar_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __DEFINED_wchar_t 
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define EXIT_FAILURE 1
-#define EXIT_SUCCESS 0
-#define MB_CUR_MAX (__ctype_get_mb_cur_max())
-#define RAND_MAX (0x7fffffff)
-#define WNOHANG 1
-#define WUNTRACED 2
-#define WEXITSTATUS(s) (((s) & 0xff00) >> 8)
-#define WTERMSIG(s) ((s) & 0x7f)
-#define WSTOPSIG(s) WEXITSTATUS(s)
-#define WIFEXITED(s) (!WTERMSIG(s))
-#define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
-#define WIFSIGNALED(s) (((s)&0xffff)-1U < 0xffu)
-#define _ALLOCA_H 
-#define __NEED_size_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define alloca __builtin_alloca
-#define WCOREDUMP(s) ((s) & 0x80)
-#define WIFCONTINUED(s) ((s) == 0xffff)
-#define mkstemp64 mkstemp
-#define mkostemp64 mkostemp
-#define mkstemps64 mkstemps
-#define mkostemps64 mkostemps
-#define _STDDEF_H 
-#define NULL ((void*)0)
-#define __NEED_ptrdiff_t 
-#define __NEED_size_t 
-#define __NEED_wchar_t 
-#define __NEED_max_align_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __DEFINED_max_align_t 
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#define __DEFINED_ptrdiff_t 
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define offsetof(type,member) __builtin_offsetof(type, member)
-#define _STRING_H 
-#define NULL ((void*)0)
-#define __NEED_size_t 
-#define __NEED_locale_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#define __DEFINED_locale_t 
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define _STRINGS_H 
-#define __NEED_size_t 
-#define __NEED_locale_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define strdupa(x) strcpy(alloca(strlen(x)+1),x)
-#define _INTTYPES_H 
-#define _STDINT_H 
-#define __NEED_int8_t 
-#define __NEED_int16_t 
-#define __NEED_int32_t 
-#define __NEED_int64_t 
-#define __NEED_uint8_t 
-#define __NEED_uint16_t 
-#define __NEED_uint32_t 
-#define __NEED_uint64_t 
-#define __NEED_intptr_t 
-#define __NEED_uintptr_t 
-#define __NEED_intmax_t 
-#define __NEED_uintmax_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#define __DEFINED_uintptr_t 
-#define __DEFINED_intptr_t 
-#define __DEFINED_intmax_t 
-#define __DEFINED_uint8_t 
-#define __DEFINED_uintmax_t 
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define INT8_MIN (-1-0x7f)
-#define INT16_MIN (-1-0x7fff)
-#define INT32_MIN (-1-0x7fffffff)
-#define INT64_MIN (-1-0x7fffffffffffffff)
-#define INT8_MAX (0x7f)
-#define INT16_MAX (0x7fff)
-#define INT32_MAX (0x7fffffff)
-#define INT64_MAX (0x7fffffffffffffff)
-#define UINT8_MAX (0xff)
-#define UINT16_MAX (0xffff)
-#define UINT32_MAX (0xffffffffu)
-#define UINT64_MAX (0xffffffffffffffffu)
-#define INT_FAST8_MIN INT8_MIN
-#define INT_FAST64_MIN INT64_MIN
-#define INT_LEAST8_MIN INT8_MIN
-#define INT_LEAST16_MIN INT16_MIN
-#define INT_LEAST32_MIN INT32_MIN
-#define INT_LEAST64_MIN INT64_MIN
-#define INT_FAST8_MAX INT8_MAX
-#define INT_FAST64_MAX INT64_MAX
-#define INT_LEAST8_MAX INT8_MAX
-#define INT_LEAST16_MAX INT16_MAX
-#define INT_LEAST32_MAX INT32_MAX
-#define INT_LEAST64_MAX INT64_MAX
-#define UINT_FAST8_MAX UINT8_MAX
-#define UINT_FAST64_MAX UINT64_MAX
-#define UINT_LEAST8_MAX UINT8_MAX
-#define UINT_LEAST16_MAX UINT16_MAX
-#define UINT_LEAST32_MAX UINT32_MAX
-#define UINT_LEAST64_MAX UINT64_MAX
-#define INTMAX_MIN INT64_MIN
-#define INTMAX_MAX INT64_MAX
-#define UINTMAX_MAX UINT64_MAX
-#define WINT_MIN 0U
-#define WINT_MAX UINT32_MAX
-#define WCHAR_MAX (0x7fffffff+L'\0')
-#define WCHAR_MIN (-1-0x7fffffff+L'\0')
-#define SIG_ATOMIC_MIN INT32_MIN
-#define SIG_ATOMIC_MAX INT32_MAX
-#define INT_FAST16_MIN INT32_MIN
-#define INT_FAST32_MIN INT32_MIN
-#define INT_FAST16_MAX INT32_MAX
-#define INT_FAST32_MAX INT32_MAX
-#define UINT_FAST16_MAX UINT32_MAX
-#define UINT_FAST32_MAX UINT32_MAX
-#define INTPTR_MIN INT64_MIN
-#define INTPTR_MAX INT64_MAX
-#define UINTPTR_MAX UINT64_MAX
-#define PTRDIFF_MIN INT64_MIN
-#define PTRDIFF_MAX INT64_MAX
-#define SIZE_MAX UINT64_MAX
-#define INT8_C(c) c
-#define INT16_C(c) c
-#define INT32_C(c) c
-#define UINT8_C(c) c
-#define UINT16_C(c) c
-#define UINT32_C(c) c ## U
-#define INT64_C(c) c ## L
-#define UINT64_C(c) c ## UL
-#define INTMAX_C(c) c ## L
-#define UINTMAX_C(c) c ## UL
-#define __NEED_wchar_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define __PRI64 "l"
-#define __PRIPTR "l"
-#define PRId8 "d"
-#define PRId16 "d"
-#define PRId32 "d"
-#define PRId64 __PRI64 "d"
-#define PRIdLEAST8 "d"
-#define PRIdLEAST16 "d"
-#define PRIdLEAST32 "d"
-#define PRIdLEAST64 __PRI64 "d"
-#define PRIdFAST8 "d"
-#define PRIdFAST16 "d"
-#define PRIdFAST32 "d"
-#define PRIdFAST64 __PRI64 "d"
-#define PRIi8 "i"
-#define PRIi16 "i"
-#define PRIi32 "i"
-#define PRIi64 __PRI64 "i"
-#define PRIiLEAST8 "i"
-#define PRIiLEAST16 "i"
-#define PRIiLEAST32 "i"
-#define PRIiLEAST64 __PRI64 "i"
-#define PRIiFAST8 "i"
-#define PRIiFAST16 "i"
-#define PRIiFAST32 "i"
-#define PRIiFAST64 __PRI64 "i"
-#define PRIo8 "o"
-#define PRIo16 "o"
-#define PRIo32 "o"
-#define PRIo64 __PRI64 "o"
-#define PRIoLEAST8 "o"
-#define PRIoLEAST16 "o"
-#define PRIoLEAST32 "o"
-#define PRIoLEAST64 __PRI64 "o"
-#define PRIoFAST8 "o"
-#define PRIoFAST16 "o"
-#define PRIoFAST32 "o"
-#define PRIoFAST64 __PRI64 "o"
-#define PRIu8 "u"
-#define PRIu16 "u"
-#define PRIu32 "u"
-#define PRIu64 __PRI64 "u"
-#define PRIuLEAST8 "u"
-#define PRIuLEAST16 "u"
-#define PRIuLEAST32 "u"
-#define PRIuLEAST64 __PRI64 "u"
-#define PRIuFAST8 "u"
-#define PRIuFAST16 "u"
-#define PRIuFAST32 "u"
-#define PRIuFAST64 __PRI64 "u"
-#define PRIx8 "x"
-#define PRIx16 "x"
-#define PRIx32 "x"
-#define PRIx64 __PRI64 "x"
-#define PRIxLEAST8 "x"
-#define PRIxLEAST16 "x"
-#define PRIxLEAST32 "x"
-#define PRIxLEAST64 __PRI64 "x"
-#define PRIxFAST8 "x"
-#define PRIxFAST16 "x"
-#define PRIxFAST32 "x"
-#define PRIxFAST64 __PRI64 "x"
-#define PRIX8 "X"
-#define PRIX16 "X"
-#define PRIX32 "X"
-#define PRIX64 __PRI64 "X"
-#define PRIXLEAST8 "X"
-#define PRIXLEAST16 "X"
-#define PRIXLEAST32 "X"
-#define PRIXLEAST64 __PRI64 "X"
-#define PRIXFAST8 "X"
-#define PRIXFAST16 "X"
-#define PRIXFAST32 "X"
-#define PRIXFAST64 __PRI64 "X"
-#define PRIdMAX __PRI64 "d"
-#define PRIiMAX __PRI64 "i"
-#define PRIoMAX __PRI64 "o"
-#define PRIuMAX __PRI64 "u"
-#define PRIxMAX __PRI64 "x"
-#define PRIXMAX __PRI64 "X"
-#define PRIdPTR __PRIPTR "d"
-#define PRIiPTR __PRIPTR "i"
-#define PRIoPTR __PRIPTR "o"
-#define PRIuPTR __PRIPTR "u"
-#define PRIxPTR __PRIPTR "x"
-#define PRIXPTR __PRIPTR "X"
-#define SCNd8 "hhd"
-#define SCNd16 "hd"
-#define SCNd32 "d"
-#define SCNd64 __PRI64 "d"
-#define SCNdLEAST8 "hhd"
-#define SCNdLEAST16 "hd"
-#define SCNdLEAST32 "d"
-#define SCNdLEAST64 __PRI64 "d"
-#define SCNdFAST8 "hhd"
-#define SCNdFAST16 "d"
-#define SCNdFAST32 "d"
-#define SCNdFAST64 __PRI64 "d"
-#define SCNi8 "hhi"
-#define SCNi16 "hi"
-#define SCNi32 "i"
-#define SCNi64 __PRI64 "i"
-#define SCNiLEAST8 "hhi"
-#define SCNiLEAST16 "hi"
-#define SCNiLEAST32 "i"
-#define SCNiLEAST64 __PRI64 "i"
-#define SCNiFAST8 "hhi"
-#define SCNiFAST16 "i"
-#define SCNiFAST32 "i"
-#define SCNiFAST64 __PRI64 "i"
-#define SCNu8 "hhu"
-#define SCNu16 "hu"
-#define SCNu32 "u"
-#define SCNu64 __PRI64 "u"
-#define SCNuLEAST8 "hhu"
-#define SCNuLEAST16 "hu"
-#define SCNuLEAST32 "u"
-#define SCNuLEAST64 __PRI64 "u"
-#define SCNuFAST8 "hhu"
-#define SCNuFAST16 "u"
-#define SCNuFAST32 "u"
-#define SCNuFAST64 __PRI64 "u"
-#define SCNo8 "hho"
-#define SCNo16 "ho"
-#define SCNo32 "o"
-#define SCNo64 __PRI64 "o"
-#define SCNoLEAST8 "hho"
-#define SCNoLEAST16 "ho"
-#define SCNoLEAST32 "o"
-#define SCNoLEAST64 __PRI64 "o"
-#define SCNoFAST8 "hho"
-#define SCNoFAST16 "o"
-#define SCNoFAST32 "o"
-#define SCNoFAST64 __PRI64 "o"
-#define SCNx8 "hhx"
-#define SCNx16 "hx"
-#define SCNx32 "x"
-#define SCNx64 __PRI64 "x"
-#define SCNxLEAST8 "hhx"
-#define SCNxLEAST16 "hx"
-#define SCNxLEAST32 "x"
-#define SCNxLEAST64 __PRI64 "x"
-#define SCNxFAST8 "hhx"
-#define SCNxFAST16 "x"
-#define SCNxFAST32 "x"
-#define SCNxFAST64 __PRI64 "x"
-#define SCNdMAX __PRI64 "d"
-#define SCNiMAX __PRI64 "i"
-#define SCNoMAX __PRI64 "o"
-#define SCNuMAX __PRI64 "u"
-#define SCNxMAX __PRI64 "x"
-#define SCNdPTR __PRIPTR "d"
-#define SCNiPTR __PRIPTR "i"
-#define SCNoPTR __PRIPTR "o"
-#define SCNuPTR __PRIPTR "u"
-#define SCNxPTR __PRIPTR "x"
-#define _STDALIGN_H 
-#define alignas _Alignas
-#define alignof _Alignof
-#define __alignas_is_defined 1
-#define __alignof_is_defined 1
-#define _UNISTD_H 
-#define STDIN_FILENO 0
-#define STDOUT_FILENO 1
-#define STDERR_FILENO 2
+#define BUFSIZ 8192
+#define EOF (-1)
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
 #define SEEK_DATA 3
 #define SEEK_HOLE 4
-#define NULL ((void*)0)
-#define __NEED_size_t 
-#define __NEED_ssize_t 
-#define __NEED_uid_t 
-#define __NEED_gid_t 
-#define __NEED_off_t 
-#define __NEED_pid_t 
-#define __NEED_intptr_t 
-#define __NEED_useconds_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
+#define P_tmpdir "/tmp"
+#define _BITS_STDIO_LIM_H 1
+#define L_tmpnam 20
+#define TMP_MAX 238328
+#define FILENAME_MAX 4096
+#define L_ctermid 9
+#define L_cuserid 9
+#undef FOPEN_MAX
+#define FOPEN_MAX 16
+#define _PRINTF_NAN_LEN_MAX 4
+#define stdin stdin
+#define stdout stdout
+#define stderr stderr
+#define RENAME_NOREPLACE (1 << 0)
+#define RENAME_EXCHANGE (1 << 1)
+#define RENAME_WHITEOUT (1 << 2)
+#undef __attr_dealloc_fclose
+#define __attr_dealloc_fclose __attr_dealloc (fclose, 1)
+#define _BITS_FLOATN_H 
+#define __HAVE_FLOAT128 1
+#define __HAVE_DISTINCT_FLOAT128 1
+#define __HAVE_FLOAT64X 1
+#define __HAVE_FLOAT64X_LONG_DOUBLE 1
+#define __f128(x) x ##f128
+#define __CFLOAT128 _Complex _Float128
+#define _BITS_FLOATN_COMMON_H 
+#define __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI 0
+#define __HAVE_FLOAT16 0
+#define __HAVE_FLOAT32 1
+#define __HAVE_FLOAT64 1
+#define __HAVE_FLOAT32X 1
+#define __HAVE_FLOAT128X 0
+#define __HAVE_DISTINCT_FLOAT16 __HAVE_FLOAT16
+#define __HAVE_DISTINCT_FLOAT32 0
+#define __HAVE_DISTINCT_FLOAT64 0
+#define __HAVE_DISTINCT_FLOAT32X 0
+#define __HAVE_DISTINCT_FLOAT64X 0
+#define __HAVE_DISTINCT_FLOAT128X __HAVE_FLOAT128X
+#define __HAVE_FLOAT128_UNLIKE_LDBL (__HAVE_DISTINCT_FLOAT128 && __LDBL_MANT_DIG__ != 113)
+#define __HAVE_FLOATN_NOT_TYPEDEF 1
+#define __f32(x) x ##f32
+#define __f64(x) x ##f64
+#define __f32x(x) x ##f32x
+#define __f64x(x) x ##f64x
+#define __CFLOAT32 _Complex _Float32
+#define __CFLOAT64 _Complex _Float64
+#define __CFLOAT32X _Complex _Float32x
+#define __CFLOAT64X _Complex _Float64x
+#define _BITS_STDIO2_DEC_H 1
+#undef fread_unlocked
+#define _BITS_STDIO_H 1
+#define __STDIO_INLINE __extern_inline
+#define fread_unlocked(ptr,size,n,stream) (__extension__ ((__builtin_constant_p (size) && __builtin_constant_p (n) && (size_t) (size) * (size_t) (n) <= 8 && (size_t) (size) != 0) ? ({ char *__ptr = (char *) (ptr); FILE *__stream = (stream); size_t __cnt; for (__cnt = (size_t) (size) * (size_t) (n); __cnt > 0; --__cnt) { int __c = getc_unlocked (__stream); if (__c == EOF) break; *__ptr++ = __c; } ((size_t) (size) * (size_t) (n) - __cnt) / (size_t) (size); }) : (((__builtin_constant_p (size) && (size_t) (size) == 0) || (__builtin_constant_p (n) && (size_t) (n) == 0)) ? ((void) (ptr), (void) (stream), (void) (size), (void) (n), (size_t) 0) : fread_unlocked (ptr, size, n, stream))))
+#define fwrite_unlocked(ptr,size,n,stream) (__extension__ ((__builtin_constant_p (size) && __builtin_constant_p (n) && (size_t) (size) * (size_t) (n) <= 8 && (size_t) (size) != 0) ? ({ const char *__ptr = (const char *) (ptr); FILE *__stream = (stream); size_t __cnt; for (__cnt = (size_t) (size) * (size_t) (n); __cnt > 0; --__cnt) if (putc_unlocked (*__ptr++, __stream) == EOF) break; ((size_t) (size) * (size_t) (n) - __cnt) / (size_t) (size); }) : (((__builtin_constant_p (size) && (size_t) (size) == 0) || (__builtin_constant_p (n) && (size_t) (n) == 0)) ? ((void) (ptr), (void) (stream), (void) (size), (void) (n), (size_t) 0) : fwrite_unlocked (ptr, size, n, stream))))
+#undef __STDIO_INLINE
+#define _BITS_STDIO2_H 1
+#undef fread_unlocked
+#define _SYS_TYPES_H 1
+#define __u_char_defined 
+#define __ino_t_defined 
+#define __ino64_t_defined 
+#define __dev_t_defined 
+#define __gid_t_defined 
+#define __mode_t_defined 
+#define __nlink_t_defined 
+#define __uid_t_defined 
+#define __pid_t_defined 
+#define __id_t_defined 
+#define __daddr_t_defined 
+#define __key_t_defined 
+#define __clock_t_defined 1
+#define __clockid_t_defined 1
+#define __time_t_defined 1
+#define __timer_t_defined 1
+#define __useconds_t_defined 
+#define __suseconds_t_defined 
+#define __need_size_t 
+#undef __need_size_t
+#undef __need_NULL
+#define _BITS_STDINT_INTN_H 1
+#define __BIT_TYPES_DEFINED__ 1
+#define _ENDIAN_H 1
+#define _BITS_ENDIAN_H 1
 #define __LITTLE_ENDIAN 1234
 #define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define F_OK 0
+#define __PDP_ENDIAN 3412
+#define _BITS_ENDIANNESS_H 1
+#define __BYTE_ORDER __LITTLE_ENDIAN
+#define __FLOAT_WORD_ORDER __BYTE_ORDER
+#define __LONG_LONG_PAIR(HI,LO) LO, HI
+#define LITTLE_ENDIAN __LITTLE_ENDIAN
+#define BIG_ENDIAN __BIG_ENDIAN
+#define PDP_ENDIAN __PDP_ENDIAN
+#define BYTE_ORDER __BYTE_ORDER
+#define _BITS_BYTESWAP_H 1
+#define __bswap_constant_16(x) ((__uint16_t) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)))
+#define __bswap_constant_32(x) ((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >> 8) | (((x) & 0x0000ff00u) << 8) | (((x) & 0x000000ffu) << 24))
+#define __bswap_constant_64(x) ((((x) & 0xff00000000000000ull) >> 56) | (((x) & 0x00ff000000000000ull) >> 40) | (((x) & 0x0000ff0000000000ull) >> 24) | (((x) & 0x000000ff00000000ull) >> 8) | (((x) & 0x00000000ff000000ull) << 8) | (((x) & 0x0000000000ff0000ull) << 24) | (((x) & 0x000000000000ff00ull) << 40) | (((x) & 0x00000000000000ffull) << 56))
+#define _BITS_UINTN_IDENTITY_H 1
+#define htobe16(x) __bswap_16 (x)
+#define htole16(x) __uint16_identity (x)
+#define be16toh(x) __bswap_16 (x)
+#define le16toh(x) __uint16_identity (x)
+#define htobe32(x) __bswap_32 (x)
+#define htole32(x) __uint32_identity (x)
+#define be32toh(x) __bswap_32 (x)
+#define le32toh(x) __uint32_identity (x)
+#define htobe64(x) __bswap_64 (x)
+#define htole64(x) __uint64_identity (x)
+#define be64toh(x) __bswap_64 (x)
+#define le64toh(x) __uint64_identity (x)
+#define _SYS_SELECT_H 1
+#define __FD_ZERO(s) do { unsigned int __i; fd_set *__arr = (s); for (__i = 0; __i < sizeof (fd_set) / sizeof (__fd_mask); ++__i) __FDS_BITS (__arr)[__i] = 0; } while (0)
+#define __FD_SET(d,s) ((void) (__FDS_BITS (s)[__FD_ELT(d)] |= __FD_MASK(d)))
+#define __FD_CLR(d,s) ((void) (__FDS_BITS (s)[__FD_ELT(d)] &= ~__FD_MASK(d)))
+#define __FD_ISSET(d,s) ((__FDS_BITS (s)[__FD_ELT (d)] & __FD_MASK (d)) != 0)
+#define __sigset_t_defined 1
+#define ____sigset_t_defined 
+#define _SIGSET_NWORDS (1024 / (8 * sizeof (unsigned long int)))
+#define __timeval_defined 1
+#define _STRUCT_TIMESPEC 1
+#undef __NFDBITS
+#define __NFDBITS (8 * (int) sizeof (__fd_mask))
+#define __FD_ELT(d) ((d) / __NFDBITS)
+#define __FD_MASK(d) ((__fd_mask) (1UL << ((d) % __NFDBITS)))
+#define __FDS_BITS(set) ((set)->fds_bits)
+#define FD_SETSIZE __FD_SETSIZE
+#define NFDBITS __NFDBITS
+#define FD_SET(fd,fdsetp) __FD_SET (fd, fdsetp)
+#define FD_CLR(fd,fdsetp) __FD_CLR (fd, fdsetp)
+#define FD_ISSET(fd,fdsetp) __FD_ISSET (fd, fdsetp)
+#define FD_ZERO(fdsetp) __FD_ZERO (fdsetp)
+#undef __FD_ELT
+#define __FD_ELT(d) __extension__ ({ long int __d = (d); (__builtin_constant_p (__d) ? (0 <= __d && __d < __FD_SETSIZE ? (__d / __NFDBITS) : __fdelt_warn (__d)) : __fdelt_chk (__d)); })
+#define __blksize_t_defined 
+#define __blkcnt_t_defined 
+#define __fsblkcnt_t_defined 
+#define __fsfilcnt_t_defined 
+#define _BITS_PTHREADTYPES_COMMON_H 1
+#define _THREAD_SHARED_TYPES_H 1
+#define _BITS_PTHREADTYPES_ARCH_H 1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __SIZEOF_PTHREAD_MUTEX_T 40
+#define __SIZEOF_PTHREAD_ATTR_T 56
+#define __SIZEOF_PTHREAD_RWLOCK_T 56
+#define __SIZEOF_PTHREAD_BARRIER_T 32
+#define __SIZEOF_PTHREAD_MUTEXATTR_T 4
+#define __SIZEOF_PTHREAD_COND_T 48
+#define __SIZEOF_PTHREAD_CONDATTR_T 4
+#define __SIZEOF_PTHREAD_RWLOCKATTR_T 8
+#define __SIZEOF_PTHREAD_BARRIERATTR_T 4
+#define __LOCK_ALIGNMENT 
+#define __ONCE_ALIGNMENT 
+#define _BITS_ATOMIC_WIDE_COUNTER_H 
+#define _THREAD_MUTEX_INTERNAL_H 1
+#define __PTHREAD_MUTEX_HAVE_PREV 1
+#define __PTHREAD_MUTEX_INITIALIZER(__kind) 0, 0, 0, 0, __kind, 0, 0, { 0, 0 }
+#define _RWLOCK_INTERNAL_H 
+#define __PTHREAD_RWLOCK_ELISION_EXTRA 0, { 0, 0, 0, 0, 0, 0, 0 }
+#define __PTHREAD_RWLOCK_INITIALIZER(__flags) 0, 0, 0, 0, 0, 0, 0, 0, __PTHREAD_RWLOCK_ELISION_EXTRA, 0, __flags
+#define __ONCE_FLAG_INIT { 0 }
+#define __have_pthread_attr_t 1
+#define _SYS_STAT_H 1
+#define _BITS_STAT_H 1
+#define _BITS_STRUCT_STAT_H 1
+#define st_atime st_atim.tv_sec
+#define st_mtime st_mtim.tv_sec
+#define st_ctime st_ctim.tv_sec
+#define _STATBUF_ST_BLKSIZE 
+#define _STATBUF_ST_RDEV 
+#define _STATBUF_ST_NSEC 
+#define __S_IFMT 0170000
+#define __S_IFDIR 0040000
+#define __S_IFCHR 0020000
+#define __S_IFBLK 0060000
+#define __S_IFREG 0100000
+#define __S_IFIFO 0010000
+#define __S_IFLNK 0120000
+#define __S_IFSOCK 0140000
+#define __S_TYPEISMQ(buf) ((buf)->st_mode - (buf)->st_mode)
+#define __S_TYPEISSEM(buf) ((buf)->st_mode - (buf)->st_mode)
+#define __S_TYPEISSHM(buf) ((buf)->st_mode - (buf)->st_mode)
+#define __S_ISUID 04000
+#define __S_ISGID 02000
+#define __S_ISVTX 01000
+#define __S_IREAD 0400
+#define __S_IWRITE 0200
+#define __S_IEXEC 0100
+#define UTIME_NOW ((1l << 30) - 1l)
+#define UTIME_OMIT ((1l << 30) - 2l)
+#define S_IFMT __S_IFMT
+#define S_IFDIR __S_IFDIR
+#define S_IFCHR __S_IFCHR
+#define S_IFBLK __S_IFBLK
+#define S_IFREG __S_IFREG
+#define S_IFIFO __S_IFIFO
+#define S_IFLNK __S_IFLNK
+#define S_IFSOCK __S_IFSOCK
+#define __S_ISTYPE(mode,mask) (((mode) & __S_IFMT) == (mask))
+#define S_ISDIR(mode) __S_ISTYPE((mode), __S_IFDIR)
+#define S_ISCHR(mode) __S_ISTYPE((mode), __S_IFCHR)
+#define S_ISBLK(mode) __S_ISTYPE((mode), __S_IFBLK)
+#define S_ISREG(mode) __S_ISTYPE((mode), __S_IFREG)
+#define S_ISFIFO(mode) __S_ISTYPE((mode), __S_IFIFO)
+#define S_ISLNK(mode) __S_ISTYPE((mode), __S_IFLNK)
+#define S_ISSOCK(mode) __S_ISTYPE((mode), __S_IFSOCK)
+#define S_TYPEISMQ(buf) __S_TYPEISMQ(buf)
+#define S_TYPEISSEM(buf) __S_TYPEISSEM(buf)
+#define S_TYPEISSHM(buf) __S_TYPEISSHM(buf)
+#define S_ISUID __S_ISUID
+#define S_ISGID __S_ISGID
+#define S_ISVTX __S_ISVTX
+#define S_IRUSR __S_IREAD
+#define S_IWUSR __S_IWRITE
+#define S_IXUSR __S_IEXEC
+#define S_IRWXU (__S_IREAD|__S_IWRITE|__S_IEXEC)
+#define S_IREAD S_IRUSR
+#define S_IWRITE S_IWUSR
+#define S_IEXEC S_IXUSR
+#define S_IRGRP (S_IRUSR >> 3)
+#define S_IWGRP (S_IWUSR >> 3)
+#define S_IXGRP (S_IXUSR >> 3)
+#define S_IRWXG (S_IRWXU >> 3)
+#define S_IROTH (S_IRGRP >> 3)
+#define S_IWOTH (S_IWGRP >> 3)
+#define S_IXOTH (S_IXGRP >> 3)
+#define S_IRWXO (S_IRWXG >> 3)
+#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO)
+#define ALLPERMS (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)
+#define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+#define S_BLKSIZE 512
+#define _LINUX_STAT_H 
+#define _LINUX_TYPES_H 
+#define _ASM_GENERIC_TYPES_H 
+#define _ASM_GENERIC_INT_LL64_H 
+#define __ASM_X86_BITSPERLONG_H 
+#define __BITS_PER_LONG 64
+#define __ASM_GENERIC_BITS_PER_LONG 
+#define _LINUX_POSIX_TYPES_H 
+#define _LINUX_STDDEF_H 
+#define __struct_group_tag(TAG) TAG
+#define __struct_group(TAG,NAME,ATTRS,MEMBERS...) union { struct { MEMBERS } ATTRS; struct __struct_group_tag(TAG) { MEMBERS } ATTRS NAME; } ATTRS
+#define __DECLARE_FLEX_ARRAY(TYPE,NAME) struct { struct { } __empty_ ## NAME; TYPE NAME[]; }
+#undef __FD_SETSIZE
+#define __FD_SETSIZE 1024
+#define _ASM_X86_POSIX_TYPES_64_H 
+#define __kernel_old_uid_t __kernel_old_uid_t
+#define __kernel_old_dev_t __kernel_old_dev_t
+#define __ASM_GENERIC_POSIX_TYPES_H 
+#define __bitwise 
+#define __bitwise__ __bitwise
+#define __aligned_u64 __u64 __attribute__((aligned(8)))
+#define __aligned_s64 __s64 __attribute__((aligned(8)))
+#define __aligned_be64 __be64 __attribute__((aligned(8)))
+#define __aligned_le64 __le64 __attribute__((aligned(8)))
+#define STATX_TYPE 0x00000001U
+#define STATX_MODE 0x00000002U
+#define STATX_NLINK 0x00000004U
+#define STATX_UID 0x00000008U
+#define STATX_GID 0x00000010U
+#define STATX_ATIME 0x00000020U
+#define STATX_MTIME 0x00000040U
+#define STATX_CTIME 0x00000080U
+#define STATX_INO 0x00000100U
+#define STATX_SIZE 0x00000200U
+#define STATX_BLOCKS 0x00000400U
+#define STATX_BASIC_STATS 0x000007ffU
+#define STATX_BTIME 0x00000800U
+#define STATX_MNT_ID 0x00001000U
+#define STATX_DIOALIGN 0x00002000U
+#define STATX__RESERVED 0x80000000U
+#define STATX_ALL 0x00000fffU
+#define STATX_ATTR_COMPRESSED 0x00000004
+#define STATX_ATTR_IMMUTABLE 0x00000010
+#define STATX_ATTR_APPEND 0x00000020
+#define STATX_ATTR_NODUMP 0x00000040
+#define STATX_ATTR_ENCRYPTED 0x00000800
+#define STATX_ATTR_AUTOMOUNT 0x00001000
+#define STATX_ATTR_MOUNT_ROOT 0x00002000
+#define STATX_ATTR_VERITY 0x00100000
+#define STATX_ATTR_DAX 0x00200000
+#define __statx_timestamp_defined 1
+#define __statx_defined 1
+#define __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION 
+#undef __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION
+#undef __GLIBC_USE_LIB_EXT2
+#define __GLIBC_USE_LIB_EXT2 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT
+#define __GLIBC_USE_IEC_60559_BFP_EXT 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT_C2X
+#define __GLIBC_USE_IEC_60559_BFP_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_EXT
+#define __GLIBC_USE_IEC_60559_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_TYPES_EXT
+#define __GLIBC_USE_IEC_60559_TYPES_EXT 1
+#define __need_size_t 
+#define __need_wchar_t 
+#define __need_NULL 
+#undef __need_size_t
+#define __wchar_t__ 
+#define __WCHAR_T__ 
+#define _WCHAR_T 
+#define _T_WCHAR_ 
+#define _T_WCHAR 
+#define __WCHAR_T 
+#define _WCHAR_T_ 
+#define _BSD_WCHAR_T_ 
+#define _WCHAR_T_DEFINED_ 
+#define _WCHAR_T_DEFINED 
+#define _WCHAR_T_H 
+#define ___int_wchar_t_h 
+#define __INT_WCHAR_T_H 
+#define _GCC_WCHAR_T 
+#define _WCHAR_T_DECLARED 
+#define __DEFINED_wchar_t 
+#undef _BSD_WCHAR_T_
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define _STDLIB_H 1
+#define WNOHANG 1
+#define WUNTRACED 2
+#define WSTOPPED 2
+#define WEXITED 4
+#define WCONTINUED 8
+#define WNOWAIT 0x01000000
+#define __WNOTHREAD 0x20000000
+#define __WALL 0x40000000
+#define __WCLONE 0x80000000
+#define __WEXITSTATUS(status) (((status) & 0xff00) >> 8)
+#define __WTERMSIG(status) ((status) & 0x7f)
+#define __WSTOPSIG(status) __WEXITSTATUS(status)
+#define __WIFEXITED(status) (__WTERMSIG(status) == 0)
+#define __WIFSIGNALED(status) (((signed char) (((status) & 0x7f) + 1) >> 1) > 0)
+#define __WIFSTOPPED(status) (((status) & 0xff) == 0x7f)
+#define __WIFCONTINUED(status) ((status) == __W_CONTINUED)
+#define __WCOREDUMP(status) ((status) & __WCOREFLAG)
+#define __W_EXITCODE(ret,sig) ((ret) << 8 | (sig))
+#define __W_STOPCODE(sig) ((sig) << 8 | 0x7f)
+#define __W_CONTINUED 0xffff
+#define __WCOREFLAG 0x80
+#define WEXITSTATUS(status) __WEXITSTATUS (status)
+#define WTERMSIG(status) __WTERMSIG (status)
+#define WSTOPSIG(status) __WSTOPSIG (status)
+#define WIFEXITED(status) __WIFEXITED (status)
+#define WIFSIGNALED(status) __WIFSIGNALED (status)
+#define WIFSTOPPED(status) __WIFSTOPPED (status)
+#define WIFCONTINUED(status) __WIFCONTINUED (status)
+#define __ldiv_t_defined 1
+#define __lldiv_t_defined 1
+#define RAND_MAX 2147483647
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
+#define MB_CUR_MAX (__ctype_get_mb_cur_max ())
+#define _BITS_TYPES_LOCALE_T_H 1
+#define _BITS_TYPES___LOCALE_T_H 1
+#define _ALLOCA_H 1
+#define __need_size_t 
+#undef __need_size_t
+#undef __need_NULL
+#undef alloca
+#define alloca(size) __builtin_alloca (size)
+#define __COMPAR_FN_T 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
+#pragma GCC diagnostic pop
+#define __STDLIB_MB_LEN_MAX 16
+#define _STDDEF_H 
+#define _STDDEF_H_ 
+#define _ANSI_STDDEF_H 
+#define _PTRDIFF_T 
+#define _T_PTRDIFF_ 
+#define _T_PTRDIFF 
+#define __PTRDIFF_T 
+#define _PTRDIFF_T_ 
+#define _BSD_PTRDIFF_T_ 
+#define ___int_ptrdiff_t_h 
+#define _GCC_PTRDIFF_T 
+#define _PTRDIFF_T_DECLARED 
+#define __DEFINED_ptrdiff_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _GCC_MAX_ALIGN_T 
+#define _STRING_H 1
+#define __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION 
+#undef __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION
+#undef __GLIBC_USE_LIB_EXT2
+#define __GLIBC_USE_LIB_EXT2 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT
+#define __GLIBC_USE_IEC_60559_BFP_EXT 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT_C2X
+#define __GLIBC_USE_IEC_60559_BFP_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_EXT
+#define __GLIBC_USE_IEC_60559_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_TYPES_EXT
+#define __GLIBC_USE_IEC_60559_TYPES_EXT 1
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define strdupa(s) (__extension__ ({ const char *__old = (s); size_t __len = strlen (__old) + 1; char *__new = (char *) __builtin_alloca (__len); (char *) memcpy (__new, __old, __len); }))
+#define strndupa(s,n) (__extension__ ({ const char *__old = (s); size_t __len = strnlen (__old, (n)); char *__new = (char *) __builtin_alloca (__len + 1); __new[__len] = '\0'; (char *) memcpy (__new, __old, __len); }))
+#define _STRINGS_H 1
+#define __need_size_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __STRINGS_FORTIFIED 1
+#define _BITS_STRING_FORTIFIED_H 1
+#define _INTTYPES_H 1
+#define _STDINT_H 1
+#define __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION 
+#undef __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION
+#undef __GLIBC_USE_LIB_EXT2
+#define __GLIBC_USE_LIB_EXT2 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT
+#define __GLIBC_USE_IEC_60559_BFP_EXT 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT_C2X
+#define __GLIBC_USE_IEC_60559_BFP_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_EXT
+#define __GLIBC_USE_IEC_60559_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_TYPES_EXT
+#define __GLIBC_USE_IEC_60559_TYPES_EXT 1
+#define _BITS_WCHAR_H 1
+#define __WCHAR_MAX __WCHAR_MAX__
+#define __WCHAR_MIN __WCHAR_MIN__
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define _BITS_STDINT_UINTN_H 1
+#define __intptr_t_defined 
+#define __INT64_C(c) c ## L
+#define __UINT64_C(c) c ## UL
+#define INT8_MIN (-128)
+#define INT16_MIN (-32767-1)
+#define INT32_MIN (-2147483647-1)
+#define INT64_MIN (-__INT64_C(9223372036854775807)-1)
+#define INT8_MAX (127)
+#define INT16_MAX (32767)
+#define INT32_MAX (2147483647)
+#define INT64_MAX (__INT64_C(9223372036854775807))
+#define UINT8_MAX (255)
+#define UINT16_MAX (65535)
+#define UINT32_MAX (4294967295U)
+#define UINT64_MAX (__UINT64_C(18446744073709551615))
+#define INT_LEAST8_MIN (-128)
+#define INT_LEAST16_MIN (-32767-1)
+#define INT_LEAST32_MIN (-2147483647-1)
+#define INT_LEAST64_MIN (-__INT64_C(9223372036854775807)-1)
+#define INT_LEAST8_MAX (127)
+#define INT_LEAST16_MAX (32767)
+#define INT_LEAST32_MAX (2147483647)
+#define INT_LEAST64_MAX (__INT64_C(9223372036854775807))
+#define UINT_LEAST8_MAX (255)
+#define UINT_LEAST16_MAX (65535)
+#define UINT_LEAST32_MAX (4294967295U)
+#define UINT_LEAST64_MAX (__UINT64_C(18446744073709551615))
+#define INT_FAST8_MIN (-128)
+#define INT_FAST16_MIN (-9223372036854775807L-1)
+#define INT_FAST32_MIN (-9223372036854775807L-1)
+#define INT_FAST64_MIN (-__INT64_C(9223372036854775807)-1)
+#define INT_FAST8_MAX (127)
+#define INT_FAST16_MAX (9223372036854775807L)
+#define INT_FAST32_MAX (9223372036854775807L)
+#define INT_FAST64_MAX (__INT64_C(9223372036854775807))
+#define UINT_FAST8_MAX (255)
+#define UINT_FAST16_MAX (18446744073709551615UL)
+#define UINT_FAST32_MAX (18446744073709551615UL)
+#define UINT_FAST64_MAX (__UINT64_C(18446744073709551615))
+#define INTPTR_MIN (-9223372036854775807L-1)
+#define INTPTR_MAX (9223372036854775807L)
+#define UINTPTR_MAX (18446744073709551615UL)
+#define INTMAX_MIN (-__INT64_C(9223372036854775807)-1)
+#define INTMAX_MAX (__INT64_C(9223372036854775807))
+#define UINTMAX_MAX (__UINT64_C(18446744073709551615))
+#define PTRDIFF_MIN (-9223372036854775807L-1)
+#define PTRDIFF_MAX (9223372036854775807L)
+#define SIG_ATOMIC_MIN (-2147483647-1)
+#define SIG_ATOMIC_MAX (2147483647)
+#define SIZE_MAX (18446744073709551615UL)
+#define WCHAR_MIN __WCHAR_MIN
+#define WCHAR_MAX __WCHAR_MAX
+#define WINT_MIN (0u)
+#define WINT_MAX (4294967295u)
+#define INT8_C(c) c
+#define INT16_C(c) c
+#define INT32_C(c) c
+#define INT64_C(c) c ## L
+#define UINT8_C(c) c
+#define UINT16_C(c) c
+#define UINT32_C(c) c ## U
+#define UINT64_C(c) c ## UL
+#define INTMAX_C(c) c ## L
+#define UINTMAX_C(c) c ## UL
+#define INT8_WIDTH 8
+#define UINT8_WIDTH 8
+#define INT16_WIDTH 16
+#define UINT16_WIDTH 16
+#define INT32_WIDTH 32
+#define UINT32_WIDTH 32
+#define INT64_WIDTH 64
+#define UINT64_WIDTH 64
+#define INT_LEAST8_WIDTH 8
+#define UINT_LEAST8_WIDTH 8
+#define INT_LEAST16_WIDTH 16
+#define UINT_LEAST16_WIDTH 16
+#define INT_LEAST32_WIDTH 32
+#define UINT_LEAST32_WIDTH 32
+#define INT_LEAST64_WIDTH 64
+#define UINT_LEAST64_WIDTH 64
+#define INT_FAST8_WIDTH 8
+#define UINT_FAST8_WIDTH 8
+#define INT_FAST16_WIDTH __WORDSIZE
+#define UINT_FAST16_WIDTH __WORDSIZE
+#define INT_FAST32_WIDTH __WORDSIZE
+#define UINT_FAST32_WIDTH __WORDSIZE
+#define INT_FAST64_WIDTH 64
+#define UINT_FAST64_WIDTH 64
+#define INTPTR_WIDTH __WORDSIZE
+#define UINTPTR_WIDTH __WORDSIZE
+#define INTMAX_WIDTH 64
+#define UINTMAX_WIDTH 64
+#define PTRDIFF_WIDTH __WORDSIZE
+#define SIG_ATOMIC_WIDTH 32
+#define SIZE_WIDTH __WORDSIZE
+#define WCHAR_WIDTH 32
+#define WINT_WIDTH 32
+#define _GCC_WRAP_STDINT_H 
+#define ____gwchar_t_defined 1
+#define __PRI64_PREFIX "l"
+#define __PRIPTR_PREFIX "l"
+#define PRId8 "d"
+#define PRId16 "d"
+#define PRId32 "d"
+#define PRId64 __PRI64_PREFIX "d"
+#define PRIdLEAST8 "d"
+#define PRIdLEAST16 "d"
+#define PRIdLEAST32 "d"
+#define PRIdLEAST64 __PRI64_PREFIX "d"
+#define PRIdFAST8 "d"
+#define PRIdFAST16 __PRIPTR_PREFIX "d"
+#define PRIdFAST32 __PRIPTR_PREFIX "d"
+#define PRIdFAST64 __PRI64_PREFIX "d"
+#define PRIi8 "i"
+#define PRIi16 "i"
+#define PRIi32 "i"
+#define PRIi64 __PRI64_PREFIX "i"
+#define PRIiLEAST8 "i"
+#define PRIiLEAST16 "i"
+#define PRIiLEAST32 "i"
+#define PRIiLEAST64 __PRI64_PREFIX "i"
+#define PRIiFAST8 "i"
+#define PRIiFAST16 __PRIPTR_PREFIX "i"
+#define PRIiFAST32 __PRIPTR_PREFIX "i"
+#define PRIiFAST64 __PRI64_PREFIX "i"
+#define PRIo8 "o"
+#define PRIo16 "o"
+#define PRIo32 "o"
+#define PRIo64 __PRI64_PREFIX "o"
+#define PRIoLEAST8 "o"
+#define PRIoLEAST16 "o"
+#define PRIoLEAST32 "o"
+#define PRIoLEAST64 __PRI64_PREFIX "o"
+#define PRIoFAST8 "o"
+#define PRIoFAST16 __PRIPTR_PREFIX "o"
+#define PRIoFAST32 __PRIPTR_PREFIX "o"
+#define PRIoFAST64 __PRI64_PREFIX "o"
+#define PRIu8 "u"
+#define PRIu16 "u"
+#define PRIu32 "u"
+#define PRIu64 __PRI64_PREFIX "u"
+#define PRIuLEAST8 "u"
+#define PRIuLEAST16 "u"
+#define PRIuLEAST32 "u"
+#define PRIuLEAST64 __PRI64_PREFIX "u"
+#define PRIuFAST8 "u"
+#define PRIuFAST16 __PRIPTR_PREFIX "u"
+#define PRIuFAST32 __PRIPTR_PREFIX "u"
+#define PRIuFAST64 __PRI64_PREFIX "u"
+#define PRIx8 "x"
+#define PRIx16 "x"
+#define PRIx32 "x"
+#define PRIx64 __PRI64_PREFIX "x"
+#define PRIxLEAST8 "x"
+#define PRIxLEAST16 "x"
+#define PRIxLEAST32 "x"
+#define PRIxLEAST64 __PRI64_PREFIX "x"
+#define PRIxFAST8 "x"
+#define PRIxFAST16 __PRIPTR_PREFIX "x"
+#define PRIxFAST32 __PRIPTR_PREFIX "x"
+#define PRIxFAST64 __PRI64_PREFIX "x"
+#define PRIX8 "X"
+#define PRIX16 "X"
+#define PRIX32 "X"
+#define PRIX64 __PRI64_PREFIX "X"
+#define PRIXLEAST8 "X"
+#define PRIXLEAST16 "X"
+#define PRIXLEAST32 "X"
+#define PRIXLEAST64 __PRI64_PREFIX "X"
+#define PRIXFAST8 "X"
+#define PRIXFAST16 __PRIPTR_PREFIX "X"
+#define PRIXFAST32 __PRIPTR_PREFIX "X"
+#define PRIXFAST64 __PRI64_PREFIX "X"
+#define PRIdMAX __PRI64_PREFIX "d"
+#define PRIiMAX __PRI64_PREFIX "i"
+#define PRIoMAX __PRI64_PREFIX "o"
+#define PRIuMAX __PRI64_PREFIX "u"
+#define PRIxMAX __PRI64_PREFIX "x"
+#define PRIXMAX __PRI64_PREFIX "X"
+#define PRIdPTR __PRIPTR_PREFIX "d"
+#define PRIiPTR __PRIPTR_PREFIX "i"
+#define PRIoPTR __PRIPTR_PREFIX "o"
+#define PRIuPTR __PRIPTR_PREFIX "u"
+#define PRIxPTR __PRIPTR_PREFIX "x"
+#define PRIXPTR __PRIPTR_PREFIX "X"
+#define SCNd8 "hhd"
+#define SCNd16 "hd"
+#define SCNd32 "d"
+#define SCNd64 __PRI64_PREFIX "d"
+#define SCNdLEAST8 "hhd"
+#define SCNdLEAST16 "hd"
+#define SCNdLEAST32 "d"
+#define SCNdLEAST64 __PRI64_PREFIX "d"
+#define SCNdFAST8 "hhd"
+#define SCNdFAST16 __PRIPTR_PREFIX "d"
+#define SCNdFAST32 __PRIPTR_PREFIX "d"
+#define SCNdFAST64 __PRI64_PREFIX "d"
+#define SCNi8 "hhi"
+#define SCNi16 "hi"
+#define SCNi32 "i"
+#define SCNi64 __PRI64_PREFIX "i"
+#define SCNiLEAST8 "hhi"
+#define SCNiLEAST16 "hi"
+#define SCNiLEAST32 "i"
+#define SCNiLEAST64 __PRI64_PREFIX "i"
+#define SCNiFAST8 "hhi"
+#define SCNiFAST16 __PRIPTR_PREFIX "i"
+#define SCNiFAST32 __PRIPTR_PREFIX "i"
+#define SCNiFAST64 __PRI64_PREFIX "i"
+#define SCNu8 "hhu"
+#define SCNu16 "hu"
+#define SCNu32 "u"
+#define SCNu64 __PRI64_PREFIX "u"
+#define SCNuLEAST8 "hhu"
+#define SCNuLEAST16 "hu"
+#define SCNuLEAST32 "u"
+#define SCNuLEAST64 __PRI64_PREFIX "u"
+#define SCNuFAST8 "hhu"
+#define SCNuFAST16 __PRIPTR_PREFIX "u"
+#define SCNuFAST32 __PRIPTR_PREFIX "u"
+#define SCNuFAST64 __PRI64_PREFIX "u"
+#define SCNo8 "hho"
+#define SCNo16 "ho"
+#define SCNo32 "o"
+#define SCNo64 __PRI64_PREFIX "o"
+#define SCNoLEAST8 "hho"
+#define SCNoLEAST16 "ho"
+#define SCNoLEAST32 "o"
+#define SCNoLEAST64 __PRI64_PREFIX "o"
+#define SCNoFAST8 "hho"
+#define SCNoFAST16 __PRIPTR_PREFIX "o"
+#define SCNoFAST32 __PRIPTR_PREFIX "o"
+#define SCNoFAST64 __PRI64_PREFIX "o"
+#define SCNx8 "hhx"
+#define SCNx16 "hx"
+#define SCNx32 "x"
+#define SCNx64 __PRI64_PREFIX "x"
+#define SCNxLEAST8 "hhx"
+#define SCNxLEAST16 "hx"
+#define SCNxLEAST32 "x"
+#define SCNxLEAST64 __PRI64_PREFIX "x"
+#define SCNxFAST8 "hhx"
+#define SCNxFAST16 __PRIPTR_PREFIX "x"
+#define SCNxFAST32 __PRIPTR_PREFIX "x"
+#define SCNxFAST64 __PRI64_PREFIX "x"
+#define SCNdMAX __PRI64_PREFIX "d"
+#define SCNiMAX __PRI64_PREFIX "i"
+#define SCNoMAX __PRI64_PREFIX "o"
+#define SCNuMAX __PRI64_PREFIX "u"
+#define SCNxMAX __PRI64_PREFIX "x"
+#define SCNdPTR __PRIPTR_PREFIX "d"
+#define SCNiPTR __PRIPTR_PREFIX "i"
+#define SCNoPTR __PRIPTR_PREFIX "o"
+#define SCNuPTR __PRIPTR_PREFIX "u"
+#define SCNxPTR __PRIPTR_PREFIX "x"
+#define _STDALIGN_H 
+#define alignas _Alignas
+#define alignof _Alignof
+#define __alignas_is_defined 1
+#define __alignof_is_defined 1
+#define _UNISTD_H 1
+#define _POSIX_VERSION 200809L
+#define __POSIX2_THIS_VERSION 200809L
+#define _POSIX2_VERSION __POSIX2_THIS_VERSION
+#define _POSIX2_C_VERSION __POSIX2_THIS_VERSION
+#define _POSIX2_C_BIND __POSIX2_THIS_VERSION
+#define _POSIX2_C_DEV __POSIX2_THIS_VERSION
+#define _POSIX2_SW_DEV __POSIX2_THIS_VERSION
+#define _POSIX2_LOCALEDEF __POSIX2_THIS_VERSION
+#define _XOPEN_VERSION 700
+#define _XOPEN_XCU_VERSION 4
+#define _XOPEN_XPG2 1
+#define _XOPEN_XPG3 1
+#define _XOPEN_XPG4 1
+#define _XOPEN_UNIX 1
+#define _XOPEN_ENH_I18N 1
+#define _XOPEN_LEGACY 1
+#define _BITS_POSIX_OPT_H 1
+#define _POSIX_JOB_CONTROL 1
+#define _POSIX_SAVED_IDS 1
+#define _POSIX_PRIORITY_SCHEDULING 200809L
+#define _POSIX_SYNCHRONIZED_IO 200809L
+#define _POSIX_FSYNC 200809L
+#define _POSIX_MAPPED_FILES 200809L
+#define _POSIX_MEMLOCK 200809L
+#define _POSIX_MEMLOCK_RANGE 200809L
+#define _POSIX_MEMORY_PROTECTION 200809L
+#define _POSIX_CHOWN_RESTRICTED 0
+#define _POSIX_VDISABLE '\0'
+#define _POSIX_NO_TRUNC 1
+#define _XOPEN_REALTIME 1
+#define _XOPEN_REALTIME_THREADS 1
+#define _XOPEN_SHM 1
+#define _POSIX_THREADS 200809L
+#define _POSIX_REENTRANT_FUNCTIONS 1
+#define _POSIX_THREAD_SAFE_FUNCTIONS 200809L
+#define _POSIX_THREAD_PRIORITY_SCHEDULING 200809L
+#define _POSIX_THREAD_ATTR_STACKSIZE 200809L
+#define _POSIX_THREAD_ATTR_STACKADDR 200809L
+#define _POSIX_THREAD_PRIO_INHERIT 200809L
+#define _POSIX_THREAD_PRIO_PROTECT 200809L
+#define _POSIX_THREAD_ROBUST_PRIO_INHERIT 200809L
+#define _POSIX_THREAD_ROBUST_PRIO_PROTECT -1
+#define _POSIX_SEMAPHORES 200809L
+#define _POSIX_REALTIME_SIGNALS 200809L
+#define _POSIX_ASYNCHRONOUS_IO 200809L
+#define _POSIX_ASYNC_IO 1
+#define _LFS_ASYNCHRONOUS_IO 1
+#define _POSIX_PRIORITIZED_IO 200809L
+#define _LFS64_ASYNCHRONOUS_IO 1
+#define _LFS_LARGEFILE 1
+#define _LFS64_LARGEFILE 1
+#define _LFS64_STDIO 1
+#define _POSIX_SHARED_MEMORY_OBJECTS 200809L
+#define _POSIX_CPUTIME 0
+#define _POSIX_THREAD_CPUTIME 0
+#define _POSIX_REGEXP 1
+#define _POSIX_READER_WRITER_LOCKS 200809L
+#define _POSIX_SHELL 1
+#define _POSIX_TIMEOUTS 200809L
+#define _POSIX_SPIN_LOCKS 200809L
+#define _POSIX_SPAWN 200809L
+#define _POSIX_TIMERS 200809L
+#define _POSIX_BARRIERS 200809L
+#define _POSIX_MESSAGE_PASSING 200809L
+#define _POSIX_THREAD_PROCESS_SHARED 200809L
+#define _POSIX_MONOTONIC_CLOCK 0
+#define _POSIX_CLOCK_SELECTION 200809L
+#define _POSIX_ADVISORY_INFO 200809L
+#define _POSIX_IPV6 200809L
+#define _POSIX_RAW_SOCKETS 200809L
+#define _POSIX2_CHAR_TERM 200809L
+#define _POSIX_SPORADIC_SERVER -1
+#define _POSIX_THREAD_SPORADIC_SERVER -1
+#define _POSIX_TRACE -1
+#define _POSIX_TRACE_EVENT_FILTER -1
+#define _POSIX_TRACE_INHERIT -1
+#define _POSIX_TRACE_LOG -1
+#define _POSIX_TYPED_MEMORY_OBJECTS -1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define _POSIX_V7_LPBIG_OFFBIG -1
+#define _POSIX_V6_LPBIG_OFFBIG -1
+#define _XBS5_LPBIG_OFFBIG -1
+#define _POSIX_V7_LP64_OFF64 1
+#define _POSIX_V6_LP64_OFF64 1
+#define _XBS5_LP64_OFF64 1
+#define __ILP32_OFF32_CFLAGS "-m32"
+#define __ILP32_OFF32_LDFLAGS "-m32"
+#define __ILP32_OFFBIG_CFLAGS "-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
+#define __ILP32_OFFBIG_LDFLAGS "-m32"
+#define __LP64_OFF64_CFLAGS "-m64"
+#define __LP64_OFF64_LDFLAGS "-m64"
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __socklen_t_defined 
 #define R_OK 4
 #define W_OK 2
 #define X_OK 1
+#define F_OK 0
+#define L_SET SEEK_SET
+#define L_INCR SEEK_CUR
+#define L_XTND SEEK_END
+#define _PC_LINK_MAX _PC_LINK_MAX
+#define _PC_MAX_CANON _PC_MAX_CANON
+#define _PC_MAX_INPUT _PC_MAX_INPUT
+#define _PC_NAME_MAX _PC_NAME_MAX
+#define _PC_PATH_MAX _PC_PATH_MAX
+#define _PC_PIPE_BUF _PC_PIPE_BUF
+#define _PC_CHOWN_RESTRICTED _PC_CHOWN_RESTRICTED
+#define _PC_NO_TRUNC _PC_NO_TRUNC
+#define _PC_VDISABLE _PC_VDISABLE
+#define _PC_SYNC_IO _PC_SYNC_IO
+#define _PC_ASYNC_IO _PC_ASYNC_IO
+#define _PC_PRIO_IO _PC_PRIO_IO
+#define _PC_SOCK_MAXBUF _PC_SOCK_MAXBUF
+#define _PC_FILESIZEBITS _PC_FILESIZEBITS
+#define _PC_REC_INCR_XFER_SIZE _PC_REC_INCR_XFER_SIZE
+#define _PC_REC_MAX_XFER_SIZE _PC_REC_MAX_XFER_SIZE
+#define _PC_REC_MIN_XFER_SIZE _PC_REC_MIN_XFER_SIZE
+#define _PC_REC_XFER_ALIGN _PC_REC_XFER_ALIGN
+#define _PC_ALLOC_SIZE_MIN _PC_ALLOC_SIZE_MIN
+#define _PC_SYMLINK_MAX _PC_SYMLINK_MAX
+#define _PC_2_SYMLINKS _PC_2_SYMLINKS
+#define _SC_ARG_MAX _SC_ARG_MAX
+#define _SC_CHILD_MAX _SC_CHILD_MAX
+#define _SC_CLK_TCK _SC_CLK_TCK
+#define _SC_NGROUPS_MAX _SC_NGROUPS_MAX
+#define _SC_OPEN_MAX _SC_OPEN_MAX
+#define _SC_STREAM_MAX _SC_STREAM_MAX
+#define _SC_TZNAME_MAX _SC_TZNAME_MAX
+#define _SC_JOB_CONTROL _SC_JOB_CONTROL
+#define _SC_SAVED_IDS _SC_SAVED_IDS
+#define _SC_REALTIME_SIGNALS _SC_REALTIME_SIGNALS
+#define _SC_PRIORITY_SCHEDULING _SC_PRIORITY_SCHEDULING
+#define _SC_TIMERS _SC_TIMERS
+#define _SC_ASYNCHRONOUS_IO _SC_ASYNCHRONOUS_IO
+#define _SC_PRIORITIZED_IO _SC_PRIORITIZED_IO
+#define _SC_SYNCHRONIZED_IO _SC_SYNCHRONIZED_IO
+#define _SC_FSYNC _SC_FSYNC
+#define _SC_MAPPED_FILES _SC_MAPPED_FILES
+#define _SC_MEMLOCK _SC_MEMLOCK
+#define _SC_MEMLOCK_RANGE _SC_MEMLOCK_RANGE
+#define _SC_MEMORY_PROTECTION _SC_MEMORY_PROTECTION
+#define _SC_MESSAGE_PASSING _SC_MESSAGE_PASSING
+#define _SC_SEMAPHORES _SC_SEMAPHORES
+#define _SC_SHARED_MEMORY_OBJECTS _SC_SHARED_MEMORY_OBJECTS
+#define _SC_AIO_LISTIO_MAX _SC_AIO_LISTIO_MAX
+#define _SC_AIO_MAX _SC_AIO_MAX
+#define _SC_AIO_PRIO_DELTA_MAX _SC_AIO_PRIO_DELTA_MAX
+#define _SC_DELAYTIMER_MAX _SC_DELAYTIMER_MAX
+#define _SC_MQ_OPEN_MAX _SC_MQ_OPEN_MAX
+#define _SC_MQ_PRIO_MAX _SC_MQ_PRIO_MAX
+#define _SC_VERSION _SC_VERSION
+#define _SC_PAGESIZE _SC_PAGESIZE
+#define _SC_PAGE_SIZE _SC_PAGESIZE
+#define _SC_RTSIG_MAX _SC_RTSIG_MAX
+#define _SC_SEM_NSEMS_MAX _SC_SEM_NSEMS_MAX
+#define _SC_SEM_VALUE_MAX _SC_SEM_VALUE_MAX
+#define _SC_SIGQUEUE_MAX _SC_SIGQUEUE_MAX
+#define _SC_TIMER_MAX _SC_TIMER_MAX
+#define _SC_BC_BASE_MAX _SC_BC_BASE_MAX
+#define _SC_BC_DIM_MAX _SC_BC_DIM_MAX
+#define _SC_BC_SCALE_MAX _SC_BC_SCALE_MAX
+#define _SC_BC_STRING_MAX _SC_BC_STRING_MAX
+#define _SC_COLL_WEIGHTS_MAX _SC_COLL_WEIGHTS_MAX
+#define _SC_EQUIV_CLASS_MAX _SC_EQUIV_CLASS_MAX
+#define _SC_EXPR_NEST_MAX _SC_EXPR_NEST_MAX
+#define _SC_LINE_MAX _SC_LINE_MAX
+#define _SC_RE_DUP_MAX _SC_RE_DUP_MAX
+#define _SC_CHARCLASS_NAME_MAX _SC_CHARCLASS_NAME_MAX
+#define _SC_2_VERSION _SC_2_VERSION
+#define _SC_2_C_BIND _SC_2_C_BIND
+#define _SC_2_C_DEV _SC_2_C_DEV
+#define _SC_2_FORT_DEV _SC_2_FORT_DEV
+#define _SC_2_FORT_RUN _SC_2_FORT_RUN
+#define _SC_2_SW_DEV _SC_2_SW_DEV
+#define _SC_2_LOCALEDEF _SC_2_LOCALEDEF
+#define _SC_PII _SC_PII
+#define _SC_PII_XTI _SC_PII_XTI
+#define _SC_PII_SOCKET _SC_PII_SOCKET
+#define _SC_PII_INTERNET _SC_PII_INTERNET
+#define _SC_PII_OSI _SC_PII_OSI
+#define _SC_POLL _SC_POLL
+#define _SC_SELECT _SC_SELECT
+#define _SC_UIO_MAXIOV _SC_UIO_MAXIOV
+#define _SC_IOV_MAX _SC_IOV_MAX
+#define _SC_PII_INTERNET_STREAM _SC_PII_INTERNET_STREAM
+#define _SC_PII_INTERNET_DGRAM _SC_PII_INTERNET_DGRAM
+#define _SC_PII_OSI_COTS _SC_PII_OSI_COTS
+#define _SC_PII_OSI_CLTS _SC_PII_OSI_CLTS
+#define _SC_PII_OSI_M _SC_PII_OSI_M
+#define _SC_T_IOV_MAX _SC_T_IOV_MAX
+#define _SC_THREADS _SC_THREADS
+#define _SC_THREAD_SAFE_FUNCTIONS _SC_THREAD_SAFE_FUNCTIONS
+#define _SC_GETGR_R_SIZE_MAX _SC_GETGR_R_SIZE_MAX
+#define _SC_GETPW_R_SIZE_MAX _SC_GETPW_R_SIZE_MAX
+#define _SC_LOGIN_NAME_MAX _SC_LOGIN_NAME_MAX
+#define _SC_TTY_NAME_MAX _SC_TTY_NAME_MAX
+#define _SC_THREAD_DESTRUCTOR_ITERATIONS _SC_THREAD_DESTRUCTOR_ITERATIONS
+#define _SC_THREAD_KEYS_MAX _SC_THREAD_KEYS_MAX
+#define _SC_THREAD_STACK_MIN _SC_THREAD_STACK_MIN
+#define _SC_THREAD_THREADS_MAX _SC_THREAD_THREADS_MAX
+#define _SC_THREAD_ATTR_STACKADDR _SC_THREAD_ATTR_STACKADDR
+#define _SC_THREAD_ATTR_STACKSIZE _SC_THREAD_ATTR_STACKSIZE
+#define _SC_THREAD_PRIORITY_SCHEDULING _SC_THREAD_PRIORITY_SCHEDULING
+#define _SC_THREAD_PRIO_INHERIT _SC_THREAD_PRIO_INHERIT
+#define _SC_THREAD_PRIO_PROTECT _SC_THREAD_PRIO_PROTECT
+#define _SC_THREAD_PROCESS_SHARED _SC_THREAD_PROCESS_SHARED
+#define _SC_NPROCESSORS_CONF _SC_NPROCESSORS_CONF
+#define _SC_NPROCESSORS_ONLN _SC_NPROCESSORS_ONLN
+#define _SC_PHYS_PAGES _SC_PHYS_PAGES
+#define _SC_AVPHYS_PAGES _SC_AVPHYS_PAGES
+#define _SC_ATEXIT_MAX _SC_ATEXIT_MAX
+#define _SC_PASS_MAX _SC_PASS_MAX
+#define _SC_XOPEN_VERSION _SC_XOPEN_VERSION
+#define _SC_XOPEN_XCU_VERSION _SC_XOPEN_XCU_VERSION
+#define _SC_XOPEN_UNIX _SC_XOPEN_UNIX
+#define _SC_XOPEN_CRYPT _SC_XOPEN_CRYPT
+#define _SC_XOPEN_ENH_I18N _SC_XOPEN_ENH_I18N
+#define _SC_XOPEN_SHM _SC_XOPEN_SHM
+#define _SC_2_CHAR_TERM _SC_2_CHAR_TERM
+#define _SC_2_C_VERSION _SC_2_C_VERSION
+#define _SC_2_UPE _SC_2_UPE
+#define _SC_XOPEN_XPG2 _SC_XOPEN_XPG2
+#define _SC_XOPEN_XPG3 _SC_XOPEN_XPG3
+#define _SC_XOPEN_XPG4 _SC_XOPEN_XPG4
+#define _SC_CHAR_BIT _SC_CHAR_BIT
+#define _SC_CHAR_MAX _SC_CHAR_MAX
+#define _SC_CHAR_MIN _SC_CHAR_MIN
+#define _SC_INT_MAX _SC_INT_MAX
+#define _SC_INT_MIN _SC_INT_MIN
+#define _SC_LONG_BIT _SC_LONG_BIT
+#define _SC_WORD_BIT _SC_WORD_BIT
+#define _SC_MB_LEN_MAX _SC_MB_LEN_MAX
+#define _SC_NZERO _SC_NZERO
+#define _SC_SSIZE_MAX _SC_SSIZE_MAX
+#define _SC_SCHAR_MAX _SC_SCHAR_MAX
+#define _SC_SCHAR_MIN _SC_SCHAR_MIN
+#define _SC_SHRT_MAX _SC_SHRT_MAX
+#define _SC_SHRT_MIN _SC_SHRT_MIN
+#define _SC_UCHAR_MAX _SC_UCHAR_MAX
+#define _SC_UINT_MAX _SC_UINT_MAX
+#define _SC_ULONG_MAX _SC_ULONG_MAX
+#define _SC_USHRT_MAX _SC_USHRT_MAX
+#define _SC_NL_ARGMAX _SC_NL_ARGMAX
+#define _SC_NL_LANGMAX _SC_NL_LANGMAX
+#define _SC_NL_MSGMAX _SC_NL_MSGMAX
+#define _SC_NL_NMAX _SC_NL_NMAX
+#define _SC_NL_SETMAX _SC_NL_SETMAX
+#define _SC_NL_TEXTMAX _SC_NL_TEXTMAX
+#define _SC_XBS5_ILP32_OFF32 _SC_XBS5_ILP32_OFF32
+#define _SC_XBS5_ILP32_OFFBIG _SC_XBS5_ILP32_OFFBIG
+#define _SC_XBS5_LP64_OFF64 _SC_XBS5_LP64_OFF64
+#define _SC_XBS5_LPBIG_OFFBIG _SC_XBS5_LPBIG_OFFBIG
+#define _SC_XOPEN_LEGACY _SC_XOPEN_LEGACY
+#define _SC_XOPEN_REALTIME _SC_XOPEN_REALTIME
+#define _SC_XOPEN_REALTIME_THREADS _SC_XOPEN_REALTIME_THREADS
+#define _SC_ADVISORY_INFO _SC_ADVISORY_INFO
+#define _SC_BARRIERS _SC_BARRIERS
+#define _SC_BASE _SC_BASE
+#define _SC_C_LANG_SUPPORT _SC_C_LANG_SUPPORT
+#define _SC_C_LANG_SUPPORT_R _SC_C_LANG_SUPPORT_R
+#define _SC_CLOCK_SELECTION _SC_CLOCK_SELECTION
+#define _SC_CPUTIME _SC_CPUTIME
+#define _SC_THREAD_CPUTIME _SC_THREAD_CPUTIME
+#define _SC_DEVICE_IO _SC_DEVICE_IO
+#define _SC_DEVICE_SPECIFIC _SC_DEVICE_SPECIFIC
+#define _SC_DEVICE_SPECIFIC_R _SC_DEVICE_SPECIFIC_R
+#define _SC_FD_MGMT _SC_FD_MGMT
+#define _SC_FIFO _SC_FIFO
+#define _SC_PIPE _SC_PIPE
+#define _SC_FILE_ATTRIBUTES _SC_FILE_ATTRIBUTES
+#define _SC_FILE_LOCKING _SC_FILE_LOCKING
+#define _SC_FILE_SYSTEM _SC_FILE_SYSTEM
+#define _SC_MONOTONIC_CLOCK _SC_MONOTONIC_CLOCK
+#define _SC_MULTI_PROCESS _SC_MULTI_PROCESS
+#define _SC_SINGLE_PROCESS _SC_SINGLE_PROCESS
+#define _SC_NETWORKING _SC_NETWORKING
+#define _SC_READER_WRITER_LOCKS _SC_READER_WRITER_LOCKS
+#define _SC_SPIN_LOCKS _SC_SPIN_LOCKS
+#define _SC_REGEXP _SC_REGEXP
+#define _SC_REGEX_VERSION _SC_REGEX_VERSION
+#define _SC_SHELL _SC_SHELL
+#define _SC_SIGNALS _SC_SIGNALS
+#define _SC_SPAWN _SC_SPAWN
+#define _SC_SPORADIC_SERVER _SC_SPORADIC_SERVER
+#define _SC_THREAD_SPORADIC_SERVER _SC_THREAD_SPORADIC_SERVER
+#define _SC_SYSTEM_DATABASE _SC_SYSTEM_DATABASE
+#define _SC_SYSTEM_DATABASE_R _SC_SYSTEM_DATABASE_R
+#define _SC_TIMEOUTS _SC_TIMEOUTS
+#define _SC_TYPED_MEMORY_OBJECTS _SC_TYPED_MEMORY_OBJECTS
+#define _SC_USER_GROUPS _SC_USER_GROUPS
+#define _SC_USER_GROUPS_R _SC_USER_GROUPS_R
+#define _SC_2_PBS _SC_2_PBS
+#define _SC_2_PBS_ACCOUNTING _SC_2_PBS_ACCOUNTING
+#define _SC_2_PBS_LOCATE _SC_2_PBS_LOCATE
+#define _SC_2_PBS_MESSAGE _SC_2_PBS_MESSAGE
+#define _SC_2_PBS_TRACK _SC_2_PBS_TRACK
+#define _SC_SYMLOOP_MAX _SC_SYMLOOP_MAX
+#define _SC_STREAMS _SC_STREAMS
+#define _SC_2_PBS_CHECKPOINT _SC_2_PBS_CHECKPOINT
+#define _SC_V6_ILP32_OFF32 _SC_V6_ILP32_OFF32
+#define _SC_V6_ILP32_OFFBIG _SC_V6_ILP32_OFFBIG
+#define _SC_V6_LP64_OFF64 _SC_V6_LP64_OFF64
+#define _SC_V6_LPBIG_OFFBIG _SC_V6_LPBIG_OFFBIG
+#define _SC_HOST_NAME_MAX _SC_HOST_NAME_MAX
+#define _SC_TRACE _SC_TRACE
+#define _SC_TRACE_EVENT_FILTER _SC_TRACE_EVENT_FILTER
+#define _SC_TRACE_INHERIT _SC_TRACE_INHERIT
+#define _SC_TRACE_LOG _SC_TRACE_LOG
+#define _SC_LEVEL1_ICACHE_SIZE _SC_LEVEL1_ICACHE_SIZE
+#define _SC_LEVEL1_ICACHE_ASSOC _SC_LEVEL1_ICACHE_ASSOC
+#define _SC_LEVEL1_ICACHE_LINESIZE _SC_LEVEL1_ICACHE_LINESIZE
+#define _SC_LEVEL1_DCACHE_SIZE _SC_LEVEL1_DCACHE_SIZE
+#define _SC_LEVEL1_DCACHE_ASSOC _SC_LEVEL1_DCACHE_ASSOC
+#define _SC_LEVEL1_DCACHE_LINESIZE _SC_LEVEL1_DCACHE_LINESIZE
+#define _SC_LEVEL2_CACHE_SIZE _SC_LEVEL2_CACHE_SIZE
+#define _SC_LEVEL2_CACHE_ASSOC _SC_LEVEL2_CACHE_ASSOC
+#define _SC_LEVEL2_CACHE_LINESIZE _SC_LEVEL2_CACHE_LINESIZE
+#define _SC_LEVEL3_CACHE_SIZE _SC_LEVEL3_CACHE_SIZE
+#define _SC_LEVEL3_CACHE_ASSOC _SC_LEVEL3_CACHE_ASSOC
+#define _SC_LEVEL3_CACHE_LINESIZE _SC_LEVEL3_CACHE_LINESIZE
+#define _SC_LEVEL4_CACHE_SIZE _SC_LEVEL4_CACHE_SIZE
+#define _SC_LEVEL4_CACHE_ASSOC _SC_LEVEL4_CACHE_ASSOC
+#define _SC_LEVEL4_CACHE_LINESIZE _SC_LEVEL4_CACHE_LINESIZE
+#define _SC_IPV6 _SC_IPV6
+#define _SC_RAW_SOCKETS _SC_RAW_SOCKETS
+#define _SC_V7_ILP32_OFF32 _SC_V7_ILP32_OFF32
+#define _SC_V7_ILP32_OFFBIG _SC_V7_ILP32_OFFBIG
+#define _SC_V7_LP64_OFF64 _SC_V7_LP64_OFF64
+#define _SC_V7_LPBIG_OFFBIG _SC_V7_LPBIG_OFFBIG
+#define _SC_SS_REPL_MAX _SC_SS_REPL_MAX
+#define _SC_TRACE_EVENT_NAME_MAX _SC_TRACE_EVENT_NAME_MAX
+#define _SC_TRACE_NAME_MAX _SC_TRACE_NAME_MAX
+#define _SC_TRACE_SYS_MAX _SC_TRACE_SYS_MAX
+#define _SC_TRACE_USER_EVENT_MAX _SC_TRACE_USER_EVENT_MAX
+#define _SC_XOPEN_STREAMS _SC_XOPEN_STREAMS
+#define _SC_THREAD_ROBUST_PRIO_INHERIT _SC_THREAD_ROBUST_PRIO_INHERIT
+#define _SC_THREAD_ROBUST_PRIO_PROTECT _SC_THREAD_ROBUST_PRIO_PROTECT
+#define _SC_MINSIGSTKSZ _SC_MINSIGSTKSZ
+#define _SC_SIGSTKSZ _SC_SIGSTKSZ
+#define _CS_PATH _CS_PATH
+#define _CS_V6_WIDTH_RESTRICTED_ENVS _CS_V6_WIDTH_RESTRICTED_ENVS
+#define _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS _CS_V6_WIDTH_RESTRICTED_ENVS
+#define _CS_GNU_LIBC_VERSION _CS_GNU_LIBC_VERSION
+#define _CS_GNU_LIBPTHREAD_VERSION _CS_GNU_LIBPTHREAD_VERSION
+#define _CS_V5_WIDTH_RESTRICTED_ENVS _CS_V5_WIDTH_RESTRICTED_ENVS
+#define _CS_POSIX_V5_WIDTH_RESTRICTED_ENVS _CS_V5_WIDTH_RESTRICTED_ENVS
+#define _CS_V7_WIDTH_RESTRICTED_ENVS _CS_V7_WIDTH_RESTRICTED_ENVS
+#define _CS_POSIX_V7_WIDTH_RESTRICTED_ENVS _CS_V7_WIDTH_RESTRICTED_ENVS
+#define _CS_LFS_CFLAGS _CS_LFS_CFLAGS
+#define _CS_LFS_LDFLAGS _CS_LFS_LDFLAGS
+#define _CS_LFS_LIBS _CS_LFS_LIBS
+#define _CS_LFS_LINTFLAGS _CS_LFS_LINTFLAGS
+#define _CS_LFS64_CFLAGS _CS_LFS64_CFLAGS
+#define _CS_LFS64_LDFLAGS _CS_LFS64_LDFLAGS
+#define _CS_LFS64_LIBS _CS_LFS64_LIBS
+#define _CS_LFS64_LINTFLAGS _CS_LFS64_LINTFLAGS
+#define _CS_XBS5_ILP32_OFF32_CFLAGS _CS_XBS5_ILP32_OFF32_CFLAGS
+#define _CS_XBS5_ILP32_OFF32_LDFLAGS _CS_XBS5_ILP32_OFF32_LDFLAGS
+#define _CS_XBS5_ILP32_OFF32_LIBS _CS_XBS5_ILP32_OFF32_LIBS
+#define _CS_XBS5_ILP32_OFF32_LINTFLAGS _CS_XBS5_ILP32_OFF32_LINTFLAGS
+#define _CS_XBS5_ILP32_OFFBIG_CFLAGS _CS_XBS5_ILP32_OFFBIG_CFLAGS
+#define _CS_XBS5_ILP32_OFFBIG_LDFLAGS _CS_XBS5_ILP32_OFFBIG_LDFLAGS
+#define _CS_XBS5_ILP32_OFFBIG_LIBS _CS_XBS5_ILP32_OFFBIG_LIBS
+#define _CS_XBS5_ILP32_OFFBIG_LINTFLAGS _CS_XBS5_ILP32_OFFBIG_LINTFLAGS
+#define _CS_XBS5_LP64_OFF64_CFLAGS _CS_XBS5_LP64_OFF64_CFLAGS
+#define _CS_XBS5_LP64_OFF64_LDFLAGS _CS_XBS5_LP64_OFF64_LDFLAGS
+#define _CS_XBS5_LP64_OFF64_LIBS _CS_XBS5_LP64_OFF64_LIBS
+#define _CS_XBS5_LP64_OFF64_LINTFLAGS _CS_XBS5_LP64_OFF64_LINTFLAGS
+#define _CS_XBS5_LPBIG_OFFBIG_CFLAGS _CS_XBS5_LPBIG_OFFBIG_CFLAGS
+#define _CS_XBS5_LPBIG_OFFBIG_LDFLAGS _CS_XBS5_LPBIG_OFFBIG_LDFLAGS
+#define _CS_XBS5_LPBIG_OFFBIG_LIBS _CS_XBS5_LPBIG_OFFBIG_LIBS
+#define _CS_XBS5_LPBIG_OFFBIG_LINTFLAGS _CS_XBS5_LPBIG_OFFBIG_LINTFLAGS
+#define _CS_POSIX_V6_ILP32_OFF32_CFLAGS _CS_POSIX_V6_ILP32_OFF32_CFLAGS
+#define _CS_POSIX_V6_ILP32_OFF32_LDFLAGS _CS_POSIX_V6_ILP32_OFF32_LDFLAGS
+#define _CS_POSIX_V6_ILP32_OFF32_LIBS _CS_POSIX_V6_ILP32_OFF32_LIBS
+#define _CS_POSIX_V6_ILP32_OFF32_LINTFLAGS _CS_POSIX_V6_ILP32_OFF32_LINTFLAGS
+#define _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS
+#define _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS
+#define _CS_POSIX_V6_ILP32_OFFBIG_LIBS _CS_POSIX_V6_ILP32_OFFBIG_LIBS
+#define _CS_POSIX_V6_ILP32_OFFBIG_LINTFLAGS _CS_POSIX_V6_ILP32_OFFBIG_LINTFLAGS
+#define _CS_POSIX_V6_LP64_OFF64_CFLAGS _CS_POSIX_V6_LP64_OFF64_CFLAGS
+#define _CS_POSIX_V6_LP64_OFF64_LDFLAGS _CS_POSIX_V6_LP64_OFF64_LDFLAGS
+#define _CS_POSIX_V6_LP64_OFF64_LIBS _CS_POSIX_V6_LP64_OFF64_LIBS
+#define _CS_POSIX_V6_LP64_OFF64_LINTFLAGS _CS_POSIX_V6_LP64_OFF64_LINTFLAGS
+#define _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS
+#define _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS
+#define _CS_POSIX_V6_LPBIG_OFFBIG_LIBS _CS_POSIX_V6_LPBIG_OFFBIG_LIBS
+#define _CS_POSIX_V6_LPBIG_OFFBIG_LINTFLAGS _CS_POSIX_V6_LPBIG_OFFBIG_LINTFLAGS
+#define _CS_POSIX_V7_ILP32_OFF32_CFLAGS _CS_POSIX_V7_ILP32_OFF32_CFLAGS
+#define _CS_POSIX_V7_ILP32_OFF32_LDFLAGS _CS_POSIX_V7_ILP32_OFF32_LDFLAGS
+#define _CS_POSIX_V7_ILP32_OFF32_LIBS _CS_POSIX_V7_ILP32_OFF32_LIBS
+#define _CS_POSIX_V7_ILP32_OFF32_LINTFLAGS _CS_POSIX_V7_ILP32_OFF32_LINTFLAGS
+#define _CS_POSIX_V7_ILP32_OFFBIG_CFLAGS _CS_POSIX_V7_ILP32_OFFBIG_CFLAGS
+#define _CS_POSIX_V7_ILP32_OFFBIG_LDFLAGS _CS_POSIX_V7_ILP32_OFFBIG_LDFLAGS
+#define _CS_POSIX_V7_ILP32_OFFBIG_LIBS _CS_POSIX_V7_ILP32_OFFBIG_LIBS
+#define _CS_POSIX_V7_ILP32_OFFBIG_LINTFLAGS _CS_POSIX_V7_ILP32_OFFBIG_LINTFLAGS
+#define _CS_POSIX_V7_LP64_OFF64_CFLAGS _CS_POSIX_V7_LP64_OFF64_CFLAGS
+#define _CS_POSIX_V7_LP64_OFF64_LDFLAGS _CS_POSIX_V7_LP64_OFF64_LDFLAGS
+#define _CS_POSIX_V7_LP64_OFF64_LIBS _CS_POSIX_V7_LP64_OFF64_LIBS
+#define _CS_POSIX_V7_LP64_OFF64_LINTFLAGS _CS_POSIX_V7_LP64_OFF64_LINTFLAGS
+#define _CS_POSIX_V7_LPBIG_OFFBIG_CFLAGS _CS_POSIX_V7_LPBIG_OFFBIG_CFLAGS
+#define _CS_POSIX_V7_LPBIG_OFFBIG_LDFLAGS _CS_POSIX_V7_LPBIG_OFFBIG_LDFLAGS
+#define _CS_POSIX_V7_LPBIG_OFFBIG_LIBS _CS_POSIX_V7_LPBIG_OFFBIG_LIBS
+#define _CS_POSIX_V7_LPBIG_OFFBIG_LINTFLAGS _CS_POSIX_V7_LPBIG_OFFBIG_LINTFLAGS
+#define _CS_V6_ENV _CS_V6_ENV
+#define _CS_V7_ENV _CS_V7_ENV
+#define _GETOPT_POSIX_H 1
+#define _GETOPT_CORE_H 1
 #define F_ULOCK 0
 #define F_LOCK 1
 #define F_TLOCK 2
 #define F_TEST 3
-#define L_SET 0
-#define L_INCR 1
-#define L_XTND 2
-#define lseek64 lseek
-#define pread64 pread
-#define pwrite64 pwrite
-#define truncate64 truncate
-#define ftruncate64 ftruncate
-#define lockf64 lockf
-#define off64_t off_t
-#define POSIX_CLOSE_RESTART 0
-#define _XOPEN_VERSION 700
-#define _XOPEN_UNIX 1
-#define _XOPEN_ENH_I18N 1
-#define _POSIX_VERSION 200809L
-#define _POSIX2_VERSION _POSIX_VERSION
-#define _POSIX_ADVISORY_INFO _POSIX_VERSION
-#define _POSIX_CHOWN_RESTRICTED 1
-#define _POSIX_IPV6 _POSIX_VERSION
-#define _POSIX_JOB_CONTROL 1
-#define _POSIX_MAPPED_FILES _POSIX_VERSION
-#define _POSIX_MEMLOCK _POSIX_VERSION
-#define _POSIX_MEMLOCK_RANGE _POSIX_VERSION
-#define _POSIX_MEMORY_PROTECTION _POSIX_VERSION
-#define _POSIX_MESSAGE_PASSING _POSIX_VERSION
-#define _POSIX_FSYNC _POSIX_VERSION
-#define _POSIX_NO_TRUNC 1
-#define _POSIX_RAW_SOCKETS _POSIX_VERSION
-#define _POSIX_REALTIME_SIGNALS _POSIX_VERSION
-#define _POSIX_REGEXP 1
-#define _POSIX_SAVED_IDS 1
-#define _POSIX_SHELL 1
-#define _POSIX_SPAWN _POSIX_VERSION
-#define _POSIX_VDISABLE 0
-#define _POSIX_THREADS _POSIX_VERSION
-#define _POSIX_THREAD_PROCESS_SHARED _POSIX_VERSION
-#define _POSIX_THREAD_SAFE_FUNCTIONS _POSIX_VERSION
-#define _POSIX_THREAD_ATTR_STACKADDR _POSIX_VERSION
-#define _POSIX_THREAD_ATTR_STACKSIZE _POSIX_VERSION
-#define _POSIX_THREAD_PRIORITY_SCHEDULING _POSIX_VERSION
-#define _POSIX_THREAD_CPUTIME _POSIX_VERSION
-#define _POSIX_TIMERS _POSIX_VERSION
-#define _POSIX_TIMEOUTS _POSIX_VERSION
-#define _POSIX_MONOTONIC_CLOCK _POSIX_VERSION
-#define _POSIX_CPUTIME _POSIX_VERSION
-#define _POSIX_CLOCK_SELECTION _POSIX_VERSION
-#define _POSIX_BARRIERS _POSIX_VERSION
-#define _POSIX_SPIN_LOCKS _POSIX_VERSION
-#define _POSIX_READER_WRITER_LOCKS _POSIX_VERSION
-#define _POSIX_ASYNCHRONOUS_IO _POSIX_VERSION
-#define _POSIX_SEMAPHORES _POSIX_VERSION
-#define _POSIX_SHARED_MEMORY_OBJECTS _POSIX_VERSION
-#define _POSIX2_C_BIND _POSIX_VERSION
-#define _POSIX_V6_LP64_OFF64 1
-#define _POSIX_V7_LP64_OFF64 1
-#define _PC_LINK_MAX 0
-#define _PC_MAX_CANON 1
-#define _PC_MAX_INPUT 2
-#define _PC_NAME_MAX 3
-#define _PC_PATH_MAX 4
-#define _PC_PIPE_BUF 5
-#define _PC_CHOWN_RESTRICTED 6
-#define _PC_NO_TRUNC 7
-#define _PC_VDISABLE 8
-#define _PC_SYNC_IO 9
-#define _PC_ASYNC_IO 10
-#define _PC_PRIO_IO 11
-#define _PC_SOCK_MAXBUF 12
-#define _PC_FILESIZEBITS 13
-#define _PC_REC_INCR_XFER_SIZE 14
-#define _PC_REC_MAX_XFER_SIZE 15
-#define _PC_REC_MIN_XFER_SIZE 16
-#define _PC_REC_XFER_ALIGN 17
-#define _PC_ALLOC_SIZE_MIN 18
-#define _PC_SYMLINK_MAX 19
-#define _PC_2_SYMLINKS 20
-#define _SC_ARG_MAX 0
-#define _SC_CHILD_MAX 1
-#define _SC_CLK_TCK 2
-#define _SC_NGROUPS_MAX 3
-#define _SC_OPEN_MAX 4
-#define _SC_STREAM_MAX 5
-#define _SC_TZNAME_MAX 6
-#define _SC_JOB_CONTROL 7
-#define _SC_SAVED_IDS 8
-#define _SC_REALTIME_SIGNALS 9
-#define _SC_PRIORITY_SCHEDULING 10
-#define _SC_TIMERS 11
-#define _SC_ASYNCHRONOUS_IO 12
-#define _SC_PRIORITIZED_IO 13
-#define _SC_SYNCHRONIZED_IO 14
-#define _SC_FSYNC 15
-#define _SC_MAPPED_FILES 16
-#define _SC_MEMLOCK 17
-#define _SC_MEMLOCK_RANGE 18
-#define _SC_MEMORY_PROTECTION 19
-#define _SC_MESSAGE_PASSING 20
-#define _SC_SEMAPHORES 21
-#define _SC_SHARED_MEMORY_OBJECTS 22
-#define _SC_AIO_LISTIO_MAX 23
-#define _SC_AIO_MAX 24
-#define _SC_AIO_PRIO_DELTA_MAX 25
-#define _SC_DELAYTIMER_MAX 26
-#define _SC_MQ_OPEN_MAX 27
-#define _SC_MQ_PRIO_MAX 28
-#define _SC_VERSION 29
-#define _SC_PAGE_SIZE 30
-#define _SC_PAGESIZE 30
-#define _SC_RTSIG_MAX 31
-#define _SC_SEM_NSEMS_MAX 32
-#define _SC_SEM_VALUE_MAX 33
-#define _SC_SIGQUEUE_MAX 34
-#define _SC_TIMER_MAX 35
-#define _SC_BC_BASE_MAX 36
-#define _SC_BC_DIM_MAX 37
-#define _SC_BC_SCALE_MAX 38
-#define _SC_BC_STRING_MAX 39
-#define _SC_COLL_WEIGHTS_MAX 40
-#define _SC_EXPR_NEST_MAX 42
-#define _SC_LINE_MAX 43
-#define _SC_RE_DUP_MAX 44
-#define _SC_2_VERSION 46
-#define _SC_2_C_BIND 47
-#define _SC_2_C_DEV 48
-#define _SC_2_FORT_DEV 49
-#define _SC_2_FORT_RUN 50
-#define _SC_2_SW_DEV 51
-#define _SC_2_LOCALEDEF 52
-#define _SC_UIO_MAXIOV 60
-#define _SC_IOV_MAX 60
-#define _SC_THREADS 67
-#define _SC_THREAD_SAFE_FUNCTIONS 68
-#define _SC_GETGR_R_SIZE_MAX 69
-#define _SC_GETPW_R_SIZE_MAX 70
-#define _SC_LOGIN_NAME_MAX 71
-#define _SC_TTY_NAME_MAX 72
-#define _SC_THREAD_DESTRUCTOR_ITERATIONS 73
-#define _SC_THREAD_KEYS_MAX 74
-#define _SC_THREAD_STACK_MIN 75
-#define _SC_THREAD_THREADS_MAX 76
-#define _SC_THREAD_ATTR_STACKADDR 77
-#define _SC_THREAD_ATTR_STACKSIZE 78
-#define _SC_THREAD_PRIORITY_SCHEDULING 79
-#define _SC_THREAD_PRIO_INHERIT 80
-#define _SC_THREAD_PRIO_PROTECT 81
-#define _SC_THREAD_PROCESS_SHARED 82
-#define _SC_NPROCESSORS_CONF 83
-#define _SC_NPROCESSORS_ONLN 84
-#define _SC_PHYS_PAGES 85
-#define _SC_AVPHYS_PAGES 86
-#define _SC_ATEXIT_MAX 87
-#define _SC_PASS_MAX 88
-#define _SC_XOPEN_VERSION 89
-#define _SC_XOPEN_XCU_VERSION 90
-#define _SC_XOPEN_UNIX 91
-#define _SC_XOPEN_CRYPT 92
-#define _SC_XOPEN_ENH_I18N 93
-#define _SC_XOPEN_SHM 94
-#define _SC_2_CHAR_TERM 95
-#define _SC_2_UPE 97
-#define _SC_XOPEN_XPG2 98
-#define _SC_XOPEN_XPG3 99
-#define _SC_XOPEN_XPG4 100
-#define _SC_NZERO 109
-#define _SC_XBS5_ILP32_OFF32 125
-#define _SC_XBS5_ILP32_OFFBIG 126
-#define _SC_XBS5_LP64_OFF64 127
-#define _SC_XBS5_LPBIG_OFFBIG 128
-#define _SC_XOPEN_LEGACY 129
-#define _SC_XOPEN_REALTIME 130
-#define _SC_XOPEN_REALTIME_THREADS 131
-#define _SC_ADVISORY_INFO 132
-#define _SC_BARRIERS 133
-#define _SC_CLOCK_SELECTION 137
-#define _SC_CPUTIME 138
-#define _SC_THREAD_CPUTIME 139
-#define _SC_MONOTONIC_CLOCK 149
-#define _SC_READER_WRITER_LOCKS 153
-#define _SC_SPIN_LOCKS 154
-#define _SC_REGEXP 155
-#define _SC_SHELL 157
-#define _SC_SPAWN 159
-#define _SC_SPORADIC_SERVER 160
-#define _SC_THREAD_SPORADIC_SERVER 161
-#define _SC_TIMEOUTS 164
-#define _SC_TYPED_MEMORY_OBJECTS 165
-#define _SC_2_PBS 168
-#define _SC_2_PBS_ACCOUNTING 169
-#define _SC_2_PBS_LOCATE 170
-#define _SC_2_PBS_MESSAGE 171
-#define _SC_2_PBS_TRACK 172
-#define _SC_SYMLOOP_MAX 173
-#define _SC_STREAMS 174
-#define _SC_2_PBS_CHECKPOINT 175
-#define _SC_V6_ILP32_OFF32 176
-#define _SC_V6_ILP32_OFFBIG 177
-#define _SC_V6_LP64_OFF64 178
-#define _SC_V6_LPBIG_OFFBIG 179
-#define _SC_HOST_NAME_MAX 180
-#define _SC_TRACE 181
-#define _SC_TRACE_EVENT_FILTER 182
-#define _SC_TRACE_INHERIT 183
-#define _SC_TRACE_LOG 184
-#define _SC_IPV6 235
-#define _SC_RAW_SOCKETS 236
-#define _SC_V7_ILP32_OFF32 237
-#define _SC_V7_ILP32_OFFBIG 238
-#define _SC_V7_LP64_OFF64 239
-#define _SC_V7_LPBIG_OFFBIG 240
-#define _SC_SS_REPL_MAX 241
-#define _SC_TRACE_EVENT_NAME_MAX 242
-#define _SC_TRACE_NAME_MAX 243
-#define _SC_TRACE_SYS_MAX 244
-#define _SC_TRACE_USER_EVENT_MAX 245
-#define _SC_XOPEN_STREAMS 246
-#define _SC_THREAD_ROBUST_PRIO_INHERIT 247
-#define _SC_THREAD_ROBUST_PRIO_PROTECT 248
-#define _CS_PATH 0
-#define _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS 1
-#define _CS_GNU_LIBC_VERSION 2
-#define _CS_GNU_LIBPTHREAD_VERSION 3
-#define _CS_POSIX_V5_WIDTH_RESTRICTED_ENVS 4
-#define _CS_POSIX_V7_WIDTH_RESTRICTED_ENVS 5
-#define _CS_POSIX_V6_ILP32_OFF32_CFLAGS 1116
-#define _CS_POSIX_V6_ILP32_OFF32_LDFLAGS 1117
-#define _CS_POSIX_V6_ILP32_OFF32_LIBS 1118
-#define _CS_POSIX_V6_ILP32_OFF32_LINTFLAGS 1119
-#define _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS 1120
-#define _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS 1121
-#define _CS_POSIX_V6_ILP32_OFFBIG_LIBS 1122
-#define _CS_POSIX_V6_ILP32_OFFBIG_LINTFLAGS 1123
-#define _CS_POSIX_V6_LP64_OFF64_CFLAGS 1124
-#define _CS_POSIX_V6_LP64_OFF64_LDFLAGS 1125
-#define _CS_POSIX_V6_LP64_OFF64_LIBS 1126
-#define _CS_POSIX_V6_LP64_OFF64_LINTFLAGS 1127
-#define _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS 1128
-#define _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS 1129
-#define _CS_POSIX_V6_LPBIG_OFFBIG_LIBS 1130
-#define _CS_POSIX_V6_LPBIG_OFFBIG_LINTFLAGS 1131
-#define _CS_POSIX_V7_ILP32_OFF32_CFLAGS 1132
-#define _CS_POSIX_V7_ILP32_OFF32_LDFLAGS 1133
-#define _CS_POSIX_V7_ILP32_OFF32_LIBS 1134
-#define _CS_POSIX_V7_ILP32_OFF32_LINTFLAGS 1135
-#define _CS_POSIX_V7_ILP32_OFFBIG_CFLAGS 1136
-#define _CS_POSIX_V7_ILP32_OFFBIG_LDFLAGS 1137
-#define _CS_POSIX_V7_ILP32_OFFBIG_LIBS 1138
-#define _CS_POSIX_V7_ILP32_OFFBIG_LINTFLAGS 1139
-#define _CS_POSIX_V7_LP64_OFF64_CFLAGS 1140
-#define _CS_POSIX_V7_LP64_OFF64_LDFLAGS 1141
-#define _CS_POSIX_V7_LP64_OFF64_LIBS 1142
-#define _CS_POSIX_V7_LP64_OFF64_LINTFLAGS 1143
-#define _CS_POSIX_V7_LPBIG_OFFBIG_CFLAGS 1144
-#define _CS_POSIX_V7_LPBIG_OFFBIG_LDFLAGS 1145
-#define _CS_POSIX_V7_LPBIG_OFFBIG_LIBS 1146
-#define _CS_POSIX_V7_LPBIG_OFFBIG_LINTFLAGS 1147
-#define _CS_V6_ENV 1148
-#define _CS_V7_ENV 1149
+#define TEMP_FAILURE_RETRY(expression) (__extension__ ({ long int __result; do __result = (long int) (expression); while (__result == -1L && errno == EINTR); __result; }))
+#define _LINUX_CLOSE_RANGE_H 
+#define CLOSE_RANGE_UNSHARE (1U << 1)
+#define CLOSE_RANGE_CLOEXEC (1U << 2)
 #define RBIMPL_DLLEXPORT_H 
 #undef RUBY_EXTERN
 #define RUBY_EXTERN extern
@@ -18494,9 +22429,9 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define RUBY_BACKWARD2_BOOL_H 
 #define RBIMPL_STDBOOL_H 
 #define _STDBOOL_H 
+#define bool _Bool
 #define true 1
 #define false 0
-#define bool _Bool
 #define __bool_true_false_are_defined 1
 #define FALSE false
 #define TRUE true
@@ -18523,51 +22458,521 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define PATH_ENV "PATH"
 #define CASEFOLD_FILESYSTEM 0
 #define RUBY_MISSING_H 1
-#define _MATH_H 
-#define __NEED_float_t 
-#define __NEED_double_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __DEFINED_float_t 
-#define __DEFINED_double_t 
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define NAN __builtin_nanf("")
-#define INFINITY __builtin_inff()
-#define HUGE_VALF INFINITY
-#define HUGE_VAL ((double)INFINITY)
-#define HUGE_VALL ((long double)INFINITY)
-#define MATH_ERRNO 1
-#define MATH_ERREXCEPT 2
-#define math_errhandling 2
-#define FP_ILOGBNAN (-1-0x7fffffff)
-#define FP_ILOGB0 FP_ILOGBNAN
+#define _MATH_H 1
+#define __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION 
+#undef __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION
+#undef __GLIBC_USE_LIB_EXT2
+#define __GLIBC_USE_LIB_EXT2 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT
+#define __GLIBC_USE_IEC_60559_BFP_EXT 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT_C2X
+#define __GLIBC_USE_IEC_60559_BFP_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_EXT
+#define __GLIBC_USE_IEC_60559_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_TYPES_EXT
+#define __GLIBC_USE_IEC_60559_TYPES_EXT 1
+#define _BITS_LIBM_SIMD_DECL_STUBS_H 1
+#define __DECL_SIMD_cos 
+#define __DECL_SIMD_cosf 
+#define __DECL_SIMD_cosl 
+#define __DECL_SIMD_cosf16 
+#define __DECL_SIMD_cosf32 
+#define __DECL_SIMD_cosf64 
+#define __DECL_SIMD_cosf128 
+#define __DECL_SIMD_cosf32x 
+#define __DECL_SIMD_cosf64x 
+#define __DECL_SIMD_cosf128x 
+#define __DECL_SIMD_sin 
+#define __DECL_SIMD_sinf 
+#define __DECL_SIMD_sinl 
+#define __DECL_SIMD_sinf16 
+#define __DECL_SIMD_sinf32 
+#define __DECL_SIMD_sinf64 
+#define __DECL_SIMD_sinf128 
+#define __DECL_SIMD_sinf32x 
+#define __DECL_SIMD_sinf64x 
+#define __DECL_SIMD_sinf128x 
+#define __DECL_SIMD_sincos 
+#define __DECL_SIMD_sincosf 
+#define __DECL_SIMD_sincosl 
+#define __DECL_SIMD_sincosf16 
+#define __DECL_SIMD_sincosf32 
+#define __DECL_SIMD_sincosf64 
+#define __DECL_SIMD_sincosf128 
+#define __DECL_SIMD_sincosf32x 
+#define __DECL_SIMD_sincosf64x 
+#define __DECL_SIMD_sincosf128x 
+#define __DECL_SIMD_log 
+#define __DECL_SIMD_logf 
+#define __DECL_SIMD_logl 
+#define __DECL_SIMD_logf16 
+#define __DECL_SIMD_logf32 
+#define __DECL_SIMD_logf64 
+#define __DECL_SIMD_logf128 
+#define __DECL_SIMD_logf32x 
+#define __DECL_SIMD_logf64x 
+#define __DECL_SIMD_logf128x 
+#define __DECL_SIMD_exp 
+#define __DECL_SIMD_expf 
+#define __DECL_SIMD_expl 
+#define __DECL_SIMD_expf16 
+#define __DECL_SIMD_expf32 
+#define __DECL_SIMD_expf64 
+#define __DECL_SIMD_expf128 
+#define __DECL_SIMD_expf32x 
+#define __DECL_SIMD_expf64x 
+#define __DECL_SIMD_expf128x 
+#define __DECL_SIMD_pow 
+#define __DECL_SIMD_powf 
+#define __DECL_SIMD_powl 
+#define __DECL_SIMD_powf16 
+#define __DECL_SIMD_powf32 
+#define __DECL_SIMD_powf64 
+#define __DECL_SIMD_powf128 
+#define __DECL_SIMD_powf32x 
+#define __DECL_SIMD_powf64x 
+#define __DECL_SIMD_powf128x 
+#define __DECL_SIMD_acos 
+#define __DECL_SIMD_acosf 
+#define __DECL_SIMD_acosl 
+#define __DECL_SIMD_acosf16 
+#define __DECL_SIMD_acosf32 
+#define __DECL_SIMD_acosf64 
+#define __DECL_SIMD_acosf128 
+#define __DECL_SIMD_acosf32x 
+#define __DECL_SIMD_acosf64x 
+#define __DECL_SIMD_acosf128x 
+#define __DECL_SIMD_atan 
+#define __DECL_SIMD_atanf 
+#define __DECL_SIMD_atanl 
+#define __DECL_SIMD_atanf16 
+#define __DECL_SIMD_atanf32 
+#define __DECL_SIMD_atanf64 
+#define __DECL_SIMD_atanf128 
+#define __DECL_SIMD_atanf32x 
+#define __DECL_SIMD_atanf64x 
+#define __DECL_SIMD_atanf128x 
+#define __DECL_SIMD_asin 
+#define __DECL_SIMD_asinf 
+#define __DECL_SIMD_asinl 
+#define __DECL_SIMD_asinf16 
+#define __DECL_SIMD_asinf32 
+#define __DECL_SIMD_asinf64 
+#define __DECL_SIMD_asinf128 
+#define __DECL_SIMD_asinf32x 
+#define __DECL_SIMD_asinf64x 
+#define __DECL_SIMD_asinf128x 
+#define __DECL_SIMD_hypot 
+#define __DECL_SIMD_hypotf 
+#define __DECL_SIMD_hypotl 
+#define __DECL_SIMD_hypotf16 
+#define __DECL_SIMD_hypotf32 
+#define __DECL_SIMD_hypotf64 
+#define __DECL_SIMD_hypotf128 
+#define __DECL_SIMD_hypotf32x 
+#define __DECL_SIMD_hypotf64x 
+#define __DECL_SIMD_hypotf128x 
+#define __DECL_SIMD_exp2 
+#define __DECL_SIMD_exp2f 
+#define __DECL_SIMD_exp2l 
+#define __DECL_SIMD_exp2f16 
+#define __DECL_SIMD_exp2f32 
+#define __DECL_SIMD_exp2f64 
+#define __DECL_SIMD_exp2f128 
+#define __DECL_SIMD_exp2f32x 
+#define __DECL_SIMD_exp2f64x 
+#define __DECL_SIMD_exp2f128x 
+#define __DECL_SIMD_exp10 
+#define __DECL_SIMD_exp10f 
+#define __DECL_SIMD_exp10l 
+#define __DECL_SIMD_exp10f16 
+#define __DECL_SIMD_exp10f32 
+#define __DECL_SIMD_exp10f64 
+#define __DECL_SIMD_exp10f128 
+#define __DECL_SIMD_exp10f32x 
+#define __DECL_SIMD_exp10f64x 
+#define __DECL_SIMD_exp10f128x 
+#define __DECL_SIMD_cosh 
+#define __DECL_SIMD_coshf 
+#define __DECL_SIMD_coshl 
+#define __DECL_SIMD_coshf16 
+#define __DECL_SIMD_coshf32 
+#define __DECL_SIMD_coshf64 
+#define __DECL_SIMD_coshf128 
+#define __DECL_SIMD_coshf32x 
+#define __DECL_SIMD_coshf64x 
+#define __DECL_SIMD_coshf128x 
+#define __DECL_SIMD_expm1 
+#define __DECL_SIMD_expm1f 
+#define __DECL_SIMD_expm1l 
+#define __DECL_SIMD_expm1f16 
+#define __DECL_SIMD_expm1f32 
+#define __DECL_SIMD_expm1f64 
+#define __DECL_SIMD_expm1f128 
+#define __DECL_SIMD_expm1f32x 
+#define __DECL_SIMD_expm1f64x 
+#define __DECL_SIMD_expm1f128x 
+#define __DECL_SIMD_sinh 
+#define __DECL_SIMD_sinhf 
+#define __DECL_SIMD_sinhl 
+#define __DECL_SIMD_sinhf16 
+#define __DECL_SIMD_sinhf32 
+#define __DECL_SIMD_sinhf64 
+#define __DECL_SIMD_sinhf128 
+#define __DECL_SIMD_sinhf32x 
+#define __DECL_SIMD_sinhf64x 
+#define __DECL_SIMD_sinhf128x 
+#define __DECL_SIMD_cbrt 
+#define __DECL_SIMD_cbrtf 
+#define __DECL_SIMD_cbrtl 
+#define __DECL_SIMD_cbrtf16 
+#define __DECL_SIMD_cbrtf32 
+#define __DECL_SIMD_cbrtf64 
+#define __DECL_SIMD_cbrtf128 
+#define __DECL_SIMD_cbrtf32x 
+#define __DECL_SIMD_cbrtf64x 
+#define __DECL_SIMD_cbrtf128x 
+#define __DECL_SIMD_atan2 
+#define __DECL_SIMD_atan2f 
+#define __DECL_SIMD_atan2l 
+#define __DECL_SIMD_atan2f16 
+#define __DECL_SIMD_atan2f32 
+#define __DECL_SIMD_atan2f64 
+#define __DECL_SIMD_atan2f128 
+#define __DECL_SIMD_atan2f32x 
+#define __DECL_SIMD_atan2f64x 
+#define __DECL_SIMD_atan2f128x 
+#define __DECL_SIMD_log10 
+#define __DECL_SIMD_log10f 
+#define __DECL_SIMD_log10l 
+#define __DECL_SIMD_log10f16 
+#define __DECL_SIMD_log10f32 
+#define __DECL_SIMD_log10f64 
+#define __DECL_SIMD_log10f128 
+#define __DECL_SIMD_log10f32x 
+#define __DECL_SIMD_log10f64x 
+#define __DECL_SIMD_log10f128x 
+#define __DECL_SIMD_log2 
+#define __DECL_SIMD_log2f 
+#define __DECL_SIMD_log2l 
+#define __DECL_SIMD_log2f16 
+#define __DECL_SIMD_log2f32 
+#define __DECL_SIMD_log2f64 
+#define __DECL_SIMD_log2f128 
+#define __DECL_SIMD_log2f32x 
+#define __DECL_SIMD_log2f64x 
+#define __DECL_SIMD_log2f128x 
+#define __DECL_SIMD_log1p 
+#define __DECL_SIMD_log1pf 
+#define __DECL_SIMD_log1pl 
+#define __DECL_SIMD_log1pf16 
+#define __DECL_SIMD_log1pf32 
+#define __DECL_SIMD_log1pf64 
+#define __DECL_SIMD_log1pf128 
+#define __DECL_SIMD_log1pf32x 
+#define __DECL_SIMD_log1pf64x 
+#define __DECL_SIMD_log1pf128x 
+#define __DECL_SIMD_atanh 
+#define __DECL_SIMD_atanhf 
+#define __DECL_SIMD_atanhl 
+#define __DECL_SIMD_atanhf16 
+#define __DECL_SIMD_atanhf32 
+#define __DECL_SIMD_atanhf64 
+#define __DECL_SIMD_atanhf128 
+#define __DECL_SIMD_atanhf32x 
+#define __DECL_SIMD_atanhf64x 
+#define __DECL_SIMD_atanhf128x 
+#define __DECL_SIMD_acosh 
+#define __DECL_SIMD_acoshf 
+#define __DECL_SIMD_acoshl 
+#define __DECL_SIMD_acoshf16 
+#define __DECL_SIMD_acoshf32 
+#define __DECL_SIMD_acoshf64 
+#define __DECL_SIMD_acoshf128 
+#define __DECL_SIMD_acoshf32x 
+#define __DECL_SIMD_acoshf64x 
+#define __DECL_SIMD_acoshf128x 
+#define __DECL_SIMD_erf 
+#define __DECL_SIMD_erff 
+#define __DECL_SIMD_erfl 
+#define __DECL_SIMD_erff16 
+#define __DECL_SIMD_erff32 
+#define __DECL_SIMD_erff64 
+#define __DECL_SIMD_erff128 
+#define __DECL_SIMD_erff32x 
+#define __DECL_SIMD_erff64x 
+#define __DECL_SIMD_erff128x 
+#define __DECL_SIMD_tanh 
+#define __DECL_SIMD_tanhf 
+#define __DECL_SIMD_tanhl 
+#define __DECL_SIMD_tanhf16 
+#define __DECL_SIMD_tanhf32 
+#define __DECL_SIMD_tanhf64 
+#define __DECL_SIMD_tanhf128 
+#define __DECL_SIMD_tanhf32x 
+#define __DECL_SIMD_tanhf64x 
+#define __DECL_SIMD_tanhf128x 
+#define __DECL_SIMD_asinh 
+#define __DECL_SIMD_asinhf 
+#define __DECL_SIMD_asinhl 
+#define __DECL_SIMD_asinhf16 
+#define __DECL_SIMD_asinhf32 
+#define __DECL_SIMD_asinhf64 
+#define __DECL_SIMD_asinhf128 
+#define __DECL_SIMD_asinhf32x 
+#define __DECL_SIMD_asinhf64x 
+#define __DECL_SIMD_asinhf128x 
+#define __DECL_SIMD_erfc 
+#define __DECL_SIMD_erfcf 
+#define __DECL_SIMD_erfcl 
+#define __DECL_SIMD_erfcf16 
+#define __DECL_SIMD_erfcf32 
+#define __DECL_SIMD_erfcf64 
+#define __DECL_SIMD_erfcf128 
+#define __DECL_SIMD_erfcf32x 
+#define __DECL_SIMD_erfcf64x 
+#define __DECL_SIMD_erfcf128x 
+#define __DECL_SIMD_tan 
+#define __DECL_SIMD_tanf 
+#define __DECL_SIMD_tanl 
+#define __DECL_SIMD_tanf16 
+#define __DECL_SIMD_tanf32 
+#define __DECL_SIMD_tanf64 
+#define __DECL_SIMD_tanf128 
+#define __DECL_SIMD_tanf32x 
+#define __DECL_SIMD_tanf64x 
+#define __DECL_SIMD_tanf128x 
+#define HUGE_VAL (__builtin_huge_val ())
+#define HUGE_VALF (__builtin_huge_valf ())
+#define HUGE_VALL (__builtin_huge_vall ())
+#define HUGE_VAL_F32 (__builtin_huge_valf32 ())
+#define HUGE_VAL_F64 (__builtin_huge_valf64 ())
+#define HUGE_VAL_F128 (__builtin_huge_valf128 ())
+#define HUGE_VAL_F32X (__builtin_huge_valf32x ())
+#define HUGE_VAL_F64X (__builtin_huge_valf64x ())
+#define INFINITY (__builtin_inff ())
+#define NAN (__builtin_nanf (""))
+#define SNANF (__builtin_nansf (""))
+#define SNAN (__builtin_nans (""))
+#define SNANL (__builtin_nansl (""))
+#define SNANF32 (__builtin_nansf32 (""))
+#define SNANF64 (__builtin_nansf64 (""))
+#define SNANF128 (__builtin_nansf128 (""))
+#define SNANF32X (__builtin_nansf32x (""))
+#define SNANF64X (__builtin_nansf64x (""))
+#define __GLIBC_FLT_EVAL_METHOD __FLT_EVAL_METHOD__
+#define __FP_LOGB0_IS_MIN 1
+#define __FP_LOGBNAN_IS_MIN 1
+#define FP_ILOGB0 (-2147483647 - 1)
+#define FP_ILOGBNAN (-2147483647 - 1)
+#define __FP_LONG_MAX 0x7fffffffffffffffL
+#define FP_LLOGB0 (-__FP_LONG_MAX - 1)
+#define FP_LLOGBNAN (-__FP_LONG_MAX - 1)
+#define FP_INT_UPWARD 0
+#define FP_INT_DOWNWARD 1
+#define FP_INT_TOWARDZERO 2
+#define FP_INT_TONEARESTFROMZERO 3
+#define FP_INT_TONEAREST 4
+#define __SIMD_DECL(function) __CONCAT (__DECL_SIMD_, function)
+#define __MATHCALL_VEC(function,suffix,args) __SIMD_DECL (__MATH_PRECNAME (function, suffix)) __MATHCALL (function, suffix, args)
+#define __MATHDECL_VEC(type,function,suffix,args) __SIMD_DECL (__MATH_PRECNAME (function, suffix)) __MATHDECL(type, function,suffix, args)
+#define __MATHCALL(function,suffix,args) __MATHDECL (_Mdouble_,function,suffix, args)
+#define __MATHDECL(type,function,suffix,args) __MATHDECL_1(type, function,suffix, args); __MATHDECL_1(type, __CONCAT(__,function),suffix, args)
+#define __MATHCALLX(function,suffix,args,attrib) __MATHDECLX (_Mdouble_,function,suffix, args, attrib)
+#define __MATHDECLX(type,function,suffix,args,attrib) __MATHDECL_1(type, function,suffix, args) __attribute__ (attrib); __MATHDECL_1(type, __CONCAT(__,function),suffix, args) __attribute__ (attrib)
+#define __MATHDECL_1_IMPL(type,function,suffix,args) extern type __MATH_PRECNAME(function,suffix) args __THROW
+#define __MATHDECL_1(type,function,suffix,args) __MATHDECL_1_IMPL(type, function, suffix, args)
+#define __MATHDECL_ALIAS(type,function,suffix,args,alias) __MATHDECL_1(type, function, suffix, args)
+#define __MATHREDIR(type,function,suffix,args,to) extern type __REDIRECT_NTH (__MATH_PRECNAME (function, suffix), args, to)
+#define _Mdouble_ double
+#define __MATH_PRECNAME(name,r) __CONCAT(name,r)
+#define __MATH_DECLARING_DOUBLE 1
+#define __MATH_DECLARING_FLOATN 0
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#define _Mdouble_ float
+#define __MATH_PRECNAME(name,r) name ##f ##r
+#define __MATH_DECLARING_DOUBLE 0
+#define __MATH_DECLARING_FLOATN 0
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#define _Mdouble_ long double
+#define __MATH_PRECNAME(name,r) name ##l ##r
+#define __MATH_DECLARING_DOUBLE 0
+#define __MATH_DECLARING_FLOATN 0
+#define __MATH_DECLARE_LDOUBLE 1
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#define _Mdouble_ _Float32
+#define __MATH_PRECNAME(name,r) name ##f32 ##r
+#define __MATH_DECLARING_DOUBLE 0
+#define __MATH_DECLARING_FLOATN 1
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#define _Mdouble_ _Float64
+#define __MATH_PRECNAME(name,r) name ##f64 ##r
+#define __MATH_DECLARING_DOUBLE 0
+#define __MATH_DECLARING_FLOATN 1
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#define _Mdouble_ _Float128
+#define __MATH_PRECNAME(name,r) name ##f128 ##r
+#define __MATH_DECLARING_DOUBLE 0
+#define __MATH_DECLARING_FLOATN 1
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#define _Mdouble_ _Float32x
+#define __MATH_PRECNAME(name,r) name ##f32x ##r
+#define __MATH_DECLARING_DOUBLE 0
+#define __MATH_DECLARING_FLOATN 1
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#define _Mdouble_ _Float64x
+#define __MATH_PRECNAME(name,r) name ##f64x ##r
+#define __MATH_DECLARING_DOUBLE 0
+#define __MATH_DECLARING_FLOATN 1
+#undef _Mdouble_
+#undef __MATH_PRECNAME
+#undef __MATH_DECLARING_DOUBLE
+#undef __MATH_DECLARING_FLOATN
+#undef __MATHDECL_1_IMPL
+#undef __MATHDECL_1
+#undef __MATHDECL_ALIAS
+#undef __MATHDECL
+#undef __MATHCALL
+#define __MATHCALL_NARROW_ARGS_1 (_Marg_ __x)
+#define __MATHCALL_NARROW_ARGS_2 (_Marg_ __x, _Marg_ __y)
+#define __MATHCALL_NARROW_ARGS_3 (_Marg_ __x, _Marg_ __y, _Marg_ __z)
+#define __MATHCALL_NARROW_NORMAL(func,nargs) extern _Mret_ func __MATHCALL_NARROW_ARGS_ ## nargs __THROW
+#define __MATHCALL_NARROW_REDIR(func,redir,nargs) extern _Mret_ __REDIRECT_NTH (func, __MATHCALL_NARROW_ARGS_ ## nargs, redir)
+#define __MATHCALL_NARROW(func,redir,nargs) __MATHCALL_NARROW_NORMAL (func, nargs)
+#define _Mret_ float
+#define _Marg_ double
+#define __MATHCALL_NAME(name) f ## name
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ float
+#define _Marg_ long double
+#define __MATHCALL_NAME(name) f ## name ## l
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ double
+#define _Marg_ long double
+#define __MATHCALL_NAME(name) d ## name ## l
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float32
+#define _Marg_ _Float32x
+#define __MATHCALL_NAME(name) f32 ## name ## f32x
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float32
+#define _Marg_ _Float64
+#define __MATHCALL_NAME(name) f32 ## name ## f64
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float32
+#define _Marg_ _Float64x
+#define __MATHCALL_NAME(name) f32 ## name ## f64x
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float32
+#define _Marg_ _Float128
+#define __MATHCALL_NAME(name) f32 ## name ## f128
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float32x
+#define _Marg_ _Float64
+#define __MATHCALL_NAME(name) f32x ## name ## f64
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float32x
+#define _Marg_ _Float64x
+#define __MATHCALL_NAME(name) f32x ## name ## f64x
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float32x
+#define _Marg_ _Float128
+#define __MATHCALL_NAME(name) f32x ## name ## f128
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float64
+#define _Marg_ _Float64x
+#define __MATHCALL_NAME(name) f64 ## name ## f64x
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float64
+#define _Marg_ _Float128
+#define __MATHCALL_NAME(name) f64 ## name ## f128
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#define _Mret_ _Float64x
+#define _Marg_ _Float128
+#define __MATHCALL_NAME(name) f64x ## name ## f128
+#undef _Mret_
+#undef _Marg_
+#undef __MATHCALL_NAME
+#undef __MATHCALL_NARROW_ARGS_1
+#undef __MATHCALL_NARROW_ARGS_2
+#undef __MATHCALL_NARROW_ARGS_3
+#undef __MATHCALL_NARROW_NORMAL
+#undef __MATHCALL_NARROW_REDIR
+#undef __MATHCALL_NARROW
+#define __MATH_TG_F32(FUNC,ARGS) _Float32: FUNC ## f ARGS,
+#define __MATH_TG_F64X(FUNC,ARGS) _Float64x: FUNC ## l ARGS,
+#define __MATH_TG(TG_ARG,FUNC,ARGS) _Generic ((TG_ARG), float: FUNC ## f ARGS, __MATH_TG_F32 (FUNC, ARGS) default: FUNC ARGS, long double: FUNC ## l ARGS, __MATH_TG_F64X (FUNC, ARGS) _Float128: FUNC ## f128 ARGS)
 #define FP_NAN 0
 #define FP_INFINITE 1
 #define FP_ZERO 2
 #define FP_SUBNORMAL 3
 #define FP_NORMAL 4
-#define fpclassify(x) ( sizeof(x) == sizeof(float) ? __fpclassifyf(x) : sizeof(x) == sizeof(double) ? __fpclassify(x) : __fpclassifyl(x) )
-#define isinf(x) ( sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) == 0x7f800000 : sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL>>1) == 0x7ffULL<<52 : __fpclassifyl(x) == FP_INFINITE)
-#define isnan(x) ( sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) > 0x7f800000 : sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL>>1) > 0x7ffULL<<52 : __fpclassifyl(x) == FP_NAN)
-#define isnormal(x) ( sizeof(x) == sizeof(float) ? ((__FLOAT_BITS(x)+0x00800000) & 0x7fffffff) >= 0x01000000 : sizeof(x) == sizeof(double) ? ((__DOUBLE_BITS(x)+(1ULL<<52)) & -1ULL>>1) >= 1ULL<<53 : __fpclassifyl(x) == FP_NORMAL)
-#define isfinite(x) ( sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) < 0x7f800000 : sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL>>1) < 0x7ffULL<<52 : __fpclassifyl(x) > FP_INFINITE)
-#define signbit(x) ( sizeof(x) == sizeof(float) ? (int)(__FLOAT_BITS(x)>>31) : sizeof(x) == sizeof(double) ? (int)(__DOUBLE_BITS(x)>>63) : __signbitl(x) )
-#define isunordered(x,y) (isnan((x)) ? ((void)(y),1) : isnan((y)))
-#define __ISREL_DEF(rel,op,type) static __inline int __is ##rel(type __x, type __y) { return !isunordered(__x,__y) && __x op __y; }
-#define __tg_pred_2(x,y,p) ( sizeof((x)+(y)) == sizeof(float) ? p ##f(x, y) : sizeof((x)+(y)) == sizeof(double) ? p(x, y) : p ##l(x, y) )
-#define isless(x,y) __tg_pred_2(x, y, __isless)
-#define islessequal(x,y) __tg_pred_2(x, y, __islessequal)
-#define islessgreater(x,y) __tg_pred_2(x, y, __islessgreater)
-#define isgreater(x,y) __tg_pred_2(x, y, __isgreater)
-#define isgreaterequal(x,y) __tg_pred_2(x, y, __isgreaterequal)
+#define fpclassify(x) __builtin_fpclassify (FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, x)
+#define signbit(x) __builtin_signbit (x)
+#define isfinite(x) __builtin_isfinite (x)
+#define isnormal(x) __builtin_isnormal (x)
+#define isnan(x) __builtin_isnan (x)
+#define isinf(x) __builtin_isinf_sign (x)
+#define MATH_ERRNO 1
+#define MATH_ERREXCEPT 2
+#define math_errhandling (MATH_ERRNO | MATH_ERREXCEPT)
+#define __iscanonicalf(x) ((void) (__typeof (x)) (x), 1)
+#define __iscanonical(x) ((void) (__typeof (x)) (x), 1)
+#define __iscanonicalf128(x) ((void) (__typeof (x)) (x), 1)
+#define iscanonical(x) __MATH_TG ((x), __iscanonical, (x))
+#define issignaling(x) __MATH_TG ((x), __issignaling, (x))
+#define issubnormal(x) (fpclassify (x) == FP_SUBNORMAL)
+#define iszero(x) (((__typeof (x)) (x)) == 0)
+#define MAXFLOAT 3.40282347e+38F
 #define M_E 2.7182818284590452354
 #define M_LOG2E 1.4426950408889634074
 #define M_LOG10E 0.43429448190325182765
@@ -18581,32 +22986,117 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define M_2_SQRTPI 1.12837916709551257390
 #define M_SQRT2 1.41421356237309504880
 #define M_SQRT1_2 0.70710678118654752440
-#define HUGE 3.40282346638528859812e+38F
-#define _TIME_H 
-#define NULL ((void*)0)
-#define __NEED_size_t 
-#define __NEED_time_t 
-#define __NEED_clock_t 
-#define __NEED_struct_timespec 
-#define __NEED_clockid_t 
-#define __NEED_timer_t 
-#define __NEED_pid_t 
-#define __NEED_locale_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define __tm_gmtoff tm_gmtoff
-#define __tm_zone tm_zone
-#define CLOCKS_PER_SEC 1000000L
-#define TIME_UTC 1
+#define M_Ef 2.7182818284590452354f
+#define M_LOG2Ef 1.4426950408889634074f
+#define M_LOG10Ef 0.43429448190325182765f
+#define M_LN2f 0.69314718055994530942f
+#define M_LN10f 2.30258509299404568402f
+#define M_PIf 3.14159265358979323846f
+#define M_PI_2f 1.57079632679489661923f
+#define M_PI_4f 0.78539816339744830962f
+#define M_1_PIf 0.31830988618379067154f
+#define M_2_PIf 0.63661977236758134308f
+#define M_2_SQRTPIf 1.12837916709551257390f
+#define M_SQRT2f 1.41421356237309504880f
+#define M_SQRT1_2f 0.70710678118654752440f
+#define M_El 2.718281828459045235360287471352662498L
+#define M_LOG2El 1.442695040888963407359924681001892137L
+#define M_LOG10El 0.434294481903251827651128918916605082L
+#define M_LN2l 0.693147180559945309417232121458176568L
+#define M_LN10l 2.302585092994045684017991454684364208L
+#define M_PIl 3.141592653589793238462643383279502884L
+#define M_PI_2l 1.570796326794896619231321691639751442L
+#define M_PI_4l 0.785398163397448309615660845819875721L
+#define M_1_PIl 0.318309886183790671537767526745028724L
+#define M_2_PIl 0.636619772367581343075535053490057448L
+#define M_2_SQRTPIl 1.128379167095512573896158903121545172L
+#define M_SQRT2l 1.414213562373095048801688724209698079L
+#define M_SQRT1_2l 0.707106781186547524400844362104849039L
+#define M_Ef32 __f32 (2.718281828459045235360287471352662498)
+#define M_LOG2Ef32 __f32 (1.442695040888963407359924681001892137)
+#define M_LOG10Ef32 __f32 (0.434294481903251827651128918916605082)
+#define M_LN2f32 __f32 (0.693147180559945309417232121458176568)
+#define M_LN10f32 __f32 (2.302585092994045684017991454684364208)
+#define M_PIf32 __f32 (3.141592653589793238462643383279502884)
+#define M_PI_2f32 __f32 (1.570796326794896619231321691639751442)
+#define M_PI_4f32 __f32 (0.785398163397448309615660845819875721)
+#define M_1_PIf32 __f32 (0.318309886183790671537767526745028724)
+#define M_2_PIf32 __f32 (0.636619772367581343075535053490057448)
+#define M_2_SQRTPIf32 __f32 (1.128379167095512573896158903121545172)
+#define M_SQRT2f32 __f32 (1.414213562373095048801688724209698079)
+#define M_SQRT1_2f32 __f32 (0.707106781186547524400844362104849039)
+#define M_Ef64 __f64 (2.718281828459045235360287471352662498)
+#define M_LOG2Ef64 __f64 (1.442695040888963407359924681001892137)
+#define M_LOG10Ef64 __f64 (0.434294481903251827651128918916605082)
+#define M_LN2f64 __f64 (0.693147180559945309417232121458176568)
+#define M_LN10f64 __f64 (2.302585092994045684017991454684364208)
+#define M_PIf64 __f64 (3.141592653589793238462643383279502884)
+#define M_PI_2f64 __f64 (1.570796326794896619231321691639751442)
+#define M_PI_4f64 __f64 (0.785398163397448309615660845819875721)
+#define M_1_PIf64 __f64 (0.318309886183790671537767526745028724)
+#define M_2_PIf64 __f64 (0.636619772367581343075535053490057448)
+#define M_2_SQRTPIf64 __f64 (1.128379167095512573896158903121545172)
+#define M_SQRT2f64 __f64 (1.414213562373095048801688724209698079)
+#define M_SQRT1_2f64 __f64 (0.707106781186547524400844362104849039)
+#define M_Ef128 __f128 (2.718281828459045235360287471352662498)
+#define M_LOG2Ef128 __f128 (1.442695040888963407359924681001892137)
+#define M_LOG10Ef128 __f128 (0.434294481903251827651128918916605082)
+#define M_LN2f128 __f128 (0.693147180559945309417232121458176568)
+#define M_LN10f128 __f128 (2.302585092994045684017991454684364208)
+#define M_PIf128 __f128 (3.141592653589793238462643383279502884)
+#define M_PI_2f128 __f128 (1.570796326794896619231321691639751442)
+#define M_PI_4f128 __f128 (0.785398163397448309615660845819875721)
+#define M_1_PIf128 __f128 (0.318309886183790671537767526745028724)
+#define M_2_PIf128 __f128 (0.636619772367581343075535053490057448)
+#define M_2_SQRTPIf128 __f128 (1.128379167095512573896158903121545172)
+#define M_SQRT2f128 __f128 (1.414213562373095048801688724209698079)
+#define M_SQRT1_2f128 __f128 (0.707106781186547524400844362104849039)
+#define M_Ef32x __f32x (2.718281828459045235360287471352662498)
+#define M_LOG2Ef32x __f32x (1.442695040888963407359924681001892137)
+#define M_LOG10Ef32x __f32x (0.434294481903251827651128918916605082)
+#define M_LN2f32x __f32x (0.693147180559945309417232121458176568)
+#define M_LN10f32x __f32x (2.302585092994045684017991454684364208)
+#define M_PIf32x __f32x (3.141592653589793238462643383279502884)
+#define M_PI_2f32x __f32x (1.570796326794896619231321691639751442)
+#define M_PI_4f32x __f32x (0.785398163397448309615660845819875721)
+#define M_1_PIf32x __f32x (0.318309886183790671537767526745028724)
+#define M_2_PIf32x __f32x (0.636619772367581343075535053490057448)
+#define M_2_SQRTPIf32x __f32x (1.128379167095512573896158903121545172)
+#define M_SQRT2f32x __f32x (1.414213562373095048801688724209698079)
+#define M_SQRT1_2f32x __f32x (0.707106781186547524400844362104849039)
+#define M_Ef64x __f64x (2.718281828459045235360287471352662498)
+#define M_LOG2Ef64x __f64x (1.442695040888963407359924681001892137)
+#define M_LOG10Ef64x __f64x (0.434294481903251827651128918916605082)
+#define M_LN2f64x __f64x (0.693147180559945309417232121458176568)
+#define M_LN10f64x __f64x (2.302585092994045684017991454684364208)
+#define M_PIf64x __f64x (3.141592653589793238462643383279502884)
+#define M_PI_2f64x __f64x (1.570796326794896619231321691639751442)
+#define M_PI_4f64x __f64x (0.785398163397448309615660845819875721)
+#define M_1_PIf64x __f64x (0.318309886183790671537767526745028724)
+#define M_2_PIf64x __f64x (0.636619772367581343075535053490057448)
+#define M_2_SQRTPIf64x __f64x (1.128379167095512573896158903121545172)
+#define M_SQRT2f64x __f64x (1.414213562373095048801688724209698079)
+#define M_SQRT1_2f64x __f64x (0.707106781186547524400844362104849039)
+#define isgreater(x,y) __builtin_isgreater(x, y)
+#define isgreaterequal(x,y) __builtin_isgreaterequal(x, y)
+#define isless(x,y) __builtin_isless(x, y)
+#define islessequal(x,y) __builtin_islessequal(x, y)
+#define islessgreater(x,y) __builtin_islessgreater(x, y)
+#define isunordered(x,y) __builtin_isunordered(x, y)
+#define __MATH_EVAL_FMT2(x,y) ((x) + (y) + 0.0f)
+#define iseqsig(x,y) __MATH_TG (__MATH_EVAL_FMT2 (x, y), __iseqsig, ((x), (y)))
+#define _TIME_H 1
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _BITS_TIME_H 1
+#define CLOCKS_PER_SEC ((__clock_t) 1000000)
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1
 #define CLOCK_PROCESS_CPUTIME_ID 2
@@ -18617,20 +23107,65 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define CLOCK_BOOTTIME 7
 #define CLOCK_REALTIME_ALARM 8
 #define CLOCK_BOOTTIME_ALARM 9
-#define CLOCK_SGI_CYCLE 10
 #define CLOCK_TAI 11
 #define TIMER_ABSTIME 1
-#define _SYS_TIME_H 
-#define ITIMER_REAL 0
-#define ITIMER_VIRTUAL 1
-#define ITIMER_PROF 2
-#define timerisset(t) ((t)->tv_sec || (t)->tv_usec)
-#define timerclear(t) ((t)->tv_sec = (t)->tv_usec = 0)
-#define timercmp(s,t,op) ((s)->tv_sec == (t)->tv_sec ? (s)->tv_usec op (t)->tv_usec : (s)->tv_sec op (t)->tv_sec)
-#define timeradd(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec + (t)->tv_sec, ((a)->tv_usec = (s)->tv_usec + (t)->tv_usec) >= 1000000 && ((a)->tv_usec -= 1000000, (a)->tv_sec++) )
-#define timersub(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec - (t)->tv_sec, ((a)->tv_usec = (s)->tv_usec - (t)->tv_usec) < 0 && ((a)->tv_usec += 1000000, (a)->tv_sec--) )
-#define TIMEVAL_TO_TIMESPEC(tv,ts) ( (ts)->tv_sec = (tv)->tv_sec, (ts)->tv_nsec = (tv)->tv_usec * 1000, (void)0 )
-#define TIMESPEC_TO_TIMEVAL(tv,ts) ( (tv)->tv_sec = (ts)->tv_sec, (tv)->tv_usec = (ts)->tv_nsec / 1000, (void)0 )
+#define _BITS_TIMEX_H 1
+#define ADJ_OFFSET 0x0001
+#define ADJ_FREQUENCY 0x0002
+#define ADJ_MAXERROR 0x0004
+#define ADJ_ESTERROR 0x0008
+#define ADJ_STATUS 0x0010
+#define ADJ_TIMECONST 0x0020
+#define ADJ_TAI 0x0080
+#define ADJ_SETOFFSET 0x0100
+#define ADJ_MICRO 0x1000
+#define ADJ_NANO 0x2000
+#define ADJ_TICK 0x4000
+#define ADJ_OFFSET_SINGLESHOT 0x8001
+#define ADJ_OFFSET_SS_READ 0xa001
+#define MOD_OFFSET ADJ_OFFSET
+#define MOD_FREQUENCY ADJ_FREQUENCY
+#define MOD_MAXERROR ADJ_MAXERROR
+#define MOD_ESTERROR ADJ_ESTERROR
+#define MOD_STATUS ADJ_STATUS
+#define MOD_TIMECONST ADJ_TIMECONST
+#define MOD_CLKB ADJ_TICK
+#define MOD_CLKA ADJ_OFFSET_SINGLESHOT
+#define MOD_TAI ADJ_TAI
+#define MOD_MICRO ADJ_MICRO
+#define MOD_NANO ADJ_NANO
+#define STA_PLL 0x0001
+#define STA_PPSFREQ 0x0002
+#define STA_PPSTIME 0x0004
+#define STA_FLL 0x0008
+#define STA_INS 0x0010
+#define STA_DEL 0x0020
+#define STA_UNSYNC 0x0040
+#define STA_FREQHOLD 0x0080
+#define STA_PPSSIGNAL 0x0100
+#define STA_PPSJITTER 0x0200
+#define STA_PPSWANDER 0x0400
+#define STA_PPSERROR 0x0800
+#define STA_CLOCKERR 0x1000
+#define STA_NANO 0x2000
+#define STA_MODE 0x4000
+#define STA_CLK 0x8000
+#define STA_RONLY (STA_PPSSIGNAL | STA_PPSJITTER | STA_PPSWANDER | STA_PPSERROR | STA_CLOCKERR | STA_NANO | STA_MODE | STA_CLK)
+#define __struct_tm_defined 1
+#define __itimerspec_defined 1
+#define TIME_UTC 1
+#define __isleap(year) ((year) % 4 == 0 && ((year) % 100 != 0 || (year) % 400 == 0))
+#define _SYS_TIME_H 1
+#define TIMEVAL_TO_TIMESPEC(tv,ts) { (ts)->tv_sec = (tv)->tv_sec; (ts)->tv_nsec = (tv)->tv_usec * 1000; }
+#define TIMESPEC_TO_TIMEVAL(tv,ts) { (tv)->tv_sec = (ts)->tv_sec; (tv)->tv_usec = (ts)->tv_nsec / 1000; }
+#define ITIMER_REAL ITIMER_REAL
+#define ITIMER_VIRTUAL ITIMER_VIRTUAL
+#define ITIMER_PROF ITIMER_PROF
+#define timerisset(tvp) ((tvp)->tv_sec || (tvp)->tv_usec)
+#define timerclear(tvp) ((tvp)->tv_sec = (tvp)->tv_usec = 0)
+#define timercmp(a,b,CMP) (((a)->tv_sec == (b)->tv_sec) ? ((a)->tv_usec CMP (b)->tv_usec) : ((a)->tv_sec CMP (b)->tv_sec))
+#define timeradd(a,b,result) do { (result)->tv_sec = (a)->tv_sec + (b)->tv_sec; (result)->tv_usec = (a)->tv_usec + (b)->tv_usec; if ((result)->tv_usec >= 1000000) { ++(result)->tv_sec; (result)->tv_usec -= 1000000; } } while (0)
+#define timersub(a,b,result) do { (result)->tv_sec = (a)->tv_sec - (b)->tv_sec; (result)->tv_usec = (a)->tv_usec - (b)->tv_usec; if ((result)->tv_usec < 0) { --(result)->tv_sec; (result)->tv_usec += 1000000; } } while (0)
 #pragma GCC visibility push(default)
 #define HAVE_FINITE 1
 #define finite(x) isfinite(x)
@@ -18646,88 +23181,59 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define RBIMPL_INTERN_CLASS_H 
 #define RBIMPL_VALUE_H 
 #define RBIMPL_STATIC_ASSERT_H 
-#undef assert
-#define assert(x) (void)0
+#define _ASSERT_H 1
+#define __ASSERT_VOID_CAST (void)
+#define assert(expr) (__ASSERT_VOID_CAST (0))
+#define assert_perror(errnum) (__ASSERT_VOID_CAST (0))
+#undef static_assert
 #define static_assert _Static_assert
 #define RBIMPL_STATIC_ASSERT0 __extension__ _Static_assert
 #define RBIMPL_STATIC_ASSERT(name,expr) RBIMPL_STATIC_ASSERT0(expr, #name ": " #expr)
 #define RUBY_BACKWARD2_LIMITS_H 
-#define _LIMITS_H 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define CHAR_MIN (-128)
-#define CHAR_MAX 127
-#define CHAR_BIT 8
-#define SCHAR_MIN (-128)
-#define SCHAR_MAX 127
-#define UCHAR_MAX 255
-#define SHRT_MIN (-1-0x7fff)
-#define SHRT_MAX 0x7fff
-#define USHRT_MAX 0xffff
-#define INT_MIN (-1-0x7fffffff)
-#define INT_MAX 0x7fffffff
-#define UINT_MAX 0xffffffffU
-#define LONG_MIN (-LONG_MAX-1)
-#define LONG_MAX __LONG_MAX
-#define ULONG_MAX (2UL*LONG_MAX+1)
+#define _GCC_LIMITS_H_ 
+#define _GCC_NEXT_LIMITS_H 
+#define _LIBC_LIMITS_H_ 1
+#define __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION 
+#undef __GLIBC_INTERNAL_STARTING_HEADER_IMPLEMENTATION
+#undef __GLIBC_USE_LIB_EXT2
+#define __GLIBC_USE_LIB_EXT2 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT
+#define __GLIBC_USE_IEC_60559_BFP_EXT 1
+#undef __GLIBC_USE_IEC_60559_BFP_EXT_C2X
+#define __GLIBC_USE_IEC_60559_BFP_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_EXT
+#define __GLIBC_USE_IEC_60559_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT 1
+#undef __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X
+#define __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X 1
+#undef __GLIBC_USE_IEC_60559_TYPES_EXT
+#define __GLIBC_USE_IEC_60559_TYPES_EXT 1
+#define MB_LEN_MAX 16
 #define LLONG_MIN (-LLONG_MAX-1)
-#define LLONG_MAX 0x7fffffffffffffffLL
-#define ULLONG_MAX (2ULL*LLONG_MAX+1)
-#define MB_LEN_MAX 4
-#define PAGESIZE 4096
-#define PIPE_BUF 4096
-#define FILESIZEBITS 64
-#define NAME_MAX 255
-#define PATH_MAX 4096
-#define NGROUPS_MAX 32
-#define ARG_MAX 131072
-#define IOV_MAX 1024
-#define SYMLOOP_MAX 40
-#define WORD_BIT 32
-#define SSIZE_MAX LONG_MAX
-#define TZNAME_MAX 6
-#define TTY_NAME_MAX 32
-#define HOST_NAME_MAX 255
-#define LONG_BIT 64
-#define PTHREAD_KEYS_MAX 128
-#define PTHREAD_STACK_MIN 2048
-#define PTHREAD_DESTRUCTOR_ITERATIONS 4
-#define SEM_VALUE_MAX 0x7fffffff
-#define SEM_NSEMS_MAX 256
-#define DELAYTIMER_MAX 0x7fffffff
-#define MQ_PRIO_MAX 32768
-#define LOGIN_NAME_MAX 256
-#define BC_BASE_MAX 99
-#define BC_DIM_MAX 2048
-#define BC_SCALE_MAX 99
-#define BC_STRING_MAX 1000
-#define CHARCLASS_NAME_MAX 14
-#define COLL_WEIGHTS_MAX 2
-#define EXPR_NEST_MAX 32
-#define LINE_MAX 4096
-#define RE_DUP_MAX 255
-#define NL_ARGMAX 9
-#define NL_MSGMAX 32767
-#define NL_SETMAX 255
-#define NL_TEXTMAX 2048
-#define PAGE_SIZE PAGESIZE
-#define NZERO 20
-#define NL_LANGMAX 32
-#define NL_NMAX 16
+#define LLONG_MAX __LONG_LONG_MAX__
+#define ULLONG_MAX (LLONG_MAX * 2ULL + 1)
+#define CHAR_WIDTH 8
+#define SCHAR_WIDTH 8
+#define UCHAR_WIDTH 8
+#define SHRT_WIDTH 16
+#define USHRT_WIDTH 16
+#define INT_WIDTH 32
+#define UINT_WIDTH 32
+#define LONG_WIDTH __WORDSIZE
+#define ULONG_WIDTH __WORDSIZE
+#define LLONG_WIDTH 64
+#define ULLONG_WIDTH 64
+#define BOOL_MAX 1
+#define BOOL_WIDTH 1
+#define _BITS_POSIX1_LIM_H 1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
 #define _POSIX_AIO_LISTIO_MAX 2
 #define _POSIX_AIO_MAX 1
 #define _POSIX_ARG_MAX 4096
 #define _POSIX_CHILD_MAX 25
-#define _POSIX_CLOCKRES_MIN 20000000
 #define _POSIX_DELAYTIMER_MAX 32
 #define _POSIX_HOST_NAME_MAX 255
 #define _POSIX_LINK_MAX 8
@@ -18739,6 +23245,7 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define _POSIX_NAME_MAX 14
 #define _POSIX_NGROUPS_MAX 8
 #define _POSIX_OPEN_MAX 20
+#define _POSIX_FD_SETSIZE _POSIX_OPEN_MAX
 #define _POSIX_PATH_MAX 256
 #define _POSIX_PIPE_BUF 512
 #define _POSIX_RE_DUP_MAX 255
@@ -18748,31 +23255,134 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define _POSIX_SIGQUEUE_MAX 32
 #define _POSIX_SSIZE_MAX 32767
 #define _POSIX_STREAM_MAX 8
-#define _POSIX_SS_REPL_MAX 4
 #define _POSIX_SYMLINK_MAX 255
 #define _POSIX_SYMLOOP_MAX 8
-#define _POSIX_THREAD_DESTRUCTOR_ITERATIONS 4
-#define _POSIX_THREAD_KEYS_MAX 128
-#define _POSIX_THREAD_THREADS_MAX 64
 #define _POSIX_TIMER_MAX 32
-#define _POSIX_TRACE_EVENT_NAME_MAX 30
-#define _POSIX_TRACE_NAME_MAX 8
-#define _POSIX_TRACE_SYS_MAX 8
-#define _POSIX_TRACE_USER_EVENT_MAX 32
 #define _POSIX_TTY_NAME_MAX 9
 #define _POSIX_TZNAME_MAX 6
+#define _POSIX_QLIMIT 1
+#define _POSIX_HIWAT _POSIX_PIPE_BUF
+#define _POSIX_UIO_MAXIOV 16
+#define _POSIX_CLOCKRES_MIN 20000000
+#define __undef_NR_OPEN 
+#define __undef_LINK_MAX 
+#define __undef_OPEN_MAX 
+#define __undef_ARG_MAX 
+#define _LINUX_LIMITS_H 
+#define NR_OPEN 1024
+#define NGROUPS_MAX 65536
+#define ARG_MAX 131072
+#define LINK_MAX 127
+#define MAX_CANON 255
+#define MAX_INPUT 255
+#define NAME_MAX 255
+#define PATH_MAX 4096
+#define PIPE_BUF 4096
+#define XATTR_NAME_MAX 255
+#define XATTR_SIZE_MAX 65536
+#define XATTR_LIST_MAX 65536
+#define RTSIG_MAX 32
+#undef NR_OPEN
+#undef __undef_NR_OPEN
+#undef LINK_MAX
+#undef __undef_LINK_MAX
+#undef OPEN_MAX
+#undef __undef_OPEN_MAX
+#undef ARG_MAX
+#undef __undef_ARG_MAX
+#define _POSIX_THREAD_KEYS_MAX 128
+#define PTHREAD_KEYS_MAX 1024
+#define _POSIX_THREAD_DESTRUCTOR_ITERATIONS 4
+#define PTHREAD_DESTRUCTOR_ITERATIONS _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+#define _POSIX_THREAD_THREADS_MAX 64
+#undef PTHREAD_THREADS_MAX
+#define AIO_PRIO_DELTA_MAX 20
+#define __SC_THREAD_STACK_MIN_VALUE 75
+#define PTHREAD_STACK_MIN __sysconf (__SC_THREAD_STACK_MIN_VALUE)
+#define DELAYTIMER_MAX 2147483647
+#define TTY_NAME_MAX 32
+#define LOGIN_NAME_MAX 256
+#define HOST_NAME_MAX 64
+#define MQ_PRIO_MAX 32768
+#define SEM_VALUE_MAX (2147483647)
+#define SSIZE_MAX LONG_MAX
+#define _BITS_POSIX2_LIM_H 1
 #define _POSIX2_BC_BASE_MAX 99
 #define _POSIX2_BC_DIM_MAX 2048
 #define _POSIX2_BC_SCALE_MAX 99
 #define _POSIX2_BC_STRING_MAX 1000
-#define _POSIX2_CHARCLASS_NAME_MAX 14
 #define _POSIX2_COLL_WEIGHTS_MAX 2
 #define _POSIX2_EXPR_NEST_MAX 32
 #define _POSIX2_LINE_MAX 2048
 #define _POSIX2_RE_DUP_MAX 255
-#define _XOPEN_IOV_MAX 16
-#define _XOPEN_NAME_MAX 255
-#define _XOPEN_PATH_MAX 1024
+#define _POSIX2_CHARCLASS_NAME_MAX 14
+#define BC_BASE_MAX _POSIX2_BC_BASE_MAX
+#define BC_DIM_MAX _POSIX2_BC_DIM_MAX
+#define BC_SCALE_MAX _POSIX2_BC_SCALE_MAX
+#define BC_STRING_MAX _POSIX2_BC_STRING_MAX
+#define COLL_WEIGHTS_MAX 255
+#define EXPR_NEST_MAX _POSIX2_EXPR_NEST_MAX
+#define LINE_MAX _POSIX2_LINE_MAX
+#define CHARCLASS_NAME_MAX 2048
+#define RE_DUP_MAX (0x7fff)
+#define _XOPEN_LIM_H 1
+#define _XOPEN_IOV_MAX _POSIX_UIO_MAXIOV
+#define _BITS_UIO_LIM_H 1
+#define __IOV_MAX 1024
+#define IOV_MAX __IOV_MAX
+#define NL_ARGMAX _POSIX_ARG_MAX
+#define NL_LANGMAX _POSIX2_LINE_MAX
+#define NL_MSGMAX INT_MAX
+#define NL_NMAX INT_MAX
+#define NL_SETMAX INT_MAX
+#define NL_TEXTMAX INT_MAX
+#define NZERO 20
+#define WORD_BIT 32
+#define LONG_BIT 64
+#undef _GCC_NEXT_LIMITS_H
+#define _LIMITS_H___ 
+#undef CHAR_BIT
+#define CHAR_BIT __CHAR_BIT__
+#undef SCHAR_MIN
+#define SCHAR_MIN (-SCHAR_MAX - 1)
+#undef SCHAR_MAX
+#define SCHAR_MAX __SCHAR_MAX__
+#undef UCHAR_MAX
+#define UCHAR_MAX (SCHAR_MAX * 2 + 1)
+#undef CHAR_MIN
+#define CHAR_MIN SCHAR_MIN
+#undef CHAR_MAX
+#define CHAR_MAX SCHAR_MAX
+#undef SHRT_MIN
+#define SHRT_MIN (-SHRT_MAX - 1)
+#undef SHRT_MAX
+#define SHRT_MAX __SHRT_MAX__
+#undef USHRT_MAX
+#define USHRT_MAX (SHRT_MAX * 2 + 1)
+#undef INT_MIN
+#define INT_MIN (-INT_MAX - 1)
+#undef INT_MAX
+#define INT_MAX __INT_MAX__
+#undef UINT_MAX
+#define UINT_MAX (INT_MAX * 2U + 1U)
+#undef LONG_MIN
+#define LONG_MIN (-LONG_MAX - 1L)
+#undef LONG_MAX
+#define LONG_MAX __LONG_MAX__
+#undef ULONG_MAX
+#define ULONG_MAX (LONG_MAX * 2UL + 1UL)
+#undef LLONG_MIN
+#define LLONG_MIN (-LLONG_MAX - 1LL)
+#undef LLONG_MAX
+#define LLONG_MAX __LONG_LONG_MAX__
+#undef ULLONG_MAX
+#define ULLONG_MAX (LLONG_MAX * 2ULL + 1ULL)
+#undef LONG_LONG_MIN
+#define LONG_LONG_MIN (-LONG_LONG_MAX - 1LL)
+#undef LONG_LONG_MAX
+#define LONG_LONG_MAX __LONG_LONG_MAX__
+#undef ULONG_LONG_MAX
+#define ULONG_LONG_MAX (LONG_LONG_MAX * 2ULL + 1ULL)
 #define SIGNED_VALUE long
 #define SIZEOF_VALUE SIZEOF_LONG
 #define PRI_VALUE_PREFIX "l"
@@ -19467,29 +24077,65 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define TypedData_Make_Struct(klass,type,data_type,sval) RB_GNUC_EXTENSION({ TypedData_Make_Struct0( data_struct_obj, klass, type, sizeof(type), data_type, sval); data_struct_obj; })
 #define TypedData_Get_Struct(obj,type,data_type,sval) ((sval) = RBIMPL_CAST((type *)rb_check_typeddata((obj), (data_type))))
 #define RBIMPL_CTYPE_H 
-#define _CTYPE_H 
-#define isalpha(a) (0 ? isalpha(a) : (((unsigned)(a)|32)-'a') < 26)
-#define isdigit(a) (0 ? isdigit(a) : ((unsigned)(a)-'0') < 10)
-#define islower(a) (0 ? islower(a) : ((unsigned)(a)-'a') < 26)
-#define isupper(a) (0 ? isupper(a) : ((unsigned)(a)-'A') < 26)
-#define isprint(a) (0 ? isprint(a) : ((unsigned)(a)-0x20) < 0x5f)
-#define isgraph(a) (0 ? isgraph(a) : ((unsigned)(a)-0x21) < 0x5e)
-#define isspace(a) __isspace(a)
-#define __NEED_locale_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define _tolower(a) ((a)|0x20)
-#define _toupper(a) ((a)&0x5f)
-#define isascii(a) (0 ? isascii(a) : (unsigned)(a) < 128)
+#define _CTYPE_H 1
+#define _ISbit(bit) ((bit) < 8 ? ((1 << (bit)) << 8) : ((1 << (bit)) >> 8))
+#define __isctype(c,type) ((*__ctype_b_loc ())[(int) (c)] & (unsigned short int) type)
+#define __isascii(c) (((c) & ~0x7f) == 0)
+#define __toascii(c) ((c) & 0x7f)
+#define __exctype(name) extern int name (int) __THROW
+#define __tobody(c,f,a,args) (__extension__ ({ int __res; if (sizeof (c) > 1) { if (__builtin_constant_p (c)) { int __c = (c); __res = __c < -128 || __c > 255 ? __c : (a)[__c]; } else __res = f args; } else __res = (a)[(int) (c)]; __res; }))
+#define isalnum(c) __isctype((c), _ISalnum)
+#define isalpha(c) __isctype((c), _ISalpha)
+#define iscntrl(c) __isctype((c), _IScntrl)
+#define isdigit(c) __isctype((c), _ISdigit)
+#define islower(c) __isctype((c), _ISlower)
+#define isgraph(c) __isctype((c), _ISgraph)
+#define isprint(c) __isctype((c), _ISprint)
+#define ispunct(c) __isctype((c), _ISpunct)
+#define isspace(c) __isctype((c), _ISspace)
+#define isupper(c) __isctype((c), _ISupper)
+#define isxdigit(c) __isctype((c), _ISxdigit)
+#define isblank(c) __isctype((c), _ISblank)
+#define tolower(c) __tobody (c, tolower, *__ctype_tolower_loc (), (c))
+#define toupper(c) __tobody (c, toupper, *__ctype_toupper_loc (), (c))
+#define isascii(c) __isascii (c)
+#define toascii(c) __toascii (c)
+#define _tolower(c) ((int) (*__ctype_tolower_loc ())[(int) (c)])
+#define _toupper(c) ((int) (*__ctype_toupper_loc ())[(int) (c)])
+#define __isctype_l(c,type,locale) ((locale)->__ctype_b[(int) (c)] & (unsigned short int) type)
+#define __exctype_l(name) extern int name (int, locale_t) __THROW
+#define __tolower_l(c,locale) __tobody (c, __tolower_l, (locale)->__ctype_tolower, (c, locale))
+#define __toupper_l(c,locale) __tobody (c, __toupper_l, (locale)->__ctype_toupper, (c, locale))
+#define tolower_l(c,locale) __tolower_l ((c), (locale))
+#define toupper_l(c,locale) __toupper_l ((c), (locale))
+#define __isalnum_l(c,l) __isctype_l((c), _ISalnum, (l))
+#define __isalpha_l(c,l) __isctype_l((c), _ISalpha, (l))
+#define __iscntrl_l(c,l) __isctype_l((c), _IScntrl, (l))
+#define __isdigit_l(c,l) __isctype_l((c), _ISdigit, (l))
+#define __islower_l(c,l) __isctype_l((c), _ISlower, (l))
+#define __isgraph_l(c,l) __isctype_l((c), _ISgraph, (l))
+#define __isprint_l(c,l) __isctype_l((c), _ISprint, (l))
+#define __ispunct_l(c,l) __isctype_l((c), _ISpunct, (l))
+#define __isspace_l(c,l) __isctype_l((c), _ISspace, (l))
+#define __isupper_l(c,l) __isctype_l((c), _ISupper, (l))
+#define __isxdigit_l(c,l) __isctype_l((c), _ISxdigit, (l))
+#define __isblank_l(c,l) __isctype_l((c), _ISblank, (l))
+#define __isascii_l(c,l) ((l), __isascii (c))
+#define __toascii_l(c,l) ((l), __toascii (c))
+#define isalnum_l(c,l) __isalnum_l ((c), (l))
+#define isalpha_l(c,l) __isalpha_l ((c), (l))
+#define iscntrl_l(c,l) __iscntrl_l ((c), (l))
+#define isdigit_l(c,l) __isdigit_l ((c), (l))
+#define islower_l(c,l) __islower_l ((c), (l))
+#define isgraph_l(c,l) __isgraph_l ((c), (l))
+#define isprint_l(c,l) __isprint_l ((c), (l))
+#define ispunct_l(c,l) __ispunct_l ((c), (l))
+#define isspace_l(c,l) __isspace_l ((c), (l))
+#define isupper_l(c,l) __isupper_l ((c), (l))
+#define isxdigit_l(c,l) __isxdigit_l ((c), (l))
+#define isblank_l(c,l) __isblank_l ((c), (l))
+#define isascii_l(c,l) __isascii_l ((c), (l))
+#define toascii_l(c,l) __toascii_l ((c), (l))
 #define ISASCII rb_isascii
 #define ISPRINT rb_isprint
 #define ISGRAPH rb_isgraph
@@ -19906,41 +24552,209 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define VM_CHECK_MODE N_OR_RUBY_DEBUG(0)
 #define VMDEBUG 0
 #define _SIGNAL_H 
-#define __ucontext ucontext
-#define __NEED_size_t 
-#define __NEED_pid_t 
-#define __NEED_uid_t 
-#define __NEED_struct_timespec 
-#define __NEED_pthread_t 
-#define __NEED_pthread_attr_t 
-#define __NEED_time_t 
-#define __NEED_clock_t 
-#define __NEED_sigset_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
+#define _BITS_SIGNUM_GENERIC_H 1
+#define SIG_ERR ((__sighandler_t) -1)
+#define SIG_DFL ((__sighandler_t) 0)
+#define SIG_IGN ((__sighandler_t) 1)
+#define SIG_HOLD ((__sighandler_t) 2)
+#define SIGINT 2
+#define SIGILL 4
+#define SIGABRT 6
+#define SIGFPE 8
+#define SIGSEGV 11
+#define SIGTERM 15
+#define SIGHUP 1
+#define SIGQUIT 3
+#define SIGTRAP 5
+#define SIGKILL 9
+#define SIGPIPE 13
+#define SIGALRM 14
+#define SIGIO SIGPOLL
+#define SIGIOT SIGABRT
+#define SIGCLD SIGCHLD
+#define _BITS_SIGNUM_ARCH_H 1
+#define SIGSTKFLT 16
+#define SIGPWR 30
+#define SIGBUS 7
+#define SIGSYS 31
+#define SIGURG 23
+#define SIGSTOP 19
+#define SIGTSTP 20
+#define SIGCONT 18
+#define SIGCHLD 17
+#define SIGTTIN 21
+#define SIGTTOU 22
+#define SIGPOLL 29
+#define SIGXFSZ 25
+#define SIGXCPU 24
+#define SIGVTALRM 26
+#define SIGPROF 27
+#define SIGUSR1 10
+#define SIGUSR2 12
+#define SIGWINCH 28
+#define SIGIO SIGPOLL
+#define SIGIOT SIGABRT
+#define SIGCLD SIGCHLD
+#define __SIGRTMIN 32
+#define __SIGRTMAX 64
+#define _NSIG (__SIGRTMAX + 1)
+#define __sig_atomic_t_defined 1
+#define __siginfo_t_defined 1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define ____sigval_t_defined 
+#define __SI_MAX_SIZE 128
+#define __SI_PAD_SIZE ((__SI_MAX_SIZE / sizeof (int)) - 4)
+#define _BITS_SIGINFO_ARCH_H 1
+#define __SI_ALIGNMENT 
+#define __SI_BAND_TYPE long int
+#define __SI_CLOCK_T __clock_t
+#define __SI_ERRNO_THEN_CODE 1
+#define __SI_HAVE_SIGSYS 1
+#define __SI_SIGFAULT_ADDL 
+#define si_pid _sifields._kill.si_pid
+#define si_uid _sifields._kill.si_uid
+#define si_timerid _sifields._timer.si_tid
+#define si_overrun _sifields._timer.si_overrun
+#define si_status _sifields._sigchld.si_status
+#define si_utime _sifields._sigchld.si_utime
+#define si_stime _sifields._sigchld.si_stime
+#define si_value _sifields._rt.si_sigval
+#define si_int _sifields._rt.si_sigval.sival_int
+#define si_ptr _sifields._rt.si_sigval.sival_ptr
+#define si_addr _sifields._sigfault.si_addr
+#define si_addr_lsb _sifields._sigfault.si_addr_lsb
+#define si_lower _sifields._sigfault._bounds._addr_bnd._lower
+#define si_upper _sifields._sigfault._bounds._addr_bnd._upper
+#define si_pkey _sifields._sigfault._bounds._pkey
+#define si_band _sifields._sigpoll.si_band
+#define si_fd _sifields._sigpoll.si_fd
+#define si_call_addr _sifields._sigsys._call_addr
+#define si_syscall _sifields._sigsys._syscall
+#define si_arch _sifields._sigsys._arch
+#define _BITS_SIGINFO_CONSTS_H 1
+#define __SI_ASYNCIO_AFTER_SIGIO 1
+#define SI_ASYNCNL SI_ASYNCNL
+#define SI_DETHREAD SI_DETHREAD
+#define SI_TKILL SI_TKILL
+#define SI_SIGIO SI_SIGIO
+#define SI_ASYNCIO SI_ASYNCIO
+#define SI_MESGQ SI_MESGQ
+#define SI_TIMER SI_TIMER
+#define SI_ASYNCIO SI_ASYNCIO
+#define SI_QUEUE SI_QUEUE
+#define SI_USER SI_USER
+#define SI_KERNEL SI_KERNEL
+#define ILL_ILLOPC ILL_ILLOPC
+#define ILL_ILLOPN ILL_ILLOPN
+#define ILL_ILLADR ILL_ILLADR
+#define ILL_ILLTRP ILL_ILLTRP
+#define ILL_PRVOPC ILL_PRVOPC
+#define ILL_PRVREG ILL_PRVREG
+#define ILL_COPROC ILL_COPROC
+#define ILL_BADSTK ILL_BADSTK
+#define ILL_BADIADDR ILL_BADIADDR
+#define FPE_INTDIV FPE_INTDIV
+#define FPE_INTOVF FPE_INTOVF
+#define FPE_FLTDIV FPE_FLTDIV
+#define FPE_FLTOVF FPE_FLTOVF
+#define FPE_FLTUND FPE_FLTUND
+#define FPE_FLTRES FPE_FLTRES
+#define FPE_FLTINV FPE_FLTINV
+#define FPE_FLTSUB FPE_FLTSUB
+#define FPE_FLTUNK FPE_FLTUNK
+#define FPE_CONDTRAP FPE_CONDTRAP
+#define SEGV_MAPERR SEGV_MAPERR
+#define SEGV_ACCERR SEGV_ACCERR
+#define SEGV_BNDERR SEGV_BNDERR
+#define SEGV_PKUERR SEGV_PKUERR
+#define SEGV_ACCADI SEGV_ACCADI
+#define SEGV_ADIDERR SEGV_ADIDERR
+#define SEGV_ADIPERR SEGV_ADIPERR
+#define SEGV_MTEAERR SEGV_MTEAERR
+#define SEGV_MTESERR SEGV_MTESERR
+#define BUS_ADRALN BUS_ADRALN
+#define BUS_ADRERR BUS_ADRERR
+#define BUS_OBJERR BUS_OBJERR
+#define BUS_MCEERR_AR BUS_MCEERR_AR
+#define BUS_MCEERR_AO BUS_MCEERR_AO
+#define TRAP_BRKPT TRAP_BRKPT
+#define TRAP_TRACE TRAP_TRACE
+#define TRAP_BRANCH TRAP_BRANCH
+#define TRAP_HWBKPT TRAP_HWBKPT
+#define TRAP_UNK TRAP_UNK
+#define CLD_EXITED CLD_EXITED
+#define CLD_KILLED CLD_KILLED
+#define CLD_DUMPED CLD_DUMPED
+#define CLD_TRAPPED CLD_TRAPPED
+#define CLD_STOPPED CLD_STOPPED
+#define CLD_CONTINUED CLD_CONTINUED
+#define POLL_IN POLL_IN
+#define POLL_OUT POLL_OUT
+#define POLL_MSG POLL_MSG
+#define POLL_ERR POLL_ERR
+#define POLL_PRI POLL_PRI
+#define POLL_HUP POLL_HUP
+#define _BITS_SIGINFO_CONSTS_ARCH_H 1
+#define __sigval_t_defined 
+#define __sigevent_t_defined 1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __SIGEV_MAX_SIZE 64
+#define __SIGEV_PAD_SIZE ((__SIGEV_MAX_SIZE / sizeof (int)) - 4)
+#define sigev_notify_function _sigev_un._sigev_thread._function
+#define sigev_notify_attributes _sigev_un._sigev_thread._attribute
+#define _BITS_SIGEVENT_CONSTS_H 1
+#define SIGEV_SIGNAL SIGEV_SIGNAL
+#define SIGEV_NONE SIGEV_NONE
+#define SIGEV_THREAD SIGEV_THREAD
+#define SIGEV_THREAD_ID SIGEV_THREAD_ID
+#define sigmask(sig) __glibc_macro_warning ("sigmask is deprecated") ((int)(1u << ((sig) - 1)))
+#define NSIG _NSIG
+#define _BITS_SIGACTION_H 1
+#define sa_handler __sigaction_handler.sa_handler
+#define sa_sigaction __sigaction_handler.sa_sigaction
+#define SA_NOCLDSTOP 1
+#define SA_NOCLDWAIT 2
+#define SA_SIGINFO 4
+#define SA_ONSTACK 0x08000000
+#define SA_RESTART 0x10000000
+#define SA_NODEFER 0x40000000
+#define SA_RESETHAND 0x80000000
+#define SA_INTERRUPT 0x20000000
+#define SA_NOMASK SA_NODEFER
+#define SA_ONESHOT SA_RESETHAND
+#define SA_STACK SA_ONSTACK
 #define SIG_BLOCK 0
 #define SIG_UNBLOCK 1
 #define SIG_SETMASK 2
-#define SI_ASYNCNL (-60)
-#define SI_TKILL (-6)
-#define SI_SIGIO (-5)
-#define SI_ASYNCIO (-4)
-#define SI_MESGQ (-3)
-#define SI_TIMER (-2)
-#define SI_QUEUE (-1)
-#define SI_USER 0
-#define SI_KERNEL 128
-#define MINSIGSTKSZ 2048
-#define SIGSTKSZ 8192
+#define _BITS_SIGCONTEXT_H 1
+#define FP_XSTATE_MAGIC1 0x46505853U
+#define FP_XSTATE_MAGIC2 0x46505845U
+#define FP_XSTATE_MAGIC2_SIZE sizeof (FP_XSTATE_MAGIC2)
+#define __need_size_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __stack_t_defined 1
+#define __need_size_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _SYS_UCONTEXT_H 1
+#define __ctx(fld) fld
+#define __NGREG 23
+#define NGREG __NGREG
 #define REG_R8 REG_R8
 #define REG_R9 REG_R9
 #define REG_R10 REG_R10
@@ -19964,151 +24778,44 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define REG_TRAPNO REG_TRAPNO
 #define REG_OLDMASK REG_OLDMASK
 #define REG_CR2 REG_CR2
-#define SA_NOCLDSTOP 1
-#define SA_NOCLDWAIT 2
-#define SA_SIGINFO 4
-#define SA_ONSTACK 0x08000000
-#define SA_RESTART 0x10000000
-#define SA_NODEFER 0x40000000
-#define SA_RESETHAND 0x80000000
-#define SA_RESTORER 0x04000000
-#define SIGHUP 1
-#define SIGINT 2
-#define SIGQUIT 3
-#define SIGILL 4
-#define SIGTRAP 5
-#define SIGABRT 6
-#define SIGIOT SIGABRT
-#define SIGBUS 7
-#define SIGFPE 8
-#define SIGKILL 9
-#define SIGUSR1 10
-#define SIGSEGV 11
-#define SIGUSR2 12
-#define SIGPIPE 13
-#define SIGALRM 14
-#define SIGTERM 15
-#define SIGSTKFLT 16
-#define SIGCHLD 17
-#define SIGCONT 18
-#define SIGSTOP 19
-#define SIGTSTP 20
-#define SIGTTIN 21
-#define SIGTTOU 22
-#define SIGURG 23
-#define SIGXCPU 24
-#define SIGXFSZ 25
-#define SIGVTALRM 26
-#define SIGPROF 27
-#define SIGWINCH 28
-#define SIGIO 29
-#define SIGPOLL 29
-#define SIGPWR 30
-#define SIGSYS 31
-#define SIGUNUSED SIGSYS
-#define _NSIG 65
-#define SIG_HOLD ((void (*)(int)) 2)
-#define FPE_INTDIV 1
-#define FPE_INTOVF 2
-#define FPE_FLTDIV 3
-#define FPE_FLTOVF 4
-#define FPE_FLTUND 5
-#define FPE_FLTRES 6
-#define FPE_FLTINV 7
-#define FPE_FLTSUB 8
-#define ILL_ILLOPC 1
-#define ILL_ILLOPN 2
-#define ILL_ILLADR 3
-#define ILL_ILLTRP 4
-#define ILL_PRVOPC 5
-#define ILL_PRVREG 6
-#define ILL_COPROC 7
-#define ILL_BADSTK 8
-#define SEGV_MAPERR 1
-#define SEGV_ACCERR 2
-#define SEGV_BNDERR 3
-#define SEGV_PKUERR 4
-#define SEGV_MTEAERR 8
-#define SEGV_MTESERR 9
-#define BUS_ADRALN 1
-#define BUS_ADRERR 2
-#define BUS_OBJERR 3
-#define BUS_MCEERR_AR 4
-#define BUS_MCEERR_AO 5
-#define CLD_EXITED 1
-#define CLD_KILLED 2
-#define CLD_DUMPED 3
-#define CLD_TRAPPED 4
-#define CLD_STOPPED 5
-#define CLD_CONTINUED 6
-#define si_pid __si_fields.__si_common.__first.__piduid.si_pid
-#define si_uid __si_fields.__si_common.__first.__piduid.si_uid
-#define si_status __si_fields.__si_common.__second.__sigchld.si_status
-#define si_utime __si_fields.__si_common.__second.__sigchld.si_utime
-#define si_stime __si_fields.__si_common.__second.__sigchld.si_stime
-#define si_value __si_fields.__si_common.__second.si_value
-#define si_addr __si_fields.__sigfault.si_addr
-#define si_addr_lsb __si_fields.__sigfault.si_addr_lsb
-#define si_lower __si_fields.__sigfault.__first.__addr_bnd.si_lower
-#define si_upper __si_fields.__sigfault.__first.__addr_bnd.si_upper
-#define si_pkey __si_fields.__sigfault.__first.si_pkey
-#define si_band __si_fields.__sigpoll.si_band
-#define si_fd __si_fields.__sigpoll.si_fd
-#define si_timerid __si_fields.__si_common.__first.__timer.si_timerid
-#define si_overrun __si_fields.__si_common.__first.__timer.si_overrun
-#define si_ptr si_value.sival_ptr
-#define si_int si_value.sival_int
-#define si_call_addr __si_fields.__sigsys.si_call_addr
-#define si_syscall __si_fields.__sigsys.si_syscall
-#define si_arch __si_fields.__sigsys.si_arch
-#define sa_handler __sa_handler.sa_handler
-#define sa_sigaction __sa_handler.sa_sigaction
-#define SA_UNSUPPORTED 0x00000400
-#define SA_EXPOSE_TAGBITS 0x00000800
-#define sigev_notify_thread_id __sev_fields.sigev_notify_thread_id
-#define sigev_notify_function __sev_fields.__sev_thread.sigev_notify_function
-#define sigev_notify_attributes __sev_fields.__sev_thread.sigev_notify_attributes
-#define SIGEV_SIGNAL 0
-#define SIGEV_NONE 1
-#define SIGEV_THREAD 2
-#define SIGEV_THREAD_ID 4
-#define SIGRTMIN (__libc_current_sigrtmin())
-#define SIGRTMAX (__libc_current_sigrtmax())
-#define TRAP_BRKPT 1
-#define TRAP_TRACE 2
-#define TRAP_BRANCH 3
-#define TRAP_HWBKPT 4
-#define TRAP_UNK 5
-#define POLL_IN 1
-#define POLL_OUT 2
-#define POLL_MSG 3
-#define POLL_ERR 4
-#define POLL_PRI 5
-#define POLL_HUP 6
-#define SS_ONSTACK 1
-#define SS_DISABLE 2
-#define SS_AUTODISARM (1U << 31)
-#define SS_FLAG_BITS SS_AUTODISARM
-#define NSIG _NSIG
-#define SYS_SECCOMP 1
-#define SYS_USER_DISPATCH 2
-#define SA_NOMASK SA_NODEFER
-#define SA_ONESHOT SA_RESETHAND
-#define SIG_ERR ((void (*)(int))-1)
-#define SIG_DFL ((void (*)(int)) 0)
-#define SIG_IGN ((void (*)(int)) 1)
+#undef __ctx
+#define _BITS_SIGSTACK_H 1
+#define MINSIGSTKSZ 2048
+#define SIGSTKSZ 8192
+#undef SIGSTKSZ
+#define SIGSTKSZ sysconf (_SC_SIGSTKSZ)
+#undef MINSIGSTKSZ
+#define MINSIGSTKSZ SIGSTKSZ
+#define _BITS_SS_FLAGS_H 1
+#define SS_ONSTACK SS_ONSTACK
+#define SS_DISABLE SS_DISABLE
+#define __sigstack_defined 1
+#define _BITS_SIGTHREAD_H 1
+#define SIGRTMIN (__libc_current_sigrtmin ())
+#define SIGRTMAX (__libc_current_sigrtmax ())
 #define RUBY_TOPLEVEL_ASSERT_H 
 #undef assert
 #define assert RUBY_ASSERT_NDEBUG
 #define VM_ASSERT(expr) ((void)0)
 #define VM_UNREACHABLE(func) UNREACHABLE
-#define _SETJMP_H 
-#define __setjmp_attr __attribute__((__returns_twice__))
-#define setjmp setjmp
-#undef __setjmp_attr
+#define _SETJMP_H 1
+#define _BITS_SETJMP_H 1
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define __jmp_buf_tag_defined 1
+#define setjmp(env) _setjmp (env)
+#define sigsetjmp(env,savemask) __sigsetjmp (env, savemask)
 #define CCAN_LIST_H 
+#undef _ASSERT_H
 #undef assert
-#define assert(x) (void)0
+#undef __ASSERT_VOID_CAST
+#undef assert_perror
+#define _ASSERT_H 1
+#define __ASSERT_VOID_CAST (void)
+#define assert(expr) (__ASSERT_VOID_CAST (0))
+#define assert_perror(errnum) (__ASSERT_VOID_CAST (0))
+#undef static_assert
 #define static_assert _Static_assert
 #define CCAN_STR_H 
 #define stringify(expr) stringify_1(expr)
@@ -20614,61 +25321,27 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define rb_darray_make(ptr_to_ary,size) rb_darray_make_impl((ptr_to_ary), size, sizeof(**(ptr_to_ary)), sizeof((*(ptr_to_ary))->data[0]))
 #define rb_darray_clear(ary) (ary->meta.size = 0)
 #define RUBY_THREAD_NATIVE_H 1
-#define _PTHREAD_H 
-#define __NEED_time_t 
-#define __NEED_clockid_t 
-#define __NEED_struct_timespec 
-#define __NEED_sigset_t 
-#define __NEED_pthread_t 
-#define __NEED_pthread_attr_t 
-#define __NEED_pthread_mutexattr_t 
-#define __NEED_pthread_condattr_t 
-#define __NEED_pthread_rwlockattr_t 
-#define __NEED_pthread_barrierattr_t 
-#define __NEED_pthread_mutex_t 
-#define __NEED_pthread_cond_t 
-#define __NEED_pthread_rwlock_t 
-#define __NEED_pthread_barrier_t 
-#define __NEED_pthread_spinlock_t 
-#define __NEED_pthread_key_t 
-#define __NEED_pthread_once_t 
-#define __NEED_size_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define _SCHED_H 
-#define __NEED_struct_timespec 
-#define __NEED_pid_t 
-#define __NEED_time_t 
-#define __NEED_size_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
+#define _PTHREAD_H 1
+#define _SCHED_H 1
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _BITS_SCHED_H 1
 #define SCHED_OTHER 0
 #define SCHED_FIFO 1
 #define SCHED_RR 2
 #define SCHED_BATCH 3
+#define SCHED_ISO 4
 #define SCHED_IDLE 5
 #define SCHED_DEADLINE 6
 #define SCHED_RESET_ON_FORK 0x40000000
 #define CSIGNAL 0x000000ff
-#define CLONE_NEWTIME 0x00000080
 #define CLONE_VM 0x00000100
 #define CLONE_FS 0x00000200
 #define CLONE_FILES 0x00000400
@@ -20693,62 +25366,78 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define CLONE_NEWPID 0x20000000
 #define CLONE_NEWNET 0x40000000
 #define CLONE_IO 0x80000000
-#define __CPU_op_S(i,size,set,op) ( (i)/8U >= (size) ? 0 : (((unsigned long *)(set))[(i)/8/sizeof(long)] op (1UL<<((i)%(8*sizeof(long))))) )
-#define CPU_SET_S(i,size,set) __CPU_op_S(i, size, set, |=)
-#define CPU_CLR_S(i,size,set) __CPU_op_S(i, size, set, &=~)
-#define CPU_ISSET_S(i,size,set) __CPU_op_S(i, size, set, &)
-#define __CPU_op_func_S(func,op) static __inline void __CPU_ ##func ##_S(size_t __size, cpu_set_t *__dest, const cpu_set_t *__src1, const cpu_set_t *__src2) { size_t __i; for (__i=0; __i<__size/sizeof(long); __i++) ((unsigned long *)__dest)[__i] = ((unsigned long *)__src1)[__i] op ((unsigned long *)__src2)[__i] ; }
-#define CPU_AND_S(a,b,c,d) __CPU_AND_S(a,b,c,d)
-#define CPU_OR_S(a,b,c,d) __CPU_OR_S(a,b,c,d)
-#define CPU_XOR_S(a,b,c,d) __CPU_XOR_S(a,b,c,d)
-#define CPU_COUNT_S(size,set) __sched_cpucount(size,set)
-#define CPU_ZERO_S(size,set) memset(set,0,size)
-#define CPU_EQUAL_S(size,set1,set2) (!memcmp(set1,set2,size))
-#define CPU_ALLOC_SIZE(n) (sizeof(long) * ( (n)/(8*sizeof(long)) + ((n)%(8*sizeof(long)) + 8*sizeof(long)-1)/(8*sizeof(long)) ) )
-#define CPU_ALLOC(n) ((cpu_set_t *)calloc(1,CPU_ALLOC_SIZE(n)))
-#define CPU_FREE(set) free(set)
-#define CPU_SETSIZE 128
-#define CPU_SET(i,set) CPU_SET_S(i,sizeof(cpu_set_t),set)
-#define CPU_CLR(i,set) CPU_CLR_S(i,sizeof(cpu_set_t),set)
-#define CPU_ISSET(i,set) CPU_ISSET_S(i,sizeof(cpu_set_t),set)
-#define CPU_AND(d,s1,s2) CPU_AND_S(sizeof(cpu_set_t),d,s1,s2)
-#define CPU_OR(d,s1,s2) CPU_OR_S(sizeof(cpu_set_t),d,s1,s2)
-#define CPU_XOR(d,s1,s2) CPU_XOR_S(sizeof(cpu_set_t),d,s1,s2)
-#define CPU_COUNT(set) CPU_COUNT_S(sizeof(cpu_set_t),set)
-#define CPU_ZERO(set) CPU_ZERO_S(sizeof(cpu_set_t),set)
-#define CPU_EQUAL(s1,s2) CPU_EQUAL_S(sizeof(cpu_set_t),s1,s2)
-#define PTHREAD_CREATE_JOINABLE 0
-#define PTHREAD_CREATE_DETACHED 1
-#define PTHREAD_MUTEX_NORMAL 0
-#define PTHREAD_MUTEX_DEFAULT 0
-#define PTHREAD_MUTEX_RECURSIVE 1
-#define PTHREAD_MUTEX_ERRORCHECK 2
-#define PTHREAD_MUTEX_STALLED 0
-#define PTHREAD_MUTEX_ROBUST 1
-#define PTHREAD_PRIO_NONE 0
-#define PTHREAD_PRIO_INHERIT 1
-#define PTHREAD_PRIO_PROTECT 2
-#define PTHREAD_INHERIT_SCHED 0
-#define PTHREAD_EXPLICIT_SCHED 1
-#define PTHREAD_SCOPE_SYSTEM 0
-#define PTHREAD_SCOPE_PROCESS 1
-#define PTHREAD_PROCESS_PRIVATE 0
-#define PTHREAD_PROCESS_SHARED 1
-#define PTHREAD_MUTEX_INITIALIZER {{{0}}}
-#define PTHREAD_RWLOCK_INITIALIZER {{{0}}}
-#define PTHREAD_COND_INITIALIZER {{{0}}}
+#define CLONE_NEWTIME 0x00000080
+#define _BITS_TYPES_STRUCT_SCHED_PARAM 1
+#define _BITS_CPU_SET_H 1
+#define __CPU_SETSIZE 1024
+#define __NCPUBITS (8 * sizeof (__cpu_mask))
+#define __CPUELT(cpu) ((cpu) / __NCPUBITS)
+#define __CPUMASK(cpu) ((__cpu_mask) 1 << ((cpu) % __NCPUBITS))
+#define __CPU_ZERO_S(setsize,cpusetp) do __builtin_memset (cpusetp, '\0', setsize); while (0)
+#define __CPU_SET_S(cpu,setsize,cpusetp) (__extension__ ({ size_t __cpu = (cpu); __cpu / 8 < (setsize) ? (((__cpu_mask *) ((cpusetp)->__bits))[__CPUELT (__cpu)] |= __CPUMASK (__cpu)) : 0; }))
+#define __CPU_CLR_S(cpu,setsize,cpusetp) (__extension__ ({ size_t __cpu = (cpu); __cpu / 8 < (setsize) ? (((__cpu_mask *) ((cpusetp)->__bits))[__CPUELT (__cpu)] &= ~__CPUMASK (__cpu)) : 0; }))
+#define __CPU_ISSET_S(cpu,setsize,cpusetp) (__extension__ ({ size_t __cpu = (cpu); __cpu / 8 < (setsize) ? ((((const __cpu_mask *) ((cpusetp)->__bits))[__CPUELT (__cpu)] & __CPUMASK (__cpu))) != 0 : 0; }))
+#define __CPU_COUNT_S(setsize,cpusetp) __sched_cpucount (setsize, cpusetp)
+#define __CPU_EQUAL_S(setsize,cpusetp1,cpusetp2) (__builtin_memcmp (cpusetp1, cpusetp2, setsize) == 0)
+#define __CPU_OP_S(setsize,destset,srcset1,srcset2,op) (__extension__ ({ cpu_set_t *__dest = (destset); const __cpu_mask *__arr1 = (srcset1)->__bits; const __cpu_mask *__arr2 = (srcset2)->__bits; size_t __imax = (setsize) / sizeof (__cpu_mask); size_t __i; for (__i = 0; __i < __imax; ++__i) ((__cpu_mask *) __dest->__bits)[__i] = __arr1[__i] op __arr2[__i]; __dest; }))
+#define __CPU_ALLOC_SIZE(count) ((((count) + __NCPUBITS - 1) / __NCPUBITS) * sizeof (__cpu_mask))
+#define __CPU_ALLOC(count) __sched_cpualloc (count)
+#define __CPU_FREE(cpuset) __sched_cpufree (cpuset)
+#define sched_priority sched_priority
+#define __sched_priority sched_priority
+#define CPU_SETSIZE __CPU_SETSIZE
+#define CPU_SET(cpu,cpusetp) __CPU_SET_S (cpu, sizeof (cpu_set_t), cpusetp)
+#define CPU_CLR(cpu,cpusetp) __CPU_CLR_S (cpu, sizeof (cpu_set_t), cpusetp)
+#define CPU_ISSET(cpu,cpusetp) __CPU_ISSET_S (cpu, sizeof (cpu_set_t), cpusetp)
+#define CPU_ZERO(cpusetp) __CPU_ZERO_S (sizeof (cpu_set_t), cpusetp)
+#define CPU_COUNT(cpusetp) __CPU_COUNT_S (sizeof (cpu_set_t), cpusetp)
+#define CPU_SET_S(cpu,setsize,cpusetp) __CPU_SET_S (cpu, setsize, cpusetp)
+#define CPU_CLR_S(cpu,setsize,cpusetp) __CPU_CLR_S (cpu, setsize, cpusetp)
+#define CPU_ISSET_S(cpu,setsize,cpusetp) __CPU_ISSET_S (cpu, setsize, cpusetp)
+#define CPU_ZERO_S(setsize,cpusetp) __CPU_ZERO_S (setsize, cpusetp)
+#define CPU_COUNT_S(setsize,cpusetp) __CPU_COUNT_S (setsize, cpusetp)
+#define CPU_EQUAL(cpusetp1,cpusetp2) __CPU_EQUAL_S (sizeof (cpu_set_t), cpusetp1, cpusetp2)
+#define CPU_EQUAL_S(setsize,cpusetp1,cpusetp2) __CPU_EQUAL_S (setsize, cpusetp1, cpusetp2)
+#define CPU_AND(destset,srcset1,srcset2) __CPU_OP_S (sizeof (cpu_set_t), destset, srcset1, srcset2, &)
+#define CPU_OR(destset,srcset1,srcset2) __CPU_OP_S (sizeof (cpu_set_t), destset, srcset1, srcset2, |)
+#define CPU_XOR(destset,srcset1,srcset2) __CPU_OP_S (sizeof (cpu_set_t), destset, srcset1, srcset2, ^)
+#define CPU_AND_S(setsize,destset,srcset1,srcset2) __CPU_OP_S (setsize, destset, srcset1, srcset2, &)
+#define CPU_OR_S(setsize,destset,srcset1,srcset2) __CPU_OP_S (setsize, destset, srcset1, srcset2, |)
+#define CPU_XOR_S(setsize,destset,srcset1,srcset2) __CPU_OP_S (setsize, destset, srcset1, srcset2, ^)
+#define CPU_ALLOC_SIZE(count) __CPU_ALLOC_SIZE (count)
+#define CPU_ALLOC(count) __CPU_ALLOC (count)
+#define CPU_FREE(cpuset) __CPU_FREE (cpuset)
+#define __WORDSIZE 64
+#define __WORDSIZE_TIME64_COMPAT32 1
+#define __SYSCALL_WORDSIZE 64
+#define PTHREAD_CREATE_JOINABLE PTHREAD_CREATE_JOINABLE
+#define PTHREAD_CREATE_DETACHED PTHREAD_CREATE_DETACHED
+#define PTHREAD_MUTEX_INITIALIZER { { __PTHREAD_MUTEX_INITIALIZER (PTHREAD_MUTEX_TIMED_NP) } }
+#define PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP { { __PTHREAD_MUTEX_INITIALIZER (PTHREAD_MUTEX_RECURSIVE_NP) } }
+#define PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP { { __PTHREAD_MUTEX_INITIALIZER (PTHREAD_MUTEX_ERRORCHECK_NP) } }
+#define PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP { { __PTHREAD_MUTEX_INITIALIZER (PTHREAD_MUTEX_ADAPTIVE_NP) } }
+#define PTHREAD_RWLOCK_INITIALIZER { { __PTHREAD_RWLOCK_INITIALIZER (PTHREAD_RWLOCK_DEFAULT_NP) } }
+#define PTHREAD_RWLOCK_WRITER_NONRECURSIVE_INITIALIZER_NP { { __PTHREAD_RWLOCK_INITIALIZER (PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP) } }
+#define PTHREAD_INHERIT_SCHED PTHREAD_INHERIT_SCHED
+#define PTHREAD_EXPLICIT_SCHED PTHREAD_EXPLICIT_SCHED
+#define PTHREAD_SCOPE_SYSTEM PTHREAD_SCOPE_SYSTEM
+#define PTHREAD_SCOPE_PROCESS PTHREAD_SCOPE_PROCESS
+#define PTHREAD_PROCESS_PRIVATE PTHREAD_PROCESS_PRIVATE
+#define PTHREAD_PROCESS_SHARED PTHREAD_PROCESS_SHARED
+#define PTHREAD_COND_INITIALIZER { { {0}, {0}, {0, 0}, {0, 0}, 0, 0, {0, 0} } }
+#define PTHREAD_CANCEL_ENABLE PTHREAD_CANCEL_ENABLE
+#define PTHREAD_CANCEL_DISABLE PTHREAD_CANCEL_DISABLE
+#define PTHREAD_CANCEL_DEFERRED PTHREAD_CANCEL_DEFERRED
+#define PTHREAD_CANCEL_ASYNCHRONOUS PTHREAD_CANCEL_ASYNCHRONOUS
+#define PTHREAD_CANCELED ((void *) -1)
 #define PTHREAD_ONCE_INIT 0
-#define PTHREAD_CANCEL_ENABLE 0
-#define PTHREAD_CANCEL_DISABLE 1
-#define PTHREAD_CANCEL_MASKED 2
-#define PTHREAD_CANCEL_DEFERRED 0
-#define PTHREAD_CANCEL_ASYNCHRONOUS 1
-#define PTHREAD_CANCELED ((void *)-1)
-#define PTHREAD_BARRIER_SERIAL_THREAD (-1)
-#define PTHREAD_NULL ((pthread_t)0)
-#define pthread_equal(x,y) ((x)==(y))
-#define pthread_cleanup_push(f,x) do { struct __ptcb __cb; _pthread_cleanup_push(&__cb, f, x);
-#define pthread_cleanup_pop(r) _pthread_cleanup_pop(&__cb, (r)); } while(0)
+#define PTHREAD_BARRIER_SERIAL_THREAD -1
+#define PTHREAD_ATTR_NO_SIGMASK_NP (-1)
+#define __cleanup_fct_attribute 
+#define pthread_cleanup_push(routine,arg) do { __pthread_unwind_buf_t __cancel_buf; void (*__cancel_routine) (void *) = (routine); void *__cancel_arg = (arg); int __not_first_call = __sigsetjmp_cancel (__cancel_buf.__cancel_jmp_buf, 0); if (__glibc_unlikely (__not_first_call)) { __cancel_routine (__cancel_arg); __pthread_unwind_next (&__cancel_buf); } __pthread_register_cancel (&__cancel_buf); do {
+#define pthread_cleanup_pop(execute) do { } while (0); } while (0); __pthread_unregister_cancel (&__cancel_buf); if (execute) __cancel_routine (__cancel_arg); } while (0)
+#define pthread_cleanup_push_defer_np(routine,arg) do { __pthread_unwind_buf_t __cancel_buf; void (*__cancel_routine) (void *) = (routine); void *__cancel_arg = (arg); int __not_first_call = __sigsetjmp_cancel (__cancel_buf.__cancel_jmp_buf, 0); if (__glibc_unlikely (__not_first_call)) { __cancel_routine (__cancel_arg); __pthread_unwind_next (&__cancel_buf); } __pthread_register_cancel_defer (&__cancel_buf); do {
+#define pthread_cleanup_pop_restore_np(execute) do { } while (0); } while (0); __pthread_unregister_cancel_restore (&__cancel_buf); if (execute) __cancel_routine (__cancel_arg); } while (0)
 #pragma GCC visibility push(default)
 #pragma GCC visibility pop
 #define RUBY_THREAD_PTHREAD_H 
@@ -20764,7 +25453,7 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define RUBY_VM_THREAD_MODEL 2
 #define VM_INSN_INFO_TABLE_IMPL 2
 #define RUBY_NSIG NSIG
-#define RUBY_SIGCHLD (SIGCHLD)
+#define RUBY_SIGCHLD (SIGCLD)
 #define SIGCHLD_LOSSY (0)
 #define WAITPID_USE_SIGCHLD (RUBY_SIGCHLD || SIGCHLD_LOSSY)
 #define USE_SIGALTSTACK 
@@ -20881,7 +25570,10 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define PASS_PASSED_BLOCK_HANDLER() pass_passed_block_handler(GET_EC())
 #define ruby_setjmp(env) RUBY_SETJMP(env)
 #define ruby_longjmp(env,val) RUBY_LONGJMP((env),(val))
-#define _ERRNO_H 
+#define _ERRNO_H 1
+#define _BITS_ERRNO_H 1
+#define _ASM_GENERIC_ERRNO_H 
+#define _ASM_GENERIC_ERRNO_BASE_H 
 #define EPERM 1
 #define ENOENT 2
 #define ESRCH 3
@@ -20977,7 +25669,6 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define EPROTONOSUPPORT 93
 #define ESOCKTNOSUPPORT 94
 #define EOPNOTSUPP 95
-#define ENOTSUP EOPNOTSUPP
 #define EPFNOSUPPORT 96
 #define EAFNOSUPPORT 97
 #define EADDRINUSE 98
@@ -21016,82 +25707,45 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define ENOTRECOVERABLE 131
 #define ERFKILL 132
 #define EHWPOISON 133
-#define errno (*__errno_location())
-#define _SYS_PARAM_H 
-#define MAXSYMLINKS 20
+#define ENOTSUP EOPNOTSUPP
+#define errno (*__errno_location ())
+#define __error_t_defined 1
+#define _SYS_PARAM_H 1
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __undef_ARG_MAX 
+#define _LINUX_PARAM_H 
+#define __ASM_GENERIC_PARAM_H 
+#define HZ 100
+#define EXEC_PAGESIZE 4096
+#define NOGROUP (-1)
 #define MAXHOSTNAMELEN 64
-#define MAXNAMLEN 255
-#define MAXPATHLEN 4096
-#define NBBY 8
-#define NGROUPS 32
-#define CANBSIZ 255
+#undef ARG_MAX
+#undef __undef_ARG_MAX
+#define MAXSYMLINKS 20
 #define NOFILE 256
 #define NCARGS 131072
+#define NBBY CHAR_BIT
+#define NGROUPS NGROUPS_MAX
+#define CANBSIZ MAX_CANON
+#define MAXPATHLEN PATH_MAX
+#define NODEV ((dev_t) -1)
 #define DEV_BSIZE 512
-#define NOGROUP (-1)
-#undef MIN
-#undef MAX
+#define setbit(a,i) ((a)[(i)/NBBY] |= 1<<((i)%NBBY))
+#define clrbit(a,i) ((a)[(i)/NBBY] &= ~(1<<((i)%NBBY)))
+#define isset(a,i) ((a)[(i)/NBBY] & (1<<((i)%NBBY)))
+#define isclr(a,i) (((a)[(i)/NBBY] & (1<<((i)%NBBY))) == 0)
+#define howmany(x,y) (((x) + ((y) - 1)) / (y))
+#define roundup(x,y) (__builtin_constant_p (y) && powerof2 (y) ? (((x) + (y) - 1) & ~((y) - 1)) : ((((x) + ((y) - 1)) / (y)) * (y)))
+#define powerof2(x) ((((x) - 1) & (x)) == 0)
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
-#define __bitop(x,i,o) ((x)[(i)/8] o (1<<(i)%8))
-#define setbit(x,i) __bitop(x,i,|=)
-#define clrbit(x,i) __bitop(x,i,&=~)
-#define isset(x,i) __bitop(x,i,&)
-#define isclr(x,i) !isset(x,i)
-#define howmany(n,d) (((n)+((d)-1))/(d))
-#define roundup(n,d) (howmany(n,d)*(d))
-#define powerof2(n) !(((n)-1) & (n))
-#define _SYS_RESOURCE_H 
-#define __NEED_id_t 
-#define __NEED_pid_t 
-#define _Addr long
-#define _Int64 long
-#define _Reg long
-#define __BYTE_ORDER 1234
-#define __LONG_MAX 0x7fffffffffffffffL
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __USE_TIME_BITS64 1
-#undef _Addr
-#undef _Int64
-#undef _Reg
-#define prlimit64 prlimit
-#define PRIO_MIN (-20)
-#define PRIO_MAX 20
-#define PRIO_PROCESS 0
-#define PRIO_PGRP 1
-#define PRIO_USER 2
-#define RUSAGE_SELF 0
-#define RUSAGE_CHILDREN (-1)
-#define RUSAGE_THREAD 1
-#define RLIM_INFINITY (~0ULL)
-#define RLIM_SAVED_CUR RLIM_INFINITY
-#define RLIM_SAVED_MAX RLIM_INFINITY
-#define RLIMIT_CPU 0
-#define RLIMIT_FSIZE 1
-#define RLIMIT_DATA 2
-#define RLIMIT_STACK 3
-#define RLIMIT_CORE 4
-#define RLIMIT_RSS 5
-#define RLIMIT_NPROC 6
-#define RLIMIT_NOFILE 7
-#define RLIMIT_MEMLOCK 8
-#define RLIMIT_AS 9
-#define RLIMIT_LOCKS 10
-#define RLIMIT_SIGPENDING 11
-#define RLIMIT_MSGQUEUE 12
-#define RLIMIT_NICE 13
-#define RLIMIT_RTPRIO 14
-#define RLIMIT_RTTIME 15
-#define RLIMIT_NLIMITS 16
-#define RLIM_NLIMITS RLIMIT_NLIMITS
-#define RLIM64_INFINITY RLIM_INFINITY
-#define RLIM64_SAVED_CUR RLIM_SAVED_CUR
-#define RLIM64_SAVED_MAX RLIM_SAVED_MAX
-#define getrlimit64 getrlimit
-#define setrlimit64 setrlimit
-#define rlimit64 rlimit
-#define rlim64_t rlim_t
 #define SAVE_ROOT_JMPBUF(th,stmt) do if (true) { stmt; } else if (th) { } while (0)
 #define EC_PUSH_TAG(ec) do { rb_execution_context_t * const _ec = (ec); struct rb_vm_tag _tag; _tag.state = TAG_NONE; _tag.tag = Qundef; _tag.prev = _ec->tag; _tag.lock_rec = rb_ec_vm_lock_rec(_ec);
 #define EC_POP_TAG() _ec->tag = _tag.prev; } while (0)
@@ -21659,6 +26313,10 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #pragma GCC visibility push(default)
 #pragma GCC visibility pop
 #define INTERNAL_SANITIZERS_H 
+#define SANITIZER_ASAN_INTERFACE_H 
+#define SANITIZER_COMMON_INTERFACE_DEFS_H 
+#define ASAN_POISON_MEMORY_REGION(addr,size) ((void)(addr), (void)(size))
+#define ASAN_UNPOISON_MEMORY_REGION(addr,size) ((void)(addr), (void)(size))
 #define ATTRIBUTE_NO_ADDRESS_SAFETY_ANALYSIS(x) NO_SANITIZE_ADDRESS(NOINLINE(x))
 #undef NO_SANITIZE
 #define NO_SANITIZE(x,y) COMPILER_WARNING_PUSH; COMPILER_WARNING_IGNORED(-Wattributes); __attribute__((__no_sanitize__(x))) y; COMPILER_WARNING_POP

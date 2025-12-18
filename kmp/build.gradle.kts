@@ -147,18 +147,49 @@ kotlin {
                     val coreRubyVmDir = project.rootProject.file("core/ruby-vm").absoluteFile
                     val assetsDir = project.rootProject.file("assets").absoluteFile
 
-                    // Add both directories to ALL include dir categories
+                    // Get the CMake build directory where ruby-api-loader.h is generated
+                    // Map konanTarget.name to CMake directory naming convention
+                    // konanTarget.name: "linux_x64" -> CMake dir: "linux-x86_64"
+                    // konanTarget.name: "macos_arm64" -> CMake dir: "macos-arm64"
+                    val konanTargetName = this@withType.konanTarget.name
+                    val (platform, arch) = when {
+                        konanTargetName.startsWith("linux_x64") -> "linux" to "x86_64"
+                        konanTargetName.startsWith("linux_arm64") -> "linux" to "arm64"
+                        konanTargetName.startsWith("macos_x64") -> "macos" to "x86_64"
+                        konanTargetName.startsWith("macos_arm64") -> "macos" to "arm64"
+                        konanTargetName.startsWith("ios") -> "ios" to konanTargetName.substringAfter("_")
+                        else -> throw GradleException("Unsupported Konan target: $konanTargetName")
+                    }
+                    val cmakeBuildDir = file("${layout.buildDirectory.get()}/cmake/$platform-$arch/core/ruby-vm").absoluteFile
+                    val libsOutputDir = file("libs/$konanTargetName").absoluteFile
+
+                    // Add all directories to ALL include dir categories
                     includeDirs.apply {
-                        allHeaders(coreRubyVmDir, assetsDir)
-                        headerFilterOnly(coreRubyVmDir, assetsDir)
+                        allHeaders(coreRubyVmDir, assetsDir, cmakeBuildDir)
+                        headerFilterOnly(coreRubyVmDir, assetsDir, cmakeBuildDir)
                     }
 
                     // Also pass as compiler options
-                    compilerOpts("-I${coreRubyVmDir.absolutePath}", "-I${assetsDir.absolutePath}")
+                    compilerOpts(
+                        "-I${coreRubyVmDir.absolutePath}",
+                        "-I${assetsDir.absolutePath}",
+                        "-I${cmakeBuildDir.absolutePath}"
+                    )
 
-                    // IMPORTANT: NO libraryPath options here!
-                    // We use dlopen() to load libembedded-ruby at runtime, not at build time.
-                    // The library will be extracted by libassets and loaded dynamically.
+                    // Static library linking configuration (only if BUILD_SHARED_LIBS=OFF)
+                    // When using static libraries, link them at compile time
+                    if (!buildSharedLibs) {
+                        extraOpts("-libraryPath", libsOutputDir.absolutePath)
+
+                        // Specify the static libraries to link
+                        // Order matters: dependent libraries should come after dependencies
+                        extraOpts(
+                            "-staticLibrary", "${libsOutputDir.absolutePath}/libembedded-ruby.a",
+                            "-staticLibrary", "${libsOutputDir.absolutePath}/libassets.a"
+                        )
+                    }
+                    // Note: For dynamic builds (BUILD_SHARED_LIBS=ON), libraries are
+                    // loaded at runtime via dlopen(), so no linking is needed here
                 }
             }
         }

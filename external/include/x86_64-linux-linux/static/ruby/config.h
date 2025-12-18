@@ -33,6 +33,7 @@
 #define HAVE_LOCALE_H 1
 #define HAVE_MALLOC_H 1
 #define HAVE_PWD_H 1
+#define HAVE_SANITIZER_ASAN_INTERFACE_H 1
 #define HAVE_STDALIGN_H 1
 #define HAVE_SYS_EVENTFD_H 1
 #define HAVE_SYS_FCNTL_H 1
@@ -118,9 +119,9 @@
 #define HAVE_RLIM_T 1
 #define rb_rlim_t rlim_t
 #define SIGNEDNESS_OF_RLIM_T +1
-#define RLIM2NUM(v) ULL2NUM(v)
-#define NUM2RLIM(v) NUM2ULL(v)
-#define PRI_RLIM_PREFIX PRI_LL_PREFIX
+#define RLIM2NUM(v) ULONG2NUM(v)
+#define NUM2RLIM(v) NUM2ULONG(v)
+#define PRI_RLIM_PREFIX PRI_LONG_PREFIX
 #define HAVE_OFF_T 1
 #define rb_off_t off_t
 #define SIGNEDNESS_OF_OFF_T -1
@@ -183,6 +184,7 @@
 #define HAVE_STRUCT_STAT_ST_ATIM 1
 #define HAVE_STRUCT_STAT_ST_MTIM 1
 #define HAVE_STRUCT_STAT_ST_CTIM 1
+#define HAVE_STRUCT_STATX_STX_BTIME 1
 #define HAVE_STRUCT_TIMEVAL 1
 #define SIZEOF_STRUCT_TIMEVAL_TV_SEC SIZEOF_TIME_T
 #define HAVE_STRUCT_TIMESPEC 1
@@ -216,6 +218,7 @@
 #define SIZEOF_UINTPTR_T 8
 #define HAVE_SSIZE_T 1
 #define SIZEOF_SSIZE_T 8
+#define STACK_END_ADDRESS __libc_stack_end
 #define GETGROUPS_T gid_t
 #define HAVE_ALLOCA_H 1
 #define HAVE_ALLOCA 1
@@ -235,8 +238,6 @@
 #define HAVE_NEXTAFTER 1
 #define HAVE_STRCHR 1
 #define HAVE_STRERROR 1
-#define HAVE_STRLCAT 1
-#define HAVE_STRLCPY 1
 #define HAVE_STRSTR 1
 #define HAVE_TGAMMA 1
 #define HAVE_ISFINITE 1
@@ -247,6 +248,7 @@
 #define HAVE_WORKING_VFORK 1
 #define HAVE_WORKING_FORK 1
 #define HAVE__LONGJMP 1
+#define HAVE_ARC4RANDOM_BUF 1
 #define HAVE_ATAN2L 1
 #define HAVE_ATAN2F 1
 #define HAVE_CHROOT 1
@@ -296,7 +298,6 @@
 #define HAVE_GRANTPT 1
 #define HAVE_INITGROUPS 1
 #define HAVE_IOCTL 1
-#define HAVE_ISSETUGID 1
 #define HAVE_KILLPG 1
 #define HAVE_LCHMOD 1
 #define HAVE_LCHOWN 1
@@ -364,6 +365,7 @@
 #define HAVE_UTIMES 1
 #define HAVE_WAIT4 1
 #define HAVE_WAITPID 1
+#define HAVE_STATX 1
 #define HAVE_CRYPT_H 1
 #define HAVE_STRUCT_CRYPT_DATA_INITIALIZED 1
 #define HAVE_BUILTIN___BUILTIN_ALLOCA_WITH_ALIGN 1
@@ -421,6 +423,8 @@
 #define SET_CURRENT_THREAD_NAME(name) pthread_setname_np(pthread_self(), name)
 #define SET_ANOTHER_THREAD_NAME(thid,name) pthread_setname_np(thid, name)
 #define DEFINE_MCONTEXT_PTR(mc, uc) mcontext_t *mc = &(uc)->uc_mcontext
+#define HAVE_GETCONTEXT 1
+#define HAVE_SETCONTEXT 1
 #define HAVE_SYS_USER_H 1
 #define HAVE_CONST_PAGE_SIZE 1
 #define IOCTL_REQ_TYPE unsigned long
@@ -428,16 +432,16 @@
 #define USE_ELF 1
 #define HAVE_ELF_H 1
 #define HAVE_LIBZ 1
+#define HAVE_BACKTRACE 1
 #define DLEXT_MAXLEN 3
 #define DLEXT ".so"
 #define EXTSTATIC 1
 #define HAVE__SETJMP 1
-#define HAVE_SIGSETJMP 1
 #define RUBY_SETJMP(env) __builtin_setjmp((env))
 #define RUBY_LONGJMP(env,val) __builtin_longjmp((env),val)
 #define USE_MJIT 1
 #define HAVE_PTHREAD_H 1
 #define THREAD_IMPL_H "thread_pthread.h"
 #define THREAD_IMPL_SRC "thread_pthread.c"
-#define RUBY_PLATFORM "x86_64-linux-musl"
+#define RUBY_PLATFORM "x86_64-linux-gnu"
 #endif /* INCLUDE_RUBY_CONFIG_H */

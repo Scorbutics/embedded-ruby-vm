@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
       target: dev
       args:
-        - INSTALL_CUSTOM_CERTS=false
+        - INSTALL_CUSTOM_CERTS=true
     container_name: embedded-ruby-vm-dev
     volumes:
       # Named volume for source code (better performance than bind mounts on Windows)

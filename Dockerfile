@@ -1,19 +1,17 @@
 # Multi-stage Dockerfile for embedded-ruby-vm development
-# Using Alpine Linux for musl libc compatibility with static Ruby builds
-FROM eclipse-temurin:17-jdk-alpine AS builder
+# Using Debian Linux with glibc for better compatibility with Kotlin/Native
+FROM eclipse-temurin:17-jdk-jammy AS builder
 
 # Build argument to control custom certificate installation
 ARG INSTALL_CUSTOM_CERTS=false
 
-# Fix Alpine package repository access issues
-# Use HTTP mirrors as a workaround for SSL certificate issues
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories && \
-    echo "http://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
+# Update package lists
+RUN apt-get update
 
 # Optional: Install custom CA certificates for corporate environments
 # This runs conditionally based on the build argument
 RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ]; then \
-        apk add --no-cache openssl ca-certificates && \
+        apt-get install -y --no-install-recommends openssl ca-certificates && \
         mkdir -p /tmp/certs; \
     fi
 
@@ -38,16 +36,18 @@ RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ "$(ls -A /tmp/certs-source 2>/d
 # Clean up temporary cert files
 RUN rm -rf /tmp/certs-source
 
-# Install build tools and dependencies for Alpine/musl
+# Install build tools and dependencies for Debian/glibc
 # Install CMake, build tools, and Ruby dependencies
-RUN apk add --no-cache \
+RUN apt-get install -y --no-install-recommends \
     cmake \
     make \
     g++ \
     git \
     bash \
-    gmp-dev \
-    zlib-dev
+    libgmp-dev \
+    zlib1g-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
 # Verify tools are available
 RUN cmake --version && gcc --version
