@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-
 plugins {
     kotlin("multiplatform") version "1.9.20"
 }
@@ -14,102 +12,67 @@ repositories {
 kotlin {
     // Linux x64 target
     linuxX64 {
-        compilations.all {
-            kotlinOptions {
-                freeCompilerArgs += listOf("-opt-in=kotlin.ExperimentalStdlibApi")
-            }
-        }
-
         binaries {
             executable {
                 entryPoint = "main"
                 baseName = "ruby-vm-example"
 
-                // Allow undefined symbols (will be resolved at runtime)
-                freeCompilerArgs += listOf("-linker-option", "--allow-shlib-undefined")
-
-                // Configure linker options with paths relative to project root
+                // Link configuration depends on whether we're building with shared or static libraries
                 val projectRoot = project.file("../../..").absoluteFile
                 val libDir = project.file("${projectRoot}/kmp/libs/linux_x64").absoluteFile
-                val rubyLibDir = project.file("${projectRoot}/external/lib/x86_64-linux-linux").absoluteFile
 
-                // Link static libraries for assets and logging
-                // libruby-vm.a functions will be called via dlopen'd libembedded-ruby.so
-                linkerOpts(
-                    "-L${libDir.absolutePath}",
-                    // Static libraries for assets extraction
-                    "${libDir.absolutePath}/liblogging.a",
-                    "${libDir.absolutePath}/libassets.a",
-                    "${libDir.absolutePath}/libminizip.a",
-                    // System libraries
-                    "-lm", "-lz", "-lpthread", "-ldl", "-lcrypt", "-lrt"
-                )
-            }
-        }
+                // Check if building with shared libraries (via -PbuildWrapperShared=true)
+                val buildWrapperShared = project.findProperty("buildWrapperShared")?.toString()?.toBoolean() ?: false
 
-        compilations.getByName("main") {
-            cinterops {
-                val rubyVM by creating {
-                    // Path to cinterop definition file
-                    val projectRoot = project.file("../../..").absoluteFile
-                    defFile(project.file("${projectRoot}/kmp/src/nativeInterop/cinterop/ruby_vm.def"))
-                    packageName("com.scorbutics.rubyvm.native")
-
-                    // Include directories for C headers
-                    val coreRubyVm = project.file("${projectRoot}/core/ruby-vm").absoluteFile
-                    val coreLogging = project.file("${projectRoot}/core/logging").absoluteFile
-                    val assetsDir = project.file("${projectRoot}/assets").absoluteFile
-
-                    includeDirs.allHeaders(coreRubyVm, coreLogging, assetsDir)
-                    compilerOpts("-I${coreRubyVm.absolutePath}", "-I${coreLogging.absolutePath}", "-I${assetsDir.absolutePath}")
-
-                    // Link against the compiled native library
-                    val libDir = project.file("${projectRoot}/kmp/libs/linux_x64").absoluteFile
-                    extraOpts("-libraryPath", libDir.absolutePath)
+                if (buildWrapperShared) {
+                    // Dynamic linking - link against shared wrapper libraries
+                    linkerOpts(
+                        "-L${libDir.absolutePath}",
+                        "-lembedded-ruby",
+                        "-lassets",
+                        "-Wl,-rpath,${libDir.absolutePath}"
+                    )
+                } else {
+                    // Static linking - link all dependencies
+                    val rubyLibDir = project.file("${projectRoot}/external/lib/x86_64-linux-gnu/static").absoluteFile
+                    linkerOpts(
+                        "-L${libDir.absolutePath}",
+                        "-L${rubyLibDir.absolutePath}",
+                        // Start with a linker group to handle circular dependencies
+                        "-Wl,--start-group",
+                        // Application libraries
+                        "-lruby-vm",
+                        "-llogging",
+                        "-lassets",
+                        "-lminizip",
+                        // Ruby libraries
+                        "-lruby-static",
+                        "-lruby-ext",
+                        // System libraries (within the group for circular dependency resolution)
+                        // Note: libhistory is not needed as libreadline.a contains history functions
+                        "-lreadline", "-lncurses", "-lncurses++", "-lpanel", "-lmenu", "-lform",
+                        "-lgdbm", "-lgdbm_compat",
+                        "-lssl", "-lcrypto",
+                        "-lgmp",
+                        "-lz",
+                        "-Wl,--end-group",
+                        // Final system libraries that have no dependencies
+                        "-lm", "-lpthread", "-ldl", "-lcrypt", "-lrt"
+                    )
                 }
             }
         }
     }
 
     sourceSets {
-        // Get the auto-created commonMain and add KMP common sources
-        val commonMain by getting {
-            val projectRoot = project.file("../../..").absoluteFile
-            kotlin.srcDir("${projectRoot}/kmp/src/commonMain/kotlin")
-        }
-
-        // Create nativeMain hierarchy source set for shared native code
-        val nativeMain by creating {
-            dependsOn(commonMain)
-            val projectRoot = project.file("../../..").absoluteFile
-            kotlin.srcDir("${projectRoot}/kmp/src/nativeMain/kotlin")
-        }
-
-        // linuxX64Main depends on nativeMain
         val linuxX64Main by getting {
-            dependsOn(nativeMain)
-            // Include example source code
             kotlin.srcDir("src")
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+                // Depend on the ruby-vm-kmp module from the parent composite build
+                implementation("com.scorbutics.rubyvm:ruby-vm-kmp:1.0.0-SNAPSHOT")
             }
         }
     }
-}
-
-// Task to build native libraries first
-tasks.register<Exec>("buildNativeLibs") {
-    group = "build"
-    description = "Build native Ruby VM libraries for Linux x64"
-
-    val projectRoot = project.file("../../..").absoluteFile
-    workingDir = projectRoot
-    commandLine("./gradlew", ":ruby-vm-kmp:buildNativeLibsLinux", "-PtargetArch=x86_64")
-}
-
-// Make compilation depend on native libraries
-tasks.matching { it.name.contains("compile") }.configureEach {
-    dependsOn("buildNativeLibs")
 }
 
 // Custom task to run the example
@@ -120,7 +83,6 @@ tasks.register("runExample") {
     dependsOn("linkDebugExecutableLinuxX64")
 
     doLast {
-        val projectRoot = project.file("../../..").absoluteFile
         val executable = file("build/bin/linuxX64/debugExecutable/ruby-vm-example.kexe")
 
         if (!executable.exists()) {
@@ -129,9 +91,8 @@ tasks.register("runExample") {
 
         println("\n=== Running Kotlin/Native Ruby VM Example ===\n")
 
-        // Run the executable from project root so paths work
+        // Run the executable
         exec {
-            workingDir = projectRoot
             commandLine(executable.absolutePath)
         }
     }

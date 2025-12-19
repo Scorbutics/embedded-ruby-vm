@@ -4,7 +4,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 /**
  * Simple test application for native Ruby VM.
  */
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, ExperimentalStdlibApi::class)
 fun main() {
     println("=== Ruby VM Native Test ===")
     println()
