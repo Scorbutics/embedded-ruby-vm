@@ -147,10 +147,14 @@ if(ENABLE_ASSETS_JNI)
     message(STATUS "Including JNI bindings in assets library")
 endif()
 
-# Build assets library - type determined by BUILD_SHARED_LIBS option
-# When BUILD_SHARED_LIBS=ON: builds libassets.so (or .dylib on macOS)
-# When BUILD_SHARED_LIBS=OFF: builds libassets.a (static library - default)
-add_library(assets ${ASSETS_SOURCES})
+# Build assets library - type determined by BUILD_WRAPPER_SHARED option
+# When BUILD_WRAPPER_SHARED=ON: builds libassets.so (or .dylib on macOS) - needed for JVM/JNI
+# When BUILD_WRAPPER_SHARED=OFF: builds libassets.a (static library - default for Kotlin/Native)
+if(BUILD_WRAPPER_SHARED)
+    add_library(assets SHARED ${ASSETS_SOURCES})
+else()
+    add_library(assets STATIC ${ASSETS_SOURCES})
+endif()
 
 set_target_properties(assets PROPERTIES
     COMPILE_FLAGS "-Wall -Wextra -Werror"

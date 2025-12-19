@@ -1,38 +1,26 @@
 package com.scorbutics.rubyvm
 
-import com.scorbutics.rubyvm.native.RubyAPI
 import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
- * Global holder for the dynamically loaded Ruby API.
- * This allows RubyScript and other components to access the API without
- * passing it explicitly through every method call.
+ * Holder to track whether Ruby VM is initialized.
  *
- * The API is loaded once when the first RubyInterpreter is created.
+ * For static builds: Functions are directly linked, no API loading needed.
+ * For dynamic builds: This would hold the loaded API (future enhancement).
  */
 @OptIn(ExperimentalForeignApi::class)
 internal object RubyAPIHolder {
-    private var loadedAPI: RubyAPI? = null
+    private var initialized = false
 
     /**
-     * Set the loaded API (called by RubyInterpreter when loading the library)
+     * Mark the Ruby VM as initialized
      */
-    fun setAPI(api: RubyAPI) {
-        loadedAPI = api
+    fun setInitialized() {
+        initialized = true
     }
 
     /**
-     * Get the loaded API
-     * @throws IllegalStateException if the API hasn't been loaded yet
+     * Check if the Ruby VM has been initialized
      */
-    fun getAPI(): RubyAPI {
-        return loadedAPI ?: error(
-            "Ruby API not loaded. Call RubyInterpreter.create() first to load the Ruby runtime."
-        )
-    }
-
-    /**
-     * Check if the API has been loaded
-     */
-    fun isLoaded(): Boolean = loadedAPI != null
+    fun isInitialized(): Boolean = initialized
 }

@@ -15,10 +15,35 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # This is needed because COMPILE_FLAGS in subdirectories override CMake's defaults
 add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
 
-string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_CXX_PLATFORM_ID}-${CMAKE_SYSTEM_NAME}" HOST)
+# Determine host triplet using compiler's -dumpmachine
+# This gives us the proper triplet (e.g., x86_64-linux-gnu, aarch64-linux-android)
+execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -dumpmachine
+    OUTPUT_VARIABLE HOST
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+# Fallback if -dumpmachine fails (shouldn't happen with modern compilers)
+if(NOT HOST)
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}" HOST)
+    message(WARNING "Could not determine host triplet from compiler, using fallback: ${HOST}")
+endif()
+
 message(NOTICE "Configuring for host: ${HOST}")
 
-# Set build type directory for library resolution
+# Two-flag build system for fine-grained control:
+# - BUILD_WRAPPER_SHARED: Controls output type of libassets and libembedded-ruby
+#                         (ON for JVM/JNI, OFF for Kotlin/Native)
+# - BUILD_SHARED_LIBS: Controls which Ruby libraries to link against
+#                      (ON = libruby.so, OFF = libruby-static.a + libruby-ext.a)
+option(BUILD_WRAPPER_SHARED "Build libassets and libembedded-ruby as shared libraries (required for JVM/JNI)" OFF)
+option(BUILD_SHARED_LIBS "Link against shared Ruby libraries instead of static" OFF)
+option(BUILD_JNI "Build JNI binding" OFF)
+option(BUILD_JNI_ANDROID_LOG "Build Android Logcat output" OFF)
+option(BUILD_TESTS "Build tests" ON)
+
+# Set build type directory for library resolution based on BUILD_SHARED_LIBS
 if(BUILD_SHARED_LIBS)
     set(BUILD_TYPE_DIR "shared")
 else()
@@ -29,15 +54,12 @@ endif()
 # This allows supporting both shared and static Ruby builds
 set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${BUILD_TYPE_DIR})
 message(STATUS "Using external libraries from: ${EXTERNAL_LIBS_DIR}")
+message(STATUS "Build wrapper as shared: ${BUILD_WRAPPER_SHARED}")
+message(STATUS "Link against shared Ruby: ${BUILD_SHARED_LIBS}")
 
 # Add external library directory to linker search path
 # This allows CMake to find ruby-static, ssl, crypto, readline, etc.
 link_directories(${EXTERNAL_LIBS_DIR})
-
-option(BUILD_SHARED_LIBS "Build shared libraries instead of static" OFF)
-option(BUILD_JNI "Build JNI binding" OFF)
-option(BUILD_JNI_ANDROID_LOG "Build Android Logcat output" OFF)
-option(BUILD_TESTS "Build tests" ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -51,7 +73,12 @@ if(BUILD_JNI)
     add_subdirectory(jni)
 endif()
 
-add_library(embedded-ruby dummy.c)
+# Create embedded-ruby library with type based on BUILD_WRAPPER_SHARED
+if(BUILD_WRAPPER_SHARED)
+    add_library(embedded-ruby SHARED dummy.c)
+else()
+    add_library(embedded-ruby STATIC dummy.c)
+endif()
 
 # Platform-specific linking configuration
 # Linux: Use --whole-archive for both static and shared builds
@@ -68,8 +95,8 @@ if(UNIX AND NOT APPLE)
             $<$<BOOL:${BUILD_JNI}>:jni>
     )
 elseif(APPLE)
-    # macOS: Different linking based on library type
-    if(BUILD_SHARED_LIBS)
+    # macOS: Different linking based on wrapper library type
+    if(BUILD_WRAPPER_SHARED)
         # Shared library: Use interface library
         target_link_libraries(embedded-ruby PRIVATE
                 core
@@ -93,8 +120,8 @@ endif()
 
 # This ensures the embedded dependency list is always up-to-date
 # Also creates a standalone deps.txt file that can be read without loading the library
-# Note: Only extract dependencies for shared libraries (static libs have no NEEDED entries)
-if(BUILD_SHARED_LIBS)
+# Note: Only extract dependencies for shared wrapper libraries (static libs have no NEEDED entries)
+if(BUILD_WRAPPER_SHARED)
     add_custom_command(TARGET embedded-ruby POST_BUILD
         COMMAND bash -c "${CMAKE_SOURCE_DIR}/core/ruby-vm/extract_deps.sh $<TARGET_FILE:embedded-ruby> ${EXTERNAL_LIBS_DIR} ${CMAKE_BINARY_DIR}/deps_list.txt || true"
         COMMAND ${CMAKE_COMMAND}
@@ -105,7 +132,7 @@ if(BUILD_SHARED_LIBS)
         COMMENT "Extracting library dependencies from libembedded-ruby.so"
     )
 else()
-    # For static builds, create a placeholder deps file
+    # For static wrapper builds, create a placeholder deps file
     file(WRITE ${CMAKE_BINARY_DIR}/create_static_deps.cmake
         "file(WRITE \"${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libembedded-ruby.deps\" \"# Static build - no runtime dependencies\\n\")"
     )

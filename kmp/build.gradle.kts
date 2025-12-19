@@ -66,7 +66,24 @@ kotlin {
     // }
 
     // Linux targets (uses cinterop)
-    linuxX64()
+    linuxX64 {
+        // Configure binary linking for static wrapper libraries
+        binaries.all {
+            if (!buildWrapperShared) {
+                // Link static wrapper libraries at final link stage
+                val konanTargetName = target.konanTarget.name
+                val libsDir = file("libs/$konanTargetName").absoluteFile
+
+                linkerOpts(
+                    "-L${libsDir.absolutePath}",
+                    "-lruby-vm",
+                    "-llogging",
+                    "-lassets",
+                    "-lminizip"
+                )
+            }
+        }
+    }
 
     // Source sets configuration
     sourceSets {
@@ -161,7 +178,7 @@ kotlin {
                         else -> throw GradleException("Unsupported Konan target: $konanTargetName")
                     }
                     val cmakeBuildDir = file("${layout.buildDirectory.get()}/cmake/$platform-$arch/core/ruby-vm").absoluteFile
-                    val libsOutputDir = file("libs/$konanTargetName").absoluteFile
+                    val libsOutputDir = file("libs/$konanTargetName")
 
                     // Add all directories to ALL include dir categories
                     includeDirs.apply {
@@ -176,20 +193,9 @@ kotlin {
                         "-I${cmakeBuildDir.absolutePath}"
                     )
 
-                    // Static library linking configuration (only if BUILD_SHARED_LIBS=OFF)
-                    // When using static libraries, link them at compile time
-                    if (!buildSharedLibs) {
-                        extraOpts("-libraryPath", libsOutputDir.absolutePath)
-
-                        // Specify the static libraries to link
-                        // Order matters: dependent libraries should come after dependencies
-                        extraOpts(
-                            "-staticLibrary", "${libsOutputDir.absolutePath}/libembedded-ruby.a",
-                            "-staticLibrary", "${libsOutputDir.absolutePath}/libassets.a"
-                        )
-                    }
-                    // Note: For dynamic builds (BUILD_SHARED_LIBS=ON), libraries are
-                    // loaded at runtime via dlopen(), so no linking is needed here
+                    // Static library linking is handled at the final link stage via binaries configuration
+                    // The cinterop only needs headers, not library linking
+                    // Libraries will be linked when creating the final Kotlin/Native binary
                 }
             }
         }
@@ -229,9 +235,9 @@ tasks.register("packageNativeLibraries") {
     group = "build"
     dependsOn("buildNativeLibsDesktop")
 
-    // IMPORTANT: Only package shared libraries in JAR
+    // IMPORTANT: Only package shared wrapper libraries in JAR
     // Static libraries (.a) are linked at compile time and should NOT be in JAR
-    if (buildSharedLibs) {
+    if (buildWrapperShared) {
         // Define where native libraries are built (SHARED versions)
         val nativeLibsSource = mapOf(
             "linux-x64" to Triple(
@@ -347,12 +353,18 @@ val targetArch: String = findProperty("targetArch")?.toString() ?: run {
 val buildType: String = findProperty("buildType")?.toString() ?: "Release"
 val forceRebuild: Boolean = findProperty("forceRebuild")?.toString()?.toBoolean() ?: false
 val enableASAN: Boolean = findProperty("enableASAN")?.toString()?.toBoolean() ?: false
+
+// Two-flag system for build control:
+// - buildWrapperShared: Controls output type of libassets and libembedded-ruby (.so vs .a)
+// - buildSharedLibs: Controls which Ruby libraries to link against (libruby.so vs libruby-static.a)
+val buildWrapperShared: Boolean = findProperty("buildWrapperShared")?.toString()?.toBoolean() ?: false
 val buildSharedLibs: Boolean = findProperty("buildSharedLibs")?.toString()?.toBoolean() ?: false
 
 println("CMake Build Configuration:")
 println("  Target Architecture: $targetArch")
 println("  Build Type: $buildType")
-println("  Build Shared Libraries: $buildSharedLibs")
+println("  Build Wrapper Shared: $buildWrapperShared (libassets/libembedded-ruby as .so)")
+println("  Build Shared Libs: $buildSharedLibs (link against libruby.so)")
 if (forceRebuild) {
     println("  Force Rebuild: ENABLED (will clean before building)")
 }
@@ -374,6 +386,7 @@ fun Project.runCMake(
 
     val allCMakeArgs = (mutableListOf(
         "-DCMAKE_BUILD_TYPE=$buildType",
+        "-DBUILD_WRAPPER_SHARED=${if (buildWrapperShared) "ON" else "OFF"}",
         "-DBUILD_SHARED_LIBS=${if (buildSharedLibs) "ON" else "OFF"}"
     ) + cmakeArgs).toMutableList()
 
@@ -416,12 +429,12 @@ fun Project.runCMake(
     }
 
     // Copy built libraries to output directory
-    // Static builds (.a), shared builds (.so/.dylib/.dll), and deps files
+    // Static wrapper builds (.a), shared wrapper builds (.so/.dylib/.dll), and deps files
     outputDir.mkdirs()
     copy {
         from("$cmakeBuildDir/lib")
         into(outputDir)
-        if (buildSharedLibs) {
+        if (buildWrapperShared) {
             include("*.so", "*.dylib", "*.dll", "*.deps")
         } else {
             include("*.a", "*.deps")
