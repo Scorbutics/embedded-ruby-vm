@@ -54,10 +54,16 @@ kotlin {
                         "-lgdbm", "-lgdbm_compat",
                         "-lssl", "-lcrypto",
                         "-lgmp",
+                        // libcrypt from our external directory (provides newer crypto functions)
+                        "${rubyLibDir.absolutePath}/libcrypt.a",
+                        // libbsd provides arc4random_buf needed by libcrypt
+                        "${rubyLibDir.absolutePath}/libbsd.a",
+                        // libmd is required by libbsd
+                        "${rubyLibDir.absolutePath}/libmd.a",
                         "-lz",
                         "-Wl,--end-group",
                         // Final system libraries that have no dependencies
-                        "-lm", "-lpthread", "-ldl", "-lcrypt", "-lrt"
+                        "-lm", "-lpthread", "-ldl", "-lrt"
                     )
                 }
             }

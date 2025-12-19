@@ -13,6 +13,8 @@ add_executable(test_core
     test_core.c
 )
 
+message(STATUS "Building shared: ${BUILD_SHARED_LIBS}")
+
 # Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
 # Link against ruby-vm to get the PUBLIC include paths for ruby-api-loader.h
@@ -21,6 +23,26 @@ target_link_libraries(test_core
     ruby-vm         # For ruby-api-loader.h and related headers (gets PUBLIC include paths)
     dl              # For dlopen/dlsym in ruby-api-loader
 )
+
+# For static builds, ensure libcrypt's dependency on libbsd is satisfied
+# libcrypt requires arc4random_buf from libbsd, which requires libmd
+# These are already linked via ruby-vm's PUBLIC dependencies, but we need them AFTER -lcrypt
+# Use link options to append them at the end of the link line
+if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+    # Find the libraries with full paths
+    find_library(BSD_LIB_TEST NAMES bsd PATHS ${CMAKE_SOURCE_DIR}/external/lib/*/static NO_DEFAULT_PATH)
+    find_library(MD_LIB_TEST NAMES md PATHS ${CMAKE_SOURCE_DIR}/external/lib/*/static NO_DEFAULT_PATH)
+    
+    if(BSD_LIB_TEST AND MD_LIB_TEST)
+        message(STATUS "Appending libbsd and libmd to end of link line for test_core")
+        # Use target_link_options to append libraries at the very end
+        # This ensures they come AFTER -lcrypt in the link order
+        target_link_options(test_core PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
+    endif()
+endif()
 
 # Include directories for headers
 target_include_directories(test_core PRIVATE

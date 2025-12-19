@@ -53,6 +53,22 @@ endif()
 # External libraries directory includes build type (shared/static)
 # This allows supporting both shared and static Ruby builds
 set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${BUILD_TYPE_DIR})
+
+# Fallback: if detected HOST directory doesn't exist, try alternative triplets
+if(NOT EXISTS "${EXTERNAL_LIBS_DIR}")
+    message(WARNING "Directory ${EXTERNAL_LIBS_DIR} not found, trying alternatives...")
+    
+    # Try x86_64-linux-gnu if HOST is x86_64-linux-linux
+    if(HOST MATCHES "x86_64-linux")
+        set(ALT_HOST "x86_64-linux-gnu")
+        set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${ALT_HOST}/${BUILD_TYPE_DIR})
+        if(EXISTS "${EXTERNAL_LIBS_DIR}")
+            message(STATUS "Using alternative host triplet: ${ALT_HOST}")
+            set(HOST "${ALT_HOST}")
+        endif()
+    endif()
+endif()
+
 message(STATUS "Using external libraries from: ${EXTERNAL_LIBS_DIR}")
 message(STATUS "Build wrapper as shared: ${BUILD_WRAPPER_SHARED}")
 message(STATUS "Link against shared Ruby: ${BUILD_SHARED_LIBS}")
@@ -87,13 +103,26 @@ endif()
 # macOS: Use -force_load for static, interface library for shared
 if(UNIX AND NOT APPLE)
     # Linux: --whole-archive works for both static and shared builds
-    target_link_libraries(embedded-ruby PRIVATE
-            -Wl,--whole-archive
-            logging
-            ruby-vm
-            -Wl,--no-whole-archive
-            $<$<BOOL:${BUILD_JNI}>:jni>
-    )
+    if(BUILD_WRAPPER_SHARED)
+        # Shared library: Use --whole-archive only on ruby-vm (which transitively includes logging)
+        # Allow multiple definitions to handle Init_ext (in both ruby-static and ruby-ext) and libgcc symbols
+        target_link_libraries(embedded-ruby PRIVATE
+                -Wl,--allow-multiple-definition
+                -Wl,--whole-archive
+                ruby-vm
+                -Wl,--no-whole-archive
+                $<$<BOOL:${BUILD_JNI}>:jni>
+        )
+    else()
+        # Static library: Include both logging and ruby-vm with --whole-archive
+        target_link_libraries(embedded-ruby PRIVATE
+                -Wl,--whole-archive
+                logging
+                ruby-vm
+                -Wl,--no-whole-archive
+                $<$<BOOL:${BUILD_JNI}>:jni>
+        )
+    endif()
 elseif(APPLE)
     # macOS: Different linking based on wrapper library type
     if(BUILD_WRAPPER_SHARED)
@@ -124,9 +153,6 @@ endif()
 if(BUILD_WRAPPER_SHARED)
     add_custom_command(TARGET embedded-ruby POST_BUILD
         COMMAND bash -c "${CMAKE_SOURCE_DIR}/core/ruby-vm/extract_deps.sh $<TARGET_FILE:embedded-ruby> ${EXTERNAL_LIBS_DIR} ${CMAKE_BINARY_DIR}/deps_list.txt || true"
-        COMMAND ${CMAKE_COMMAND}
-            -DDEPS_LIST_FILE=${CMAKE_BINARY_DIR}/deps_list.txt
-            -P ${CMAKE_SOURCE_DIR}/core/ruby-vm/update_deps.cmake
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/deps_list.txt ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libembedded-ruby.deps
         COMMENT "Extracting library dependencies from libembedded-ruby.so"
