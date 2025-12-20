@@ -21,51 +21,17 @@ kotlin {
                 val projectRoot = project.file("../../..").absoluteFile
                 val libDir = project.file("${projectRoot}/kmp/libs/linux_x64").absoluteFile
 
-                // Check if building with shared libraries (via -PbuildWrapperShared=true)
-                val buildWrapperShared = project.findProperty("buildWrapperShared")?.toString()?.toBoolean() ?: false
-
-                if (buildWrapperShared) {
-                    // Dynamic linking - link against shared wrapper libraries
-                    linkerOpts(
-                        "-L${libDir.absolutePath}",
-                        "-lembedded-ruby",
-                        "-lassets",
-                        "-Wl,-rpath,${libDir.absolutePath}"
-                    )
-                } else {
-                    // Static linking - link all dependencies
-                    val rubyLibDir = project.file("${projectRoot}/external/lib/x86_64-linux-gnu/static").absoluteFile
-                    linkerOpts(
-                        "-L${libDir.absolutePath}",
-                        "-L${rubyLibDir.absolutePath}",
-                        // Start with a linker group to handle circular dependencies
-                        "-Wl,--start-group",
-                        // Application libraries
-                        "-lruby-vm",
-                        "-llogging",
-                        "-lassets",
-                        "-lminizip",
-                        // Ruby libraries
-                        "-lruby-static",
-                        "-lruby-ext",
-                        // System libraries (within the group for circular dependency resolution)
-                        // Note: libhistory is not needed as libreadline.a contains history functions
-                        "-lreadline", "-lncurses", "-lncurses++", "-lpanel", "-lmenu", "-lform",
-                        "-lgdbm", "-lgdbm_compat",
-                        "-lssl", "-lcrypto",
-                        "-lgmp",
-                        // libcrypt from our external directory (provides newer crypto functions)
-                        "${rubyLibDir.absolutePath}/libcrypt.a",
-                        // libbsd provides arc4random_buf needed by libcrypt
-                        "${rubyLibDir.absolutePath}/libbsd.a",
-                        // libmd is required by libbsd
-                        "${rubyLibDir.absolutePath}/libmd.a",
-                        "-lz",
-                        "-Wl,--end-group",
-                        // Final system libraries that have no dependencies
-                        "-lm", "-lpthread", "-ldl", "-lrt"
-                    )
-                }
+                // Always Dynamic linking - link against shared wrapper libraries.
+                // For platforms like iOS, it will be full static.
+                // But we don't support it right now.
+                linkerOpts(
+                    "-Wl,--allow-shlib-undefined",
+                    "-L${libDir.absolutePath}",
+                    "-lembedded-ruby",
+                    "-lassets",
+                    "-Wl,-rpath,${libDir.absolutePath}"
+                )
+                
             }
         }
     }

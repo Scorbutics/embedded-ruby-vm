@@ -46,10 +46,10 @@ case "$CMD" in
         TARGET_ARCH=${2:-}
         if [ -z "$TARGET_ARCH" ]; then
             echo "🔨 Building project (auto-detect architecture)..."
-            docker-compose exec dev ./gradlew build -PbuildType=Debug
+            docker-compose exec dev ./gradlew build -PbuildType=Debug -PbuildWrapperShared=true
         else
             echo "🔨 Building project for $TARGET_ARCH..."
-            docker-compose exec dev ./gradlew build -PbuildType=Debug -PtargetArch="$TARGET_ARCH"
+            docker-compose exec dev ./gradlew build -PbuildType=Debug -PbuildWrapperShared=true -PtargetArch="$TARGET_ARCH"
         fi
         ;;
 

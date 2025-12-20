@@ -21,7 +21,6 @@ add_library(ruby-vm STATIC
     ruby-vm.c
     ruby-vm-error.c
     embedded_scripts.c
-    glibc-compat.c
     ${EMBEDDED_FIFO_INTERPRETER}
     ${DEPS_C_OUT}
 )
@@ -137,9 +136,11 @@ else()
         endif()
         
         # Add bsd and md if found (must come AFTER libcrypt for proper link order)
+        # CRITICAL: libmd must come AFTER libbsd (libbsd depends on libmd)
         if(BSD_LIBRARY)
             list(APPEND RUBY_VM_PUBLIC_LIBS "${BSD_LIBRARY}")
         endif()
+
         if(MD_LIBRARY)
             list(APPEND RUBY_VM_PUBLIC_LIBS "${MD_LIBRARY}")
         endif()
