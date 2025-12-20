@@ -2,18 +2,21 @@ cmake_minimum_required(VERSION 3.19.2)
 
 project("test-core")
 
-# Core-level tests - tests Ruby VM functionality with two-library architecture
-# This test demonstrates the proper loading sequence:
-#   1. Link against libassets.a (static) - no LD_LIBRARY_PATH needed
-#   2. Extract assets (which includes native Ruby libraries)
-#   3. Dynamically load the extracted libraries
-#   4. Create and use the Ruby interpreter
+# Core-level tests - tests Ruby VM functionality with fully static configuration
+# This test ALWAYS builds with BUILD_WRAPPER_SHARED=OFF and BUILD_SHARED_LIBS=OFF
+# to ensure a fully static binary that doesn't depend on any shared Ruby libraries.
+
+# Force static build for this test regardless of parent configuration
+set(BUILD_WRAPPER_SHARED OFF CACHE BOOL "Force static wrapper for test_core" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Force static libs for test_core" FORCE)
+
+message(STATUS "test_core: Forcing fully static build")
+message(STATUS "  BUILD_WRAPPER_SHARED: ${BUILD_WRAPPER_SHARED}")
+message(STATUS "  BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
 
 add_executable(test_core
     test_core.c
 )
-
-message(STATUS "Building shared: ${BUILD_SHARED_LIBS}")
 
 # Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so

@@ -104,13 +104,17 @@ endif()
 if(UNIX AND NOT APPLE)
     # Linux: --whole-archive works for both static and shared builds
     if(BUILD_WRAPPER_SHARED)
-        # Shared library: Use --whole-archive only on ruby-vm (which transitively includes logging)
-        # Allow multiple definitions to handle Init_ext (in both ruby-static and ruby-ext) and libgcc symbols
+        # Shared library: Link components separately to control --whole-archive precisely
+        # --allow-shlib-undefined: Allow undefined symbols (will be resolved at runtime from system glibc)
+        #   WARNING: This makes the .so dependent on runtime glibc version!
+        # --export-dynamic: Export all symbols from static libraries for dynamic linking
+        # Apply --whole-archive ONLY to libraries that need it (logging, ruby-vm sources)
+        # ruby-vm's dependencies (ruby-ext, ruby-static, etc.) are linked WITHOUT --whole-archive
         target_link_libraries(embedded-ruby PRIVATE
-                -Wl,--allow-multiple-definition
-                -Wl,--whole-archive
+                -Wl,--allow-shlib-undefined
+                -Wl,--export-dynamic
+                logging
                 ruby-vm
-                -Wl,--no-whole-archive
                 $<$<BOOL:${BUILD_JNI}>:jni>
         )
     else()
