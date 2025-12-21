@@ -17,13 +17,12 @@ kotlin {
                 entryPoint = "main"
                 baseName = "ruby-vm-example"
 
-                // Link configuration depends on whether we're building with shared or static libraries
+                // Link configuration for shared wrapper libraries
                 val projectRoot = project.file("../../..").absoluteFile
                 val libDir = project.file("${projectRoot}/kmp/libs/linux_x64").absoluteFile
 
-                // Always Dynamic linking - link against shared wrapper libraries.
-                // For platforms like iOS, it will be full static.
-                // But we don't support it right now.
+                // Shared library linking for Kotlin/Native
+                // Uses shared wrappers (.so) with statically-linked Ruby inside
                 linkerOpts(
                     "-Wl,--allow-shlib-undefined",
                     "-L${libDir.absolutePath}",

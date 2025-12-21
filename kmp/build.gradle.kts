@@ -66,23 +66,10 @@ kotlin {
     // }
 
     // Linux targets (uses cinterop)
+    // Uses shared wrapper libraries (buildNativeLibsLinux forces this)
     linuxX64 {
-        // Configure binary linking for static wrapper libraries
-        binaries.all {
-            if (!buildWrapperShared) {
-                // Link static wrapper libraries at final link stage
-                val konanTargetName = target.konanTarget.name
-                val libsDir = file("libs/$konanTargetName").absoluteFile
-
-                linkerOpts(
-                    "-L${libsDir.absolutePath}",
-                    "-lruby-vm",
-                    "-llogging",
-                    "-lassets",
-                    "-lminizip"
-                )
-            }
-        }
+        // No special configuration needed - shared libraries work out of the box
+        // Individual examples configure their own linker options
     }
 
     // Source sets configuration
@@ -229,15 +216,18 @@ if (isAndroidAvailable) {
 /**
  * Package native libraries into the JAR for self-contained distribution.
  * This allows users to use the JAR without setting java.library.path.
+ *
+ * NOTE: buildNativeLibsDesktop ALWAYS builds shared libraries,
+ * so this task always runs (regardless of -PbuildWrapperShared property).
  */
 tasks.register("packageNativeLibraries") {
-    description = "Copy native libraries into JAR resources (only for shared builds)"
+    description = "Copy native libraries into JAR resources (Desktop always uses shared)"
     group = "build"
     dependsOn("buildNativeLibsDesktop")
 
-    // IMPORTANT: Only package shared wrapper libraries in JAR
-    // Static libraries (.a) are linked at compile time and should NOT be in JAR
-    if (buildWrapperShared) {
+    // Desktop target ALWAYS builds shared wrapper libraries for JAR packaging
+    // (buildNativeLibsDesktop forces BUILD_WRAPPER_SHARED=ON)
+    run {
         // Define where native libraries are built (SHARED versions)
         val nativeLibsSource = mapOf(
             "linux-x64" to Triple(
@@ -312,8 +302,6 @@ tasks.register("packageNativeLibraries") {
             // The C asset extraction code handles them.
         }
         }
-    } else {
-        println("Static build detected - skipping JAR packaging (libraries are linked at compile time)")
     }
 }
 
@@ -384,11 +372,19 @@ fun Project.runCMake(
 
     println("Building native library for $targetPlatform-$architecture")
 
-    val allCMakeArgs = (mutableListOf(
-        "-DCMAKE_BUILD_TYPE=$buildType",
-        "-DBUILD_WRAPPER_SHARED=${if (buildWrapperShared) "ON" else "OFF"}",
-        "-DBUILD_SHARED_LIBS=${if (buildSharedLibs) "ON" else "OFF"}"
-    ) + cmakeArgs).toMutableList()
+    // Start with build type, then add task-specific args (which may override defaults)
+    val allCMakeArgs = mutableListOf("-DCMAKE_BUILD_TYPE=$buildType")
+
+    // Add task-specific args first (these take precedence)
+    allCMakeArgs.addAll(cmakeArgs)
+
+    // Only add default wrapper/shared lib flags if not already specified in cmakeArgs
+    if (!cmakeArgs.any { it.startsWith("-DBUILD_WRAPPER_SHARED=") }) {
+        allCMakeArgs.add("-DBUILD_WRAPPER_SHARED=${if (buildWrapperShared) "ON" else "OFF"}")
+    }
+    if (!cmakeArgs.any { it.startsWith("-DBUILD_SHARED_LIBS=") }) {
+        allCMakeArgs.add("-DBUILD_SHARED_LIBS=${if (buildSharedLibs) "ON" else "OFF"}")
+    }
 
     // Add AddressSanitizer flags if enabled
     if (enableASAN) {
@@ -400,6 +396,9 @@ fun Project.runCMake(
             "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address"
         ))
     }
+
+    // Debug: Print all CMake args
+    println("  CMake args: ${allCMakeArgs.joinToString(" ")}")
 
     // Only run configure if cache doesn't exist or CMakeLists.txt changed
     val cmakeCache = File(cmakeBuildDir, "CMakeCache.txt")
@@ -431,10 +430,14 @@ fun Project.runCMake(
     // Copy built libraries to output directory
     // Static wrapper builds (.a), shared wrapper builds (.so/.dylib/.dll), and deps files
     outputDir.mkdirs()
+
+    // Determine if we're building shared or static wrappers from the actual CMake args
+    val isSharedWrapper = allCMakeArgs.any { it == "-DBUILD_WRAPPER_SHARED=ON" }
+
     copy {
         from("$cmakeBuildDir/lib")
         into(outputDir)
-        if (buildWrapperShared) {
+        if (isSharedWrapper) {
             include("*.so", "*.dylib", "*.dll", "*.deps")
         } else {
             include("*.a", "*.deps")
@@ -541,6 +544,8 @@ tasks.register("buildNativeLibsMacOS") {
 }
 
 // Task: Build for Linux
+// Uses SHARED wrapper with STATIC Ruby for Kotlin/Native
+// This avoids complex static linking issues while keeping Ruby statically linked
 tasks.register("buildNativeLibsLinux") {
     description = "Build native Ruby VM library for Linux (respects -PtargetArch)"
     group = "build"
@@ -564,7 +569,11 @@ tasks.register("buildNativeLibsLinux") {
                 "linux",
                 arch,
                 listOf(
-                    "-DBUILD_JNI=OFF"
+                    "-DBUILD_JNI=OFF",
+                    // Use shared wrapper to avoid Kotlin/Native static linking complexity
+                    // Ruby itself remains statically linked for portability
+                    "-DBUILD_WRAPPER_SHARED=ON",
+                    "-DBUILD_SHARED_LIBS=OFF"
                 ),
                 file("libs/$outputName")
             )
@@ -573,6 +582,7 @@ tasks.register("buildNativeLibsLinux") {
 }
 
 // Task: Build for JVM Desktop (Linux, macOS, Windows)
+// ALWAYS uses shared wrapper libraries for JAR packaging
 tasks.register("buildNativeLibsDesktop") {
     description = "Build native Ruby VM library for JVM Desktop with JNI (respects -PtargetArch)"
     group = "build"
@@ -595,7 +605,12 @@ tasks.register("buildNativeLibsDesktop") {
             }
 
             val outputName = "${platformName}_${arch}"
-            val cmakeArgs = mutableListOf("-DBUILD_JNI=ON")
+            val cmakeArgs = mutableListOf(
+                "-DBUILD_JNI=ON",
+                // Force shared wrapper for Desktop JVM (overrides project properties)
+                "-DBUILD_WRAPPER_SHARED=ON",
+                "-DBUILD_SHARED_LIBS=OFF"
+            )
 
             // Add platform-specific CMake arguments
             when {

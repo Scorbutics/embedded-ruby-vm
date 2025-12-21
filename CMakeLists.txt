@@ -91,7 +91,11 @@ endif()
 
 # Create embedded-ruby library with type based on BUILD_WRAPPER_SHARED
 if(BUILD_WRAPPER_SHARED)
+    # For shared libraries, create an empty shared library
+    # We'll link the static libraries using --whole-archive in target_link_libraries
     add_library(embedded-ruby SHARED dummy.c)
+    # Mark dummy.c symbols as PRIVATE so they don't pollute the export table
+    set_source_files_properties(dummy.c PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 else()
     add_library(embedded-ruby STATIC dummy.c)
 endif()
@@ -104,19 +108,20 @@ endif()
 if(UNIX AND NOT APPLE)
     # Linux: --whole-archive works for both static and shared builds
     if(BUILD_WRAPPER_SHARED)
-        # Shared library: Link components separately to control --whole-archive precisely
-        # --allow-shlib-undefined: Allow undefined symbols (will be resolved at runtime from system glibc)
-        #   WARNING: This makes the .so dependent on runtime glibc version!
-        # --export-dynamic: Export all symbols from static libraries for dynamic linking
-        # Apply --whole-archive ONLY to libraries that need it (logging, ruby-vm sources)
-        # ruby-vm's dependencies (ruby-ext, ruby-static, etc.) are linked WITHOUT --whole-archive
+        # Shared library: Use --whole-archive with explicit paths to avoid linking libs twice
+        # The -Wl,--whole-archive wraps each individual library to force symbol export
+        # Using full paths prevents CMake from adding the libs again implicitly
         target_link_libraries(embedded-ruby PRIVATE
-                -Wl,--allow-shlib-undefined
-                -Wl,--export-dynamic
-                logging
-                ruby-vm
+                -Wl,--whole-archive
+                $<TARGET_FILE:logging>
+                $<TARGET_FILE:ruby-vm>
+                -Wl,--no-whole-archive
                 $<$<BOOL:${BUILD_JNI}>:jni>
         )
+        # Add dependency relationships so CMake knows build order
+        add_dependencies(embedded-ruby logging ruby-vm)
+        # Link to ruby-vm's dependencies (but not with --whole-archive)
+        target_link_libraries(embedded-ruby PRIVATE $<TARGET_PROPERTY:ruby-vm,LINK_LIBRARIES>)
     else()
         # Static library: Include both logging and ruby-vm with --whole-archive
         target_link_libraries(embedded-ruby PRIVATE
