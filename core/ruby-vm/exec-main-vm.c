@@ -17,9 +17,20 @@
 #include "ruby-vm.h"
 #include "debug.h"
 #include "ruby-script.h"
+#include "ruby-custom-ext.h"
 
 #include "ruby/config.h"
 #include "ruby/version.h"
+
+// Global callback for custom extension initialization
+// This allows external projects to register their own Ruby extensions
+// that will be statically resolved (via require statements)
+static RubyCustomExtInit g_custom_ext_init = NULL;
+
+void ruby_set_custom_ext_init(RubyCustomExtInit init_func) {
+    g_custom_ext_init = init_func;
+}
+
 
 static void SetupRubyEnv(const char* baseDirectory, const char* extraLoadPath)
 {
@@ -238,6 +249,13 @@ static int run_main_vm_node(const char* baseDirectory,
         // This is required when linking against libruby-static.a with --with-static-linked-ext
         // Without this, require 'monitor' will fail with "cannot load such file -- monitor.so"
         Init_ext();
+
+        // Call custom extension initializer if set
+        // This allows external projects to register their own statically-linked extensions
+        // that will be resolvable via require statements
+        if (g_custom_ext_init != NULL) {
+            g_custom_ext_init();
+        }
 
         void* options = ruby_options(argc, argv);
         const int result = ruby_run_node(options);

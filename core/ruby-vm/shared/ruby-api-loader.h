@@ -34,6 +34,34 @@ typedef struct {
     void* user_data;
 } RubyCompletionTask;
 
+/**
+ * Custom Ruby Extension Callback API
+ * Allows external projects to register statically-linked Ruby extensions
+ * that will be resolvable via require statements.
+ */
+
+/**
+ * Function pointer type for custom Ruby extension initialization.
+ * This callback is invoked after Init_ext() and before Ruby starts executing scripts.
+ * 
+ * Note: In dynamic builds, this function is loaded from the shared library.
+ * Use ruby_api_load() or ruby_api_bootstrap() to ensure it's available.
+ */
+typedef void (*RubyCustomExtInit)(void);
+
+/**
+ * Set the custom extension initialization callback.
+ * Must be called BEFORE creating the Ruby interpreter.
+ * 
+ * @param init_func Function pointer to your custom extension init, or NULL to clear
+ * 
+ * Note: This is a standalone function exported by libembedded-ruby.so.
+ * It's not part of the RubyAPI struct because it must be called before
+ * the interpreter is created.
+ */
+typedef void (*RubySetCustomExtInitFunc)(RubyCustomExtInit init_func);
+
+
 /* Helper functions for dynamic builds */
 
 /**
@@ -89,6 +117,7 @@ typedef struct {
     void* handle;
     RubyInterpreterAPI interpreter;
     RubyScriptAPI script;
+    RubySetCustomExtInitFunc set_custom_ext_init;  /* Custom extension callback setter */
 } RubyAPI;
 
 #define LOAD_SYM(handle, api_ptr, name) \
@@ -214,6 +243,9 @@ static inline int ruby_api_load(const char* lib_path, RubyAPI* api) {
     /* Load script functions */
     LOAD_SYM(api->handle, api->script.create_from_content, "ruby_script_create_from_content");
     LOAD_SYM(api->handle, api->script.destroy, "ruby_script_destroy");
+
+    /* Load custom extension callback setter */
+    LOAD_SYM(api->handle, api->set_custom_ext_init, "ruby_set_custom_ext_init");
 
     return 0;
 }

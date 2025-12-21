@@ -20,6 +20,27 @@ typedef struct RubyScript RubyScript;
 #include "ruby-script.h"
 
 /**
+ * Custom Ruby Extension Callback API
+ * Allows external projects to register statically-linked Ruby extensions
+ * that will be resolvable via require statements.
+ */
+
+/**
+ * Function pointer type for custom Ruby extension initialization.
+ * This callback is invoked after Init_ext() and before Ruby starts executing scripts.
+ */
+typedef void (*RubyCustomExtInit)(void);
+
+/**
+ * Set the custom extension initialization callback.
+ * Must be called BEFORE creating the Ruby interpreter.
+ * 
+ * @param init_func Function pointer to your custom extension init, or NULL to clear
+ */
+void ruby_set_custom_ext_init(RubyCustomExtInit init_func);
+
+
+/**
  * Struct containing all Ruby API function pointers.
  * In static builds, these point to statically-linked functions.
  */
@@ -42,6 +63,7 @@ typedef struct {
     void* handle;  /* Always NULL for static builds */
     RubyInterpreterAPI interpreter;
     RubyScriptAPI script;
+    void (*set_custom_ext_init)(RubyCustomExtInit);  /* Custom extension callback setter */
 } RubyAPI;
 
 /**
@@ -157,6 +179,9 @@ static inline int ruby_api_load(const char* lib_path, RubyAPI* api) {
     /* Assign script functions */
     api->script.create_from_content = ruby_script_create_from_content;
     api->script.destroy = ruby_script_destroy;
+
+    /* Assign custom extension callback setter */
+    api->set_custom_ext_init = ruby_set_custom_ext_init;
 
     return 0;
 }
