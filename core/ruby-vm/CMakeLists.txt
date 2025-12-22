@@ -8,10 +8,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/embed_script.cmake)
 # Embed fifo_interpreter.rb into the library
 embed_script(fifo_interpreter.rb EMBEDDED_FIFO_INTERPRETER)
 
+# Export the embedded script object file to CACHE so embedded-ruby can access it
+set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} CACHE INTERNAL "Embedded script object file from ruby-vm")
+
 # This will be populated after embedded-ruby is built
 set(DEPENDENCY_LIST "    /* Dependencies will be populated in embedded-ruby library */")
 
-add_library(ruby-vm STATIC
+add_library(ruby-vm OBJECT
     ruby-comm-channel.c
     env.c
     exec-main-vm.c
@@ -60,11 +63,12 @@ target_include_directories(ruby-vm
 
 # Link against Ruby and its dependencies
 # Different linking strategy for static vs shared builds
+# Note: For OBJECT libraries, we only need to specify include dependencies here
+# The actual linking will happen in the embedded-ruby target
 if(BUILD_SHARED_LIBS)
     # Shared build: Link against shared libraries
     # Note: Removed 'curses' (it's just an alias/linker script for ncurses)
     target_link_libraries(ruby-vm
-        logging
         ruby
         crypto
         form
@@ -149,7 +153,6 @@ else()
         
         target_link_libraries(ruby-vm
             PRIVATE
-            logging
             -Wl,--whole-archive
             ruby-ext       # libruby-ext.a contains all statically-linked extensions (Init_monitor, etc.)
             -Wl,--no-whole-archive
@@ -159,7 +162,6 @@ else()
     elseif(APPLE)
         # macOS: Use -force_load for static extension libraries
         target_link_libraries(ruby-vm
-            logging
             -Wl,-force_load,$<TARGET_FILE:ruby-static>
             -Wl,-force_load,$<TARGET_FILE:ruby-ext>
             readline       # libreadline.a (contains history functions)
@@ -179,7 +181,6 @@ else()
     else()
         # Other platforms: fallback (may not work correctly)
         target_link_libraries(ruby-vm
-            logging
             ruby-static
             ruby-ext
             readline       # libreadline.a (contains history functions)

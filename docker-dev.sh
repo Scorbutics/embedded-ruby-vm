@@ -74,6 +74,16 @@ case "$CMD" in
         docker-compose exec dev bash -c "cd build && ./bin/test_core && ./bin/test_jni"
         ;;
 
+    static-test)
+        echo "🧪 Building fully static libraries and running tests..."
+        docker-compose exec dev bash -c "
+            ./gradlew build -PbuildType=Debug -PbuildWrapperShared=false -PbuildSharedLibs=false -PforceRebuild=true && \
+            cd build && \
+            ./bin/test_core && \
+            ./bin/test_jni
+        "
+        ;;
+
     export)
         echo "📤 Exporting build artifacts..."
         docker-compose run --rm artifact-export
@@ -128,6 +138,7 @@ Development Commands:
   build [arch]      - Build the project (optional: x86_64, arm64, all)
   desktop-jar       - Build desktop JAR
   test              - Run all tests
+  static-test       - Build fully static libraries and run tests
   export            - Export build artifacts to ./docker-output/
 
 Maintenance Commands:

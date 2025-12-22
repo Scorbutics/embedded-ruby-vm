@@ -6,30 +6,22 @@ project("test-core")
 # This test ALWAYS builds with BUILD_WRAPPER_SHARED=OFF and BUILD_SHARED_LIBS=OFF
 # to ensure a fully static binary that doesn't depend on any shared Ruby libraries.
 
-# Force static build for this test regardless of parent configuration
-set(BUILD_WRAPPER_SHARED OFF CACHE BOOL "Force static wrapper for test_core" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Force static libs for test_core" FORCE)
-
-message(STATUS "test_core: Forcing fully static build")
-message(STATUS "  BUILD_WRAPPER_SHARED: ${BUILD_WRAPPER_SHARED}")
-message(STATUS "  BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
-
 add_executable(test_core
     test_core.c
 )
 
 # Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
-# Link against ruby-vm to get the PUBLIC include paths for ruby-api-loader.h
+# Link against embedded-ruby which combines logging, ruby-vm, and jni OBJECT libraries
 target_link_libraries(test_core
     assets          # For assets_bootstrap() - handles extraction and library loading
-    ruby-vm         # For ruby-api-loader.h and related headers (gets PUBLIC include paths)
+    embedded-ruby   # For ruby-api-loader.h and all Ruby VM functionality
     dl              # For dlopen/dlsym in ruby-api-loader
 )
 
 # For static builds, ensure libcrypt's dependency on libbsd is satisfied
 # libcrypt requires arc4random_buf from libbsd, which requires libmd
-# These are already linked via ruby-vm's PUBLIC dependencies, but we need them AFTER -lcrypt
+# These are already linked via embedded-ruby's dependencies (from ruby-vm), but we need them AFTER -lcrypt
 # Use link options to append them at the end of the link line
 if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
     # Find the libraries with full paths

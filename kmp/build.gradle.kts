@@ -375,14 +375,27 @@ fun Project.runCMake(
     // Start with build type, then add task-specific args (which may override defaults)
     val allCMakeArgs = mutableListOf("-DCMAKE_BUILD_TYPE=$buildType")
 
-    // Add task-specific args first (these take precedence)
-    allCMakeArgs.addAll(cmakeArgs)
+    // Smart merging: Gradle properties override task defaults only when explicitly set
+    val hasWrapperSharedProperty = project.hasProperty("buildWrapperShared")
+    val hasSharedLibsProperty = project.hasProperty("buildSharedLibs")
 
-    // Only add default wrapper/shared lib flags if not already specified in cmakeArgs
-    if (!cmakeArgs.any { it.startsWith("-DBUILD_WRAPPER_SHARED=") }) {
+    // If properties are explicitly set, filter out conflicting task args
+    val filteredCmakeArgs = if (hasWrapperSharedProperty || hasSharedLibsProperty) {
+        cmakeArgs.filter { arg ->
+            val shouldFilter = (hasWrapperSharedProperty && arg.startsWith("-DBUILD_WRAPPER_SHARED=")) ||
+                              (hasSharedLibsProperty && arg.startsWith("-DBUILD_SHARED_LIBS="))
+            !shouldFilter
+        }
+    } else {
+        cmakeArgs
+    }
+    allCMakeArgs.addAll(filteredCmakeArgs)
+
+    // Add wrapper/shared lib flags only if not already present in filtered args
+    if (!allCMakeArgs.any { it.startsWith("-DBUILD_WRAPPER_SHARED=") }) {
         allCMakeArgs.add("-DBUILD_WRAPPER_SHARED=${if (buildWrapperShared) "ON" else "OFF"}")
     }
-    if (!cmakeArgs.any { it.startsWith("-DBUILD_SHARED_LIBS=") }) {
+    if (!allCMakeArgs.any { it.startsWith("-DBUILD_SHARED_LIBS=") }) {
         allCMakeArgs.add("-DBUILD_SHARED_LIBS=${if (buildSharedLibs) "ON" else "OFF"}")
     }
 
