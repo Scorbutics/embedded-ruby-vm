@@ -64,14 +64,7 @@ message(STATUS "EmbeddedRubyVM: Detected HOST=${EMBEDDED_RUBY_VM_HOST}, RUBY_ARC
 # Ruby Runtime Paths
 # ============================================================================
 
-# Ruby native libraries directory
-set(EMBEDDED_RUBY_VM_NATIVE_LIBS "${EMBEDDED_RUBY_VM_ROOT_DIR}/core/external/lib/${EMBEDDED_RUBY_VM_HOST}")
 
-# Ruby headers directory
-set(EMBEDDED_RUBY_VM_INCLUDE_DIRS
-    "${EMBEDDED_RUBY_VM_ROOT_DIR}/core/external/include/ruby"
-    "${EMBEDDED_RUBY_VM_ROOT_DIR}/core/external/include/${EMBEDDED_RUBY_VM_HOST}/ruby"
-)
 
 # Ruby library directory (for linking)
 set(EMBEDDED_RUBY_VM_LIBRARY_DIRS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}")
@@ -143,6 +136,15 @@ else()
         message(WARNING "EmbeddedRubyVM: No libraries found")
     endif()
 endif()
+
+# Ruby native libraries directory
+set(EMBEDDED_RUBY_VM_NATIVE_LIBS "${EMBEDDED_RUBY_VM_ROOT_DIR}/external/lib/${EMBEDDED_RUBY_VM_HOST}/${EMBEDDED_RUBY_VM_LINK_TYPE}")
+
+# Ruby headers directory
+set(EMBEDDED_RUBY_VM_INCLUDE_DIRS
+    "${EMBEDDED_RUBY_VM_ROOT_DIR}/external/include/ruby"
+    "${EMBEDDED_RUBY_VM_ROOT_DIR}/external/include/${EMBEDDED_RUBY_VM_HOST}/${EMBEDDED_RUBY_VM_LINK_TYPE}"
+)
 
 # ============================================================================
 # Imported Targets

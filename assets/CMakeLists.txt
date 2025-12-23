@@ -122,6 +122,41 @@ set(MZ_FETCH_LIBS OFF CACHE BOOL "Disable external lib fetching")
 set(MZ_PKCRYPT OFF CACHE BOOL "Disable PKWARE traditional encryption")
 set(MZ_SIGNING OFF CACHE BOOL "Disable signing support")
 
+# Use zlib from external libs directory (matches HOST and BUILD_TYPE_DIR)
+# This ensures we use the same zlib that Ruby was built against
+set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${RUBY_BUILD_TYPE_DIR})
+set(EXTERNAL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/external/include)
+
+if(EXISTS "${EXTERNAL_LIBS_DIR}/libz.a")
+    message(STATUS "Configuring minizip-ng with zlib from: ${EXTERNAL_LIBS_DIR}/libz.a")
+    message(STATUS "Using zlib headers from: ${EXTERNAL_INCLUDE_DIR}")
+    
+    # Set CMake variables that find_package(ZLIB) would set
+    # This allows minizip-ng to find our custom zlib
+    set(ZLIB_FOUND TRUE CACHE BOOL "ZLIB found" FORCE)
+    set(ZLIB_LIBRARY "${EXTERNAL_LIBS_DIR}/libz.a" CACHE FILEPATH "ZLIB library" FORCE)
+    set(ZLIB_LIBRARIES "${EXTERNAL_LIBS_DIR}/libz.a" CACHE FILEPATH "ZLIB libraries" FORCE)
+    set(ZLIB_INCLUDE_DIR "${EXTERNAL_INCLUDE_DIR}" CACHE PATH "ZLIB include directory" FORCE)
+    set(ZLIB_INCLUDE_DIRS "${EXTERNAL_INCLUDE_DIR}" CACHE PATH "ZLIB include directories" FORCE)
+    set(ZLIB_VERSION_STRING "1.2.11" CACHE STRING "ZLIB version" FORCE)
+    
+    # Create the imported target that minizip expects
+    add_library(ZLIB::ZLIB STATIC IMPORTED GLOBAL)
+    set_target_properties(ZLIB::ZLIB PROPERTIES
+        IMPORTED_LOCATION "${EXTERNAL_LIBS_DIR}/libz.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${EXTERNAL_INCLUDE_DIR}"
+    )
+else()
+    message(WARNING "Could not find libz.a in ${EXTERNAL_LIBS_DIR}, falling back to system zlib")
+    find_package(ZLIB REQUIRED)
+endif()
+
+# Enable compression support (critical for reading ZIP files!)
+set(MZ_ZLIB ON CACHE BOOL "Enable ZLIB compression" FORCE)
+set(MZ_BZIP2 OFF CACHE BOOL "Disable BZIP2 compression" FORCE)
+set(MZ_LZMA OFF CACHE BOOL "Disable LZMA compression" FORCE)
+set(MZ_ZSTD OFF CACHE BOOL "Disable ZSTD compression" FORCE)
+
 FetchContent_MakeAvailable(minizip-ng)
 
 set_target_properties(minizip PROPERTIES
