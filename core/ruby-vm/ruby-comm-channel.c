@@ -2,7 +2,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "ruby-comm-channel.h"
+#include "embedded-ruby-vm/ruby-comm-channel.h"
 
 // Internal buffer size for efficient 'read()' calls
 #define BUF_SIZE 4096

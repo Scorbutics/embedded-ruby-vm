@@ -5,7 +5,16 @@ package com.scorbutics.rubyvm
  * Uses the standard System.loadLibrary() which loads from APK's lib directory.
  */
 internal actual object NativeLibraryLoader {
+    private var loaded = false
+    
+    @Synchronized
     actual fun loadLibrary() {
-        System.loadLibrary("embedded-ruby")
+        if (loaded) {
+            return
+        }
+        System.loadLibrary(LibraryConfig.libraryName)
+        loaded = true
     }
+    
+    actual fun isLoaded(): Boolean = loaded
 }

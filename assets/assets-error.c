@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
-#include "assets-error.h"
+#include "embedded-ruby-vm/assets-error.h"
 
 const char* assets_error_string(AssetsErrorCode code) {
     switch (code) {

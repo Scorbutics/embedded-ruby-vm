@@ -212,9 +212,8 @@ endif()
 
 target_include_directories(assets PRIVATE
         $<TARGET_PROPERTY:minizip,INTERFACE_INCLUDE_DIRECTORIES>
-        ${CMAKE_CURRENT_SOURCE_DIR}/../ruby-vm
 )
 
 target_include_directories(assets PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}  # Root for embedded-ruby-vm/ prefix
 )

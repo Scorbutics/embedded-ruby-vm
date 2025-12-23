@@ -3,9 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "ruby-api-loader.h"
-#include "install.h"
-#include "assets-error.h"
+#include "embedded-ruby-vm/ruby-api-loader.h"
+#include "embedded-ruby-vm/install.h"
+#include "embedded-ruby-vm/assets-error.h"
 
 /* Global log file pointer */
 static FILE* g_log_file = NULL;

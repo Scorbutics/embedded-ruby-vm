@@ -9,8 +9,8 @@
 
 #include <jni.h>
 #include <string.h>
-#include "install.h"
-#include "assets-error.h"
+#include "embedded-ruby-vm/install.h"
+#include "embedded-ruby-vm/assets-error.h"
 
 /**
  * Extract embedded files to the specified directory.

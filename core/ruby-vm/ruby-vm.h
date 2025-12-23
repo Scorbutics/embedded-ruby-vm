@@ -7,10 +7,10 @@
 extern "C" {
 #endif
 
-#include "ruby-comm-channel.h"
-#include "log-listener.h"
-#include "completion-task.h"
-#include "ruby-vm-error.h"
+#include "embedded-ruby-vm/ruby-comm-channel.h"
+#include "embedded-ruby-vm/log-listener.h"
+#include "embedded-ruby-vm/completion-task.h"
+#include "embedded-ruby-vm/ruby-vm-error.h"
 
 struct RubyScript;
 struct RubyScriptCurrentLocation;

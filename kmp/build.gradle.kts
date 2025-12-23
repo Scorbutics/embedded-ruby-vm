@@ -8,6 +8,7 @@ val isAndroidAvailable = System.getenv("ANDROID_HOME") != null ||
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library) apply false
+    `maven-publish`
 }
 
 if (isAndroidAvailable) {
@@ -16,6 +17,11 @@ if (isAndroidAvailable) {
 
 group = "com.scorbutics.rubyvm"
 version = "1.0.0-SNAPSHOT"
+
+// Configuration for the native library name
+// This can be overridden via gradle.properties: nativeLibraryName=rgss_runtime
+val nativeLibraryName: String = findProperty("nativeLibraryName")?.toString() ?: "embedded-ruby"
+println("Native library name: $nativeLibraryName")
 
 kotlin {
     // Android target (uses JNI) - only if Android SDK is available
@@ -764,3 +770,8 @@ tasks.register("buildAllNativeLibs") {
         "buildNativeLibsDesktop"
     )
 }
+
+// ============================================================================
+// Maven Publishing Configuration
+// ============================================================================
+apply(from = "publishing.gradle.kts")

@@ -174,7 +174,6 @@ target_link_libraries(core INTERFACE
         ruby-vm
 )
 target_include_directories(core INTERFACE 
-    ${RUBY_VM_DIR}
-    ${LOGGING_DIR}
+    ${CMAKE_SOURCE_DIR}  # Root for embedded-ruby-vm/ prefix
     ${IMPORT_DIR}
 )

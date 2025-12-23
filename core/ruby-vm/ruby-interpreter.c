@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "constants.h"
-#include "embedded_scripts.h"
-#include "ruby-script-location.h"
-#include "ruby-vm.h"
-#include "ruby-script.h"
-#include "ruby-interpreter.h"
-#include "debug.h"
+#include "embedded-ruby-vm/constants.h"
+#include "embedded-ruby-vm/embedded_scripts.h"
+#include "embedded-ruby-vm/ruby-script-location.h"
+#include "embedded-ruby-vm/ruby-vm.h"
+#include "embedded-ruby-vm/ruby-script.h"
+#include "embedded-ruby-vm/ruby-interpreter.h"
+#include "embedded-ruby-vm/debug.h"
 
 // Static global VM instance
 static RubyVM* g_global_vm = NULL;

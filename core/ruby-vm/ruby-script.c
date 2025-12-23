@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "constants.h"
-#include "ruby-script.h"
+#include "embedded-ruby-vm/constants.h"
+#include "embedded-ruby-vm/ruby-script.h"
 
 RubyScript* ruby_script_create_from_content(const char* content, const size_t content_size) {
     if (!content) return NULL;

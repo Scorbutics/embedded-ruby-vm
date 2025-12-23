@@ -1,5 +1,5 @@
 #include <android/log.h>
-#include "../jni_logging.h"
+#include "embedded-ruby-vm/jni_logging.h"
 
 /**
  * Android-specific implementation of JNI logging.

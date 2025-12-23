@@ -6,8 +6,13 @@ package com.scorbutics.rubyvm
  */
 internal expect object NativeLibraryLoader {
     /**
-     * Load the embedded-ruby native library.
+     * Load the native library configured in LibraryConfig.
      * Throws an exception if loading fails.
      */
     fun loadLibrary()
+    
+    /**
+     * Check if the native library has been loaded.
+     */
+    fun isLoaded(): Boolean
 }

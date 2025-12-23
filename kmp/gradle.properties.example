@@ -1,0 +1,107 @@
+# Gradle Properties for LiteRGSS-Everywhere KMP Integration
+
+# ============================================================================
+# Native Library Configuration
+# ============================================================================
+
+# Name of the native library (without "lib" prefix or extension)
+# This will be used for:
+# - CMake: lib${nativeLibraryName}.a or lib${nativeLibraryName}.so
+# - Kotlin: System.loadLibrary(nativeLibraryName)
+# Default: embedded-ruby
+# Examples: rgss_runtime, litergss, myapp
+nativeLibraryName=rgss_runtime
+
+# ============================================================================
+# Build Configuration
+# ============================================================================
+
+# Target architecture for native builds
+# Options: x86_64, arm64, all
+# Default: host architecture
+# targetArch=arm64
+
+# Build type for CMake
+# Options: Debug, Release
+# Default: Release
+# buildType=Release
+
+# Force rebuild of native libraries (clean before build)
+# Default: false
+# forceRebuild=true
+
+# Enable AddressSanitizer for memory debugging
+# Default: false
+# enableASAN=true
+
+# ============================================================================
+# Library Linking Mode
+# ============================================================================
+
+# Build wrapper libraries as shared (.so/.dylib) vs static (.a)
+# When true: libassets.so + libembedded-ruby.so
+# When false: libassets.a + libembedded-ruby.a
+# Default: false (static)
+# Note: Desktop JVM builds always use shared for JAR packaging
+# buildWrapperShared=false
+
+# Link against shared Ruby libraries vs static
+# When true: links against libruby.so (must be available at runtime)
+# When false: links against libruby-static.a (embedded in wrapper)
+# Default: false (static)
+# Note: Static is recommended for portability
+# buildSharedLibs=false
+
+# ============================================================================
+# Android Configuration
+# ============================================================================
+
+# Skip Android builds if Android SDK is not available
+# android.skip=true
+
+# ============================================================================
+# Publishing Configuration
+# ============================================================================
+
+# GitHub Packages credentials
+# Create a Personal Access Token at: https://github.com/settings/tokens
+# Required scopes: read:packages, write:packages
+# gpr.user=your-github-username
+# gpr.token=ghp_your_personal_access_token
+
+# Custom Maven repository
+# customRepo.url=https://your-maven-repo.com/releases
+# customRepo.username=your-username
+# customRepo.password=your-password
+
+# ============================================================================
+# Examples for Different Use Cases
+# ============================================================================
+
+# Example 1: Build LiteRGSS for Android with custom name
+# ---------------------------------------------------------
+# nativeLibraryName=rgss_runtime
+# targetArch=arm64
+# buildType=Release
+# buildWrapperShared=false
+# buildSharedLibs=false
+
+# Example 2: Build for iOS with debugging
+# ---------------------------------------------------------
+# nativeLibraryName=rgss_runtime
+# targetArch=all
+# buildType=Debug
+# enableASAN=true
+
+# Example 3: Build for Desktop JVM testing
+# ---------------------------------------------------------
+# nativeLibraryName=embedded-ruby
+# targetArch=x86_64
+# buildType=Debug
+# Note: Desktop always uses shared wrappers
+
+# Example 4: Publish to GitHub Packages
+# ---------------------------------------------------------
+# nativeLibraryName=rgss_runtime
+# gpr.user=myusername
+# gpr.token=ghp_xxxxxxxxxxxxxxxxxxxx

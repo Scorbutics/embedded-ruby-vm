@@ -10,9 +10,9 @@
 #include <dlfcn.h>
 #endif
 
-#include "install.h"
-#include "assets-error.h"
-#include "assets-logging.h"
+#include "embedded-ruby-vm/install.h"
+#include "embedded-ruby-vm/assets-error.h"
+#include "embedded-ruby-vm/assets-logging.h"
 
 #ifdef HAS_EMBEDDED_DATA
 #include "mz.h"

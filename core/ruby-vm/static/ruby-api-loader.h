@@ -16,8 +16,8 @@ typedef struct RubyInterpreter RubyInterpreter;
 typedef struct RubyScript RubyScript;
 
 /* Static build - include actual function declarations */
-#include "ruby-interpreter.h"
-#include "ruby-script.h"
+#include "embedded-ruby-vm/ruby-interpreter.h"
+#include "embedded-ruby-vm/ruby-script.h"
 
 /**
  * Custom Ruby Extension Callback API

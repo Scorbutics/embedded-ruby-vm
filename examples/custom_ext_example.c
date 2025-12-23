@@ -18,7 +18,7 @@
 #include <string.h>
 
 // Include Ruby API (static build for this example)
-#include "ruby-api-loader.h"
+#include "embedded-ruby-vm/ruby-api-loader.h"
 
 // Ruby headers for extension development
 #include "ruby/ruby.h"

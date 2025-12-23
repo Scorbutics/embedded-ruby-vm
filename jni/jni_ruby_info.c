@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "ruby/version.h"
 #include "ruby/config.h"
-#include "jni_ruby_info.h"
+#include "embedded-ruby-vm/jni_ruby_info.h"
 
 JNIEXPORT jstring JNICALL Java_com_scorbutics_rubyvm_RubyInfo_getRubyVersion(JNIEnv* env, jclass clazz) {
 	(void) clazz;

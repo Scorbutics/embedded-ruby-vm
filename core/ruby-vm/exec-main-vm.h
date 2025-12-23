@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "ruby-vm.h"
+#include "embedded-ruby-vm/ruby-vm.h"
 
 int ExecMainRubyVM(RubyVM* vm, const char* rubyDirectoryPath, const char* nativeLibsDirLocation);
 

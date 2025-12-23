@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "constants.h"
+#include "embedded-ruby-vm/constants.h"
 
 int env_update_locations(const char* execution_location, const char* archive_location) {
     int chdir_result = chdir(execution_location);

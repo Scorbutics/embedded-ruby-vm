@@ -38,26 +38,25 @@ set_target_properties(ruby-vm PROPERTIES
 # Generate ruby-api-loader.h based on build type
 # This ensures users get the correct implementation without needing to define RUBY_STATIC
 if(BUILD_SHARED_LIBS)
-    # Dynamic build - include shared/ruby-api-loader.h
-    set(RUBY_API_LOADER_INCLUDE "#include \"shared/ruby-api-loader.h\"")
+    # Dynamic build - include embedded-ruby-vm/core/ruby-vm/shared/ruby-api-loader.h
+    set(RUBY_API_LOADER_INCLUDE "#include \"embedded-ruby-vm/core/ruby-vm/shared/ruby-api-loader.h\"")
 else()
-    # Static build - include static/ruby-api-loader.h
-    set(RUBY_API_LOADER_INCLUDE "#include \"static/ruby-api-loader.h\"")
+    # Static build - include embedded-ruby-vm/core/ruby-vm/static/ruby-api-loader.h
+    set(RUBY_API_LOADER_INCLUDE "#include \"embedded-ruby-vm/core/ruby-vm/static/ruby-api-loader.h\"")
 endif()
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/ruby-api-loader.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/ruby-api-loader.h
+    ${CMAKE_CURRENT_BINARY_DIR}/embedded-ruby-vm/ruby-api-loader.h
     @ONLY
 )
 
 target_include_directories(ruby-vm
     PRIVATE
         ${IMPORT_DIR}
-        ${LOGGING_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}  # For generated ruby-api-loader.h
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}  # For shared/ruby-api-loader.h and static/ruby-api-loader.h
+        ${CMAKE_SOURCE_DIR}  # Root for embedded-ruby-vm/ prefix
         ${CMAKE_CURRENT_BINARY_DIR}  # For generated ruby-api-loader.h
 )
 

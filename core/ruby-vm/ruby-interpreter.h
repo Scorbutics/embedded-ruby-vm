@@ -1,9 +1,9 @@
 #ifndef INTERPRETER_H
 #define INTERPRETER_H
 
-#include "log-listener.h"
-#include "completion-task.h"
-#include "ruby-script-location.h"
+#include "embedded-ruby-vm/log-listener.h"
+#include "embedded-ruby-vm/completion-task.h"
+#include "embedded-ruby-vm/ruby-script-location.h"
 
 #ifdef __cplusplus
 extern "C" {

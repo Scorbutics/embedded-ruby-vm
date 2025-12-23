@@ -2,4 +2,4 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ruby-script-location.h"
+#include "embedded-ruby-vm/ruby-script-location.h"

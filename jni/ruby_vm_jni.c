@@ -1,16 +1,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "env.h"
-#include "logging.h"
-#include "jni_logging.h"
-#include "ruby_vm_jni.h"
-#include "ruby-vm.h"
-#include "ruby-script-location.h"
-#include "ruby-script.h"
-#include "ruby-interpreter.h"
-#include "completion-task.h"
-#include "debug.h"
+#include "embedded-ruby-vm/env.h"
+#include "embedded-ruby-vm/logging.h"
+#include "embedded-ruby-vm/jni_logging.h"
+#include "embedded-ruby-vm/ruby_vm_jni.h"
+#include "embedded-ruby-vm/ruby-vm.h"
+#include "embedded-ruby-vm/ruby-script-location.h"
+#include "embedded-ruby-vm/ruby-script.h"
+#include "embedded-ruby-vm/ruby-interpreter.h"
+#include "embedded-ruby-vm/completion-task.h"
+#include "embedded-ruby-vm/debug.h"
 
 // Completion callback context
 typedef struct {

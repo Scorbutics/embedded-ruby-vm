@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include "ruby-vm-error.h"
+#include "embedded-ruby-vm/ruby-vm-error.h"
 
 const char* ruby_vm_error_string(RubyVMErrorCode code) {
     switch (code) {

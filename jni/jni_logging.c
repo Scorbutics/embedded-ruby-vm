@@ -1,4 +1,4 @@
-#include "jni_logging.h"
+#include "embedded-ruby-vm/jni_logging.h"
 #include <stdio.h>
 #include <stdarg.h>
 

@@ -7,3 +7,7 @@ set_target_properties(logging PROPERTIES
     COMPILE_FLAGS "-Wall -Wextra -Werror"
     POSITION_INDEPENDENT_CODE ON
 )
+
+target_include_directories(logging PUBLIC
+    ${CMAKE_SOURCE_DIR}  # Root for embedded-ruby-vm/ prefix
+)

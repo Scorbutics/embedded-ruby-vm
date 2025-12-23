@@ -13,14 +13,13 @@ import java.nio.file.Files
  *          Extract embedded native libraries (libruby.so, etc.)
  *          Load extracted libruby.so
  *
- * Phase 2: Load libembedded-ruby.so (depends on libruby.so)
+ * Phase 2: Load the configured library (depends on libruby.so)
  *
- * This solves the bootstrap problem where libembedded-ruby.so requires libruby.so,
+ * This solves the bootstrap problem where the main library requires libruby.so,
  * but libruby.so is embedded in libassets.so.
  */
 internal actual object NativeLibraryLoader {
     private var loaded = false
-    private val libraryName = "embedded-ruby"
     private var cachedInstallDir: File? = null
     private var isStaticBuild = false
 
@@ -36,6 +35,8 @@ internal actual object NativeLibraryLoader {
             "(happens automatically when you import RubyVMNative)."
         )
     }
+    
+    actual fun isLoaded(): Boolean = loaded
 
     /**
      * Load the native libraries for the current platform.
@@ -46,6 +47,8 @@ internal actual object NativeLibraryLoader {
         if (loaded) {
             return
         }
+        
+        val libraryName = LibraryConfig.libraryName
 
         // PHASE 1: Load assets library and extract native dependencies
         println("=== Phase 1: Loading assets library ===")

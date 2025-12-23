@@ -12,12 +12,12 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "constants.h"
-#include "exec-main-vm.h"
-#include "ruby-vm.h"
-#include "debug.h"
-#include "ruby-script.h"
-#include "ruby-custom-ext.h"
+#include "embedded-ruby-vm/constants.h"
+#include "embedded-ruby-vm/exec-main-vm.h"
+#include "embedded-ruby-vm/ruby-vm.h"
+#include "embedded-ruby-vm/debug.h"
+#include "embedded-ruby-vm/ruby-script.h"
+#include "embedded-ruby-vm/ruby-custom-ext.h"
 
 #include "ruby/config.h"
 #include "ruby/version.h"

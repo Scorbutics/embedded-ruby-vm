@@ -1,4 +1,4 @@
-#include "embedded_scripts.h"
+#include "embedded-ruby-vm/embedded_scripts.h"
 #include <string.h>
 
 // External symbols created by objcopy for embedded scripts

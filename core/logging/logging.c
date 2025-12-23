@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include "logging.h"
+#include "embedded-ruby-vm/logging.h"
 
 // Configuration
 #define LOG_BUFFER_SIZE 128

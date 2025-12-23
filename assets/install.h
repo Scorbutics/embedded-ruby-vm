@@ -1,7 +1,7 @@
 #ifndef INSTALL_H
 #define INSTALL_H
 
-#include "assets-error.h"
+#include "embedded-ruby-vm/assets-error.h"
 #include <stdint.h>
 #include <stddef.h>
 

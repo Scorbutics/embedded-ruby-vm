@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include "jni_logging.h"
+#include "embedded-ruby-vm/jni_logging.h"
 
 /**
  * JNI Android Logging Tests

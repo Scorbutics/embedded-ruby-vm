@@ -5,14 +5,14 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <signal.h>
-#include "constants.h"
+#include "embedded-ruby-vm/constants.h"
 
-#include "logging.h"
-#include "ruby-script-location.h"
-#include "ruby-script.h"
-#include "ruby-vm.h"
-#include "exec-main-vm.h"
-#include "debug.h"
+#include "embedded-ruby-vm/logging.h"
+#include "embedded-ruby-vm/ruby-script-location.h"
+#include "embedded-ruby-vm/ruby-script.h"
+#include "embedded-ruby-vm/ruby-vm.h"
+#include "embedded-ruby-vm/exec-main-vm.h"
+#include "embedded-ruby-vm/debug.h"
 
 /**
  * Helper structure for thread communication

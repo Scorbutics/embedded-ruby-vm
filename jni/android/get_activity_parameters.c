@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "jni_logging.h"
+#include "embedded-ruby-vm/jni_logging.h"
 #include "get_activity_parameters.h"
 
 const char* GetNewNativeActivityParameter(ANativeActivity* activity, const char* parameterName) {
