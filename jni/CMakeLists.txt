@@ -45,13 +45,15 @@ set_target_properties(jni PROPERTIES
 )
 
 target_include_directories(jni PRIVATE
-        ${JNI_INCLUDE_DIRS}
+    ${JNI_INCLUDE_DIRS}
+    ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public
+    ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/private
 )
 
 target_link_libraries(jni
-        core
-        # zlib is either found in current build env, or provided by external libs
-        ${zlib-lib}
+    core
+    # zlib is either found in current build env, or provided by external libs
+    ${zlib-lib}
 )
 
 # Link Android logging module if available

@@ -215,5 +215,7 @@ target_include_directories(assets PRIVATE
 )
 
 target_include_directories(assets PUBLIC
-        ${CMAKE_SOURCE_DIR}  # Root for embedded-ruby-vm/ prefix
+    ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public
+    PRIVATE
+    ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/private
 )

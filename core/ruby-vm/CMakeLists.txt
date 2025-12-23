@@ -46,7 +46,7 @@ else()
 endif()
 
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/ruby-api-loader.h.in
+    ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public/embedded-ruby-vm/ruby-api-loader.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/embedded-ruby-vm/ruby-api-loader.h
     @ONLY
 )
@@ -54,9 +54,9 @@ configure_file(
 target_include_directories(ruby-vm
     PRIVATE
         ${IMPORT_DIR}
-        ${CMAKE_CURRENT_BINARY_DIR}  # For generated ruby-api-loader.h
+        ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/private
     PUBLIC
-        ${CMAKE_SOURCE_DIR}  # Root for embedded-ruby-vm/ prefix
+        ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public
         ${CMAKE_CURRENT_BINARY_DIR}  # For generated ruby-api-loader.h
 )
 

@@ -8,6 +8,9 @@ set_target_properties(logging PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-target_include_directories(logging PUBLIC
-    ${CMAKE_SOURCE_DIR}  # Root for embedded-ruby-vm/ prefix
+target_include_directories(logging 
+    PUBLIC
+    ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public
+    PRIVATE
+    ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/private
 )
