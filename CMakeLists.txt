@@ -17,17 +17,22 @@ add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
 
 # Determine host triplet using compiler's -dumpmachine
 # This gives us the proper triplet (e.g., x86_64-linux-gnu, aarch64-linux-android)
-execute_process(
-    COMMAND ${CMAKE_C_COMPILER} -dumpmachine
-    OUTPUT_VARIABLE HOST
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
+# If HOST is already defined (e.g., from toolchain file), use that instead
+if(NOT DEFINED HOST OR HOST STREQUAL "")
+    execute_process(
+        COMMAND ${CMAKE_C_COMPILER} -dumpmachine
+        OUTPUT_VARIABLE HOST
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
 
-# Fallback if -dumpmachine fails (shouldn't happen with modern compilers)
-if(NOT HOST)
-    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}" HOST)
-    message(WARNING "Could not determine host triplet from compiler, using fallback: ${HOST}")
+    # Fallback if -dumpmachine fails (shouldn't happen with modern compilers)
+    if(NOT HOST)
+        string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}" HOST)
+        message(WARNING "Could not determine host triplet from compiler, using fallback: ${HOST}")
+    endif()
+else()
+    message(STATUS "Using HOST from toolchain/cache: ${HOST}")
 endif()
 
 message(NOTICE "Configuring for host: ${HOST}")
@@ -163,5 +168,18 @@ if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# Add distclean target to remove all generated files and CMake cache
+# This is particularly important for cross-compilation where cached
+# configuration can cause the wrong host triplet to be detected
+add_custom_target(distclean
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/CMakeFiles
+    COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/CMakeCache.txt
+    COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/cmake_install.cmake
+    COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/Makefile
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/lib
+    COMMENT "Removing all generated files and CMake cache to force reconfiguration"
+)
 
 
