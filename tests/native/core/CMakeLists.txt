@@ -41,8 +41,8 @@ endif()
 
 # Include directories for headers
 target_include_directories(test_core PRIVATE
-    ${CMAKE_SOURCE_DIR}/assets       # For install.h
-    ${CMAKE_SOURCE_DIR}/core/logging
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
 )
 
 # Set RPATH so the executable can find libembedded-ruby.so at runtime

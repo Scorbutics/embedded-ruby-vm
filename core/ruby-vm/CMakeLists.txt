@@ -38,11 +38,11 @@ set_target_properties(ruby-vm PROPERTIES
 # Generate ruby-api-loader.h based on build type
 # This ensures users get the correct implementation without needing to define RUBY_STATIC
 if(BUILD_SHARED_LIBS)
-    # Dynamic build - include embedded-ruby-vm/core/ruby-vm/shared/ruby-api-loader.h
-    set(RUBY_API_LOADER_INCLUDE "#include \"embedded-ruby-vm/core/ruby-vm/shared/ruby-api-loader.h\"")
+    # Dynamic build - include embedded-ruby-vm/shared/ruby-api-loader.h
+    set(RUBY_API_LOADER_INCLUDE "#include \"embedded-ruby-vm/shared/ruby-api-loader.h\"")
 else()
-    # Static build - include embedded-ruby-vm/core/ruby-vm/static/ruby-api-loader.h
-    set(RUBY_API_LOADER_INCLUDE "#include \"embedded-ruby-vm/core/ruby-vm/static/ruby-api-loader.h\"")
+    # Static build - include embedded-ruby-vm/static/ruby-api-loader.h
+    set(RUBY_API_LOADER_INCLUDE "#include \"embedded-ruby-vm/static/ruby-api-loader.h\"")
 endif()
 
 configure_file(

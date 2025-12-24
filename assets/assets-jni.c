@@ -9,7 +9,7 @@
 
 #include <jni.h>
 #include <string.h>
-#include "embedded-ruby-vm/install.h"
+#include "embedded-ruby-vm/assets-install.h"
 #include "embedded-ruby-vm/assets-error.h"
 
 /**

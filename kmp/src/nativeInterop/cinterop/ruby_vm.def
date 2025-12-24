@@ -10,13 +10,13 @@ package = com.scorbutics.rubyvm.native
 #  - log-listener.h: Logging callback types
 #  - completion-task.h: Completion callback types
 #  - ruby-script-location.h: Script location types
-#  - install.h: For assets extraction and path management
+#  - assets-install.h: For assets extraction and path management
 #  - assets-error.h: For error handling in assets operations
-headers = ruby-interpreter.h ruby-script.h log-listener.h completion-task.h ruby-script-location.h install.h assets-error.h
+headers = ruby-interpreter.h ruby-script.h log-listener.h completion-task.h ruby-script-location.h assets-install.h assets-error.h
 
 # Filter which headers are processed (allow all from ruby-vm and assets directories)
 # IMPORTANT: Include both static/ and shared/ subdirectories so cinterop can process them
-headerFilter = ruby-api-loader.h static/ruby-api-loader.h shared/ruby-api-loader.h log-listener.h completion-task.h ruby-script-location.h ruby-interpreter.h ruby-script.h install.h assets-error.h
+headerFilter = ruby-api-loader.h static/ruby-api-loader.h shared/ruby-api-loader.h log-listener.h completion-task.h ruby-script-location.h ruby-interpreter.h ruby-script.h assets-install.h assets-error.h
 
 # Compiler options for finding headers
 # NOTE: Include paths are configured in build.gradle.kts via includeDirs.headerFilterOnly()

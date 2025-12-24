@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "embedded-ruby-vm/ruby-api-loader.h"
-#include "embedded-ruby-vm/install.h"
+#include "embedded-ruby-vm/assets-install.h"
 #include "embedded-ruby-vm/assets-error.h"
 
 /* Global log file pointer */
