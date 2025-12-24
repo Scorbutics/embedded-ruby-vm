@@ -130,7 +130,7 @@ set(EXTERNAL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/external/include)
 if(EXISTS "${EXTERNAL_LIBS_DIR}/libz.a")
     message(STATUS "Configuring minizip-ng with zlib from: ${EXTERNAL_LIBS_DIR}/libz.a")
     message(STATUS "Using zlib headers from: ${EXTERNAL_INCLUDE_DIR}")
-    
+
     # Set CMake variables that find_package(ZLIB) would set
     # This allows minizip-ng to find our custom zlib
     set(ZLIB_FOUND TRUE CACHE BOOL "ZLIB found" FORCE)
@@ -139,7 +139,7 @@ if(EXISTS "${EXTERNAL_LIBS_DIR}/libz.a")
     set(ZLIB_INCLUDE_DIR "${EXTERNAL_INCLUDE_DIR}" CACHE PATH "ZLIB include directory" FORCE)
     set(ZLIB_INCLUDE_DIRS "${EXTERNAL_INCLUDE_DIR}" CACHE PATH "ZLIB include directories" FORCE)
     set(ZLIB_VERSION_STRING "1.2.11" CACHE STRING "ZLIB version" FORCE)
-    
+
     # Create the imported target that minizip expects
     add_library(ZLIB::ZLIB STATIC IMPORTED GLOBAL)
     set_target_properties(ZLIB::ZLIB PROPERTIES
@@ -149,6 +149,45 @@ if(EXISTS "${EXTERNAL_LIBS_DIR}/libz.a")
 else()
     message(WARNING "Could not find libz.a in ${EXTERNAL_LIBS_DIR}, falling back to system zlib")
     find_package(ZLIB REQUIRED)
+endif()
+
+# Use OpenSSL from external libs directory (matches HOST and BUILD_TYPE_DIR)
+# This ensures we use the same OpenSSL that Ruby was built against
+if(EXISTS "${EXTERNAL_LIBS_DIR}/libssl.a" AND EXISTS "${EXTERNAL_LIBS_DIR}/libcrypto.a")
+    message(STATUS "Configuring minizip-ng with OpenSSL from: ${EXTERNAL_LIBS_DIR}")
+    message(STATUS "  - libssl.a: ${EXTERNAL_LIBS_DIR}/libssl.a")
+    message(STATUS "  - libcrypto.a: ${EXTERNAL_LIBS_DIR}/libcrypto.a")
+    message(STATUS "Using OpenSSL headers from: ${EXTERNAL_INCLUDE_DIR}")
+
+    # Set CMake variables that find_package(OpenSSL) would set
+    # This allows minizip-ng to find our custom OpenSSL
+    set(OPENSSL_FOUND TRUE CACHE BOOL "OpenSSL found" FORCE)
+    set(OPENSSL_SSL_LIBRARY "${EXTERNAL_LIBS_DIR}/libssl.a" CACHE FILEPATH "OpenSSL SSL library" FORCE)
+    set(OPENSSL_CRYPTO_LIBRARY "${EXTERNAL_LIBS_DIR}/libcrypto.a" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
+    set(OPENSSL_LIBRARIES "${EXTERNAL_LIBS_DIR}/libssl.a;${EXTERNAL_LIBS_DIR}/libcrypto.a" CACHE STRING "OpenSSL libraries" FORCE)
+    set(OPENSSL_INCLUDE_DIR "${EXTERNAL_INCLUDE_DIR}" CACHE PATH "OpenSSL include directory" FORCE)
+    set(OPENSSL_VERSION "1.1.1" CACHE STRING "OpenSSL version" FORCE)
+
+    # Create the imported targets that minizip expects
+    add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
+    set_target_properties(OpenSSL::SSL PROPERTIES
+        IMPORTED_LOCATION "${EXTERNAL_LIBS_DIR}/libssl.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${EXTERNAL_INCLUDE_DIR}"
+    )
+
+    add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
+    set_target_properties(OpenSSL::Crypto PROPERTIES
+        IMPORTED_LOCATION "${EXTERNAL_LIBS_DIR}/libcrypto.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${EXTERNAL_INCLUDE_DIR}"
+    )
+
+    # Link SSL to Crypto as SSL depends on Crypto
+    set_target_properties(OpenSSL::SSL PROPERTIES
+        INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
+    )
+else()
+    message(WARNING "Could not find libssl.a and/or libcrypto.a in ${EXTERNAL_LIBS_DIR}, falling back to system OpenSSL")
+    find_package(OpenSSL)
 endif()
 
 # Enable compression support (critical for reading ZIP files!)
