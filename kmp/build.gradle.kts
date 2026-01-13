@@ -202,7 +202,7 @@ if (isAndroidAvailable) {
         compileSdk = 34
 
         defaultConfig {
-            minSdk = 24
+            minSdk = 26  // Must match Android API level used to build Ruby (see ruby-for-android toolchain params)
         }
 
         compileOptions {
@@ -212,6 +212,39 @@ if (isAndroidAvailable) {
 
         sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
         sourceSets["main"].res.srcDirs("src/androidMain/res")
+
+        // CMake configuration for Android-specific library wrapping
+        // This is used only when building with external static libraries
+        // Enable with: -PuseAndroidCMakeWrapper=true
+        val useAndroidCMakeWrapper: Boolean = findProperty("useAndroidCMakeWrapper")?.toString()?.toBoolean() ?: false
+
+        if (useAndroidCMakeWrapper && file("../kmp-publish/wrapper/CMakeLists.txt").exists()) {
+            externalNativeBuild {
+                cmake {
+                    path = file("../kmp-publish/wrapper/CMakeLists.txt")
+                    version = "3.22.1"
+                }
+            }
+
+            defaultConfig {
+                externalNativeBuild {
+                    cmake {
+                        val targetAbi = findProperty("targetArch")?.toString() ?: "x86_64"
+                        arguments(
+                            "-DTARGET_ABI=$targetAbi",
+                            "-DANDROID_STL=c++_shared"
+                        )
+                        abiFilters(targetAbi)
+                    }
+                }
+            }
+
+            packaging {
+                jniLibs {
+                    useLegacyPackaging = false
+                }
+            }
+        }
     }
 }
 

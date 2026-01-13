@@ -33,12 +33,12 @@ typedef struct {
 static JNIEnv* get_jni_env(JavaVM* jvm) {
     if (!jvm) return NULL;
 
-    JNIEnv* env;
+    JNIEnv* env = NULL;
     jint result = (*jvm)->GetEnv(jvm, (void**)&env, JNI_VERSION_1_6);
 
     if (result == JNI_EDETACHED) {
         // Not attached, use daemon attachment for automatic cleanup
-        if ((*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL) == JNI_OK) {
+        if ((*jvm)->AttachCurrentThreadAsDaemon(jvm, (JNIEnv**)&env, NULL) == JNI_OK) {
             return env;
         }
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to attach thread as daemon");
@@ -138,12 +138,12 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
 static void destroy_jni_callback_context(JNICallbackContext* context) {
     if (!context) return;
 
-    JNIEnv* env;
+    JNIEnv* env = NULL;
     jint result = (*context->jvm)->GetEnv(context->jvm, (void**)&env, JNI_VERSION_1_6);
 
     if (result == JNI_EDETACHED) {
         // Not attached, need to attach temporarily to delete global ref
-        if ((*context->jvm)->AttachCurrentThread(context->jvm, (void**)&env, NULL) == JNI_OK) {
+        if ((*context->jvm)->AttachCurrentThread(context->jvm, (JNIEnv**)&env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->kotlin_listener);
             (*context->jvm)->DetachCurrentThread(context->jvm);
         }
@@ -309,12 +309,12 @@ static CompletionCallbackContext* create_completion_context(JNIEnv* env, jobject
 static void destroy_completion_context(CompletionCallbackContext* context) {
     if (!context) return;
 
-    JNIEnv* env;
+    JNIEnv* env = NULL;
     jint result = (*context->jvm)->GetEnv(context->jvm, (void**)&env, JNI_VERSION_1_6);
 
     if (result == JNI_EDETACHED) {
         // Not attached, need to attach temporarily to delete global ref
-        if ((*context->jvm)->AttachCurrentThread(context->jvm, (void**)&env, NULL) == JNI_OK) {
+        if ((*context->jvm)->AttachCurrentThread(context->jvm, (JNIEnv**)&env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->callback_obj);
             (*context->jvm)->DetachCurrentThread(context->jvm);
         }
