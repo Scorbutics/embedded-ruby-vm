@@ -140,6 +140,17 @@ target_link_libraries(embedded-ruby PRIVATE $<TARGET_PROPERTY:ruby-vm,LINK_LIBRA
 # These are required by Ruby but might not be fully propagated through OBJECT libraries
 target_link_libraries(embedded-ruby PRIVATE m dl pthread)
 
+# Link Android log library when building for Android (needed by debug.h macros)
+if(ANDROID)
+    find_library(log-lib log)
+    if(log-lib)
+        target_link_libraries(embedded-ruby PRIVATE ${log-lib})
+        message(STATUS "Linked Android log library to embedded-ruby target")
+    else()
+        message(WARNING "Android log library not found for embedded-ruby")
+    endif()
+endif()
+
 # Propagate include directories from ruby-vm so consumers can access headers
 target_include_directories(embedded-ruby PUBLIC
     $<TARGET_PROPERTY:ruby-vm,INTERFACE_INCLUDE_DIRECTORIES>

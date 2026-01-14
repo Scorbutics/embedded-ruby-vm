@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "embedded-ruby-vm/env.h"
 #include "embedded-ruby-vm/logging.h"
@@ -11,6 +12,211 @@
 #include "embedded-ruby-vm/ruby-interpreter.h"
 #include "embedded-ruby-vm/completion-task.h"
 #include "embedded-ruby-vm/debug.h"
+
+// Forward declarations
+static JNIEnv* get_jni_env(JavaVM* jvm);
+
+// ============================================================================
+// Async Log Queue for Non-Blocking JVM Callbacks
+// ============================================================================
+
+/**
+ * Log message types
+ */
+typedef enum {
+    LOG_TYPE_INFO,
+    LOG_TYPE_ERROR
+} LogMessageType;
+
+/**
+ * Queued log message
+ */
+typedef struct LogQueueNode {
+    char* message;
+    LogMessageType type;
+    JNICallbackContext* context;
+    struct LogQueueNode* next;
+} LogQueueNode;
+
+/**
+ * Thread-safe log queue
+ */
+typedef struct {
+    LogQueueNode* head;
+    LogQueueNode* tail;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    volatile int should_stop;
+    pthread_t consumer_thread;
+    int is_running;
+} LogQueue;
+
+// Global log queue (one per process is fine since we're in JNI context)
+static LogQueue g_log_queue = {
+    .head = NULL,
+    .tail = NULL,
+    .lock = PTHREAD_MUTEX_INITIALIZER,
+    .cond = PTHREAD_COND_INITIALIZER,
+    .should_stop = 0,
+    .consumer_thread = 0,
+    .is_running = 0
+};
+
+/**
+ * Push a log message to the queue (non-blocking, thread-safe)
+ */
+static int log_queue_push(JNICallbackContext* context, const char* message, LogMessageType type) {
+    if (!context || !message) return -1;
+
+    LogQueueNode* node = (LogQueueNode*)malloc(sizeof(LogQueueNode));
+    if (!node) return -1;
+
+    node->message = strdup(message);
+    if (!node->message) {
+        free(node);
+        return -1;
+    }
+
+    node->type = type;
+    node->context = context;
+    node->next = NULL;
+
+    pthread_mutex_lock(&g_log_queue.lock);
+
+    if (g_log_queue.tail == NULL) {
+        g_log_queue.head = node;
+        g_log_queue.tail = node;
+    } else {
+        g_log_queue.tail->next = node;
+        g_log_queue.tail = node;
+    }
+
+    pthread_cond_signal(&g_log_queue.cond);
+    pthread_mutex_unlock(&g_log_queue.lock);
+
+    return 0;
+}
+
+/**
+ * Pop a log message from the queue (blocking)
+ */
+static LogQueueNode* log_queue_pop(void) {
+    pthread_mutex_lock(&g_log_queue.lock);
+
+    while (g_log_queue.head == NULL && !g_log_queue.should_stop) {
+        pthread_cond_wait(&g_log_queue.cond, &g_log_queue.lock);
+    }
+
+    if (g_log_queue.should_stop && g_log_queue.head == NULL) {
+        pthread_mutex_unlock(&g_log_queue.lock);
+        return NULL;
+    }
+
+    LogQueueNode* node = g_log_queue.head;
+    g_log_queue.head = node->next;
+
+    if (g_log_queue.head == NULL) {
+        g_log_queue.tail = NULL;
+    }
+
+    pthread_mutex_unlock(&g_log_queue.lock);
+    return node;
+}
+
+/**
+ * Consumer thread that processes log messages and invokes JVM callbacks
+ */
+static void* log_queue_consumer_thread(void* arg) {
+    (void)arg;
+
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue consumer thread started");
+
+    while (1) {
+        LogQueueNode* node = log_queue_pop();
+        if (!node) break; // Queue stopped
+
+        // Get JNI environment for this consumer thread
+        JNIEnv* env = get_jni_env(node->context->jvm);
+        if (env) {
+            jstring j_message = (*env)->NewStringUTF(env, node->message);
+            if (j_message) {
+                // Call the appropriate Kotlin method based on message type
+                jmethodID method_id = (node->type == LOG_TYPE_INFO)
+                    ? node->context->accept_method_id
+                    : node->context->error_method_id;
+
+                (*env)->CallVoidMethod(env, node->context->kotlin_listener,
+                                       method_id, j_message);
+
+                // Clean up local reference
+                (*env)->DeleteLocalRef(env, j_message);
+
+                // Check for exceptions
+                if ((*env)->ExceptionCheck(env)) {
+                    jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log callback");
+                    (*env)->ExceptionDescribe(env);
+                    (*env)->ExceptionClear(env);
+                }
+            }
+        } else {
+            jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in consumer thread");
+        }
+
+        // Free the node
+        free(node->message);
+        free(node);
+    }
+
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue consumer thread stopped");
+    return NULL;
+}
+
+/**
+ * Start the log queue consumer thread
+ */
+static int log_queue_start(void) {
+    pthread_mutex_lock(&g_log_queue.lock);
+
+    if (g_log_queue.is_running) {
+        pthread_mutex_unlock(&g_log_queue.lock);
+        return 0; // Already running
+    }
+
+    g_log_queue.should_stop = 0;
+    int result = pthread_create(&g_log_queue.consumer_thread, NULL, log_queue_consumer_thread, NULL);
+    if (result != 0) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to start log queue consumer thread");
+        pthread_mutex_unlock(&g_log_queue.lock);
+        return -1;
+    }
+
+    pthread_detach(g_log_queue.consumer_thread);
+    g_log_queue.is_running = 1;
+
+    pthread_mutex_unlock(&g_log_queue.lock);
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue consumer thread created");
+    return 0;
+}
+
+/**
+ * Stop the log queue consumer thread
+ */
+static void log_queue_stop(void) {
+    pthread_mutex_lock(&g_log_queue.lock);
+
+    if (!g_log_queue.is_running) {
+        pthread_mutex_unlock(&g_log_queue.lock);
+        return;
+    }
+
+    g_log_queue.should_stop = 1;
+    pthread_cond_signal(&g_log_queue.cond);
+    g_log_queue.is_running = 0;
+
+    pthread_mutex_unlock(&g_log_queue.lock);
+
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue stopped");
+}
 
 // Completion callback context
 typedef struct {
@@ -167,32 +373,21 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
 static void jni_log_accept_callback(LogListener* listener, const char* message) {
     JNICallbackContext* context = (JNICallbackContext*) listener->context;
 
-    // Get JNI environment for current thread
-    JNIEnv* env = get_jni_env(context->jvm);
-    if (!env) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in log accept");
-        return;
+    // CRITICAL FIX FOR DEADLOCK:
+    // Calling into the JVM synchronously from the logging thread can cause deadlock
+    // when used with synchronous script execution (executeWithResult).
+    //
+    // SOLUTION: Use an async producer/consumer queue
+    // - Logging thread (producer) pushes message to queue and returns immediately
+    // - Consumer thread pops from queue and invokes JVM callbacks safely
+    // - This breaks the circular dependency and prevents deadlock
+
+    // Push to queue (non-blocking, returns immediately)
+    if (log_queue_push(context, message, LOG_TYPE_INFO) != 0) {
+        // Fallback to direct logcat if queue push fails
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to queue log message, falling back to logcat");
+        jni_log_write(JNI_LOG_DEBUG, "RubyVM", message);
     }
-
-    // Convert C string to Java string
-    jstring j_message = (*env)->NewStringUTF(env, message);
-    if (j_message) {
-        // Call the Kotlin accept method
-        (*env)->CallVoidMethod(env, context->kotlin_listener,
-                               context->accept_method_id, j_message);
-
-        // Clean up local reference
-        (*env)->DeleteLocalRef(env, j_message);
-    }
-
-    // Check for exceptions and log them
-    if ((*env)->ExceptionCheck(env)) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log accept callback");
-        (*env)->ExceptionDescribe(env);
-        (*env)->ExceptionClear(env);
-    }
-
-    // No need to detach - daemon threads auto-detach
 }
 
 /**
@@ -203,32 +398,12 @@ static void jni_log_accept_callback(LogListener* listener, const char* message) 
 static void jni_log_error_callback(LogListener* listener, const char* error_message) {
     JNICallbackContext* context = (JNICallbackContext*) listener->context;
 
-    // Get JNI environment for current thread
-    JNIEnv* env = get_jni_env(context->jvm);
-    if (!env) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in log error");
-        return;
+    // Use async queue to avoid deadlock (same as jni_log_accept_callback)
+    if (log_queue_push(context, error_message, LOG_TYPE_ERROR) != 0) {
+        // Fallback to direct logcat if queue push fails
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to queue error message, falling back to logcat");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", error_message);
     }
-
-    // Convert C string to Java string
-    jstring j_error_message = (*env)->NewStringUTF(env, error_message);
-    if (j_error_message) {
-        // Call the Kotlin onLogError method
-        (*env)->CallVoidMethod(env, context->kotlin_listener,
-                               context->error_method_id, j_error_message);
-
-        // Clean up local reference
-        (*env)->DeleteLocalRef(env, j_error_message);
-    }
-
-    // Check for exceptions and log them
-    if ((*env)->ExceptionCheck(env)) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log error callback");
-        (*env)->ExceptionDescribe(env);
-        (*env)->ExceptionClear(env);
-    }
-
-    // No need to detach - daemon threads auto-detach
 }
 
 // ============================================================================
@@ -408,6 +583,17 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createInterpreter(JNIEnv *env, jclass cl
         return 0; // null pointer
     }
 
+    // Start the async log queue consumer thread
+    // This thread will handle all JVM callbacks asynchronously to prevent deadlock
+    if (log_queue_start() != 0) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to start log queue consumer thread");
+        destroy_jni_callback_context(callback_context);
+        free(c_app_path);
+        free(c_ruby_base_directory);
+        free(c_native_libs_directory);
+        return 0;
+    }
+
     // Create LogListener with C callback functions and context
     // The context is stored IN the LogListener and will be passed to callbacks
     LogListener listener = {
@@ -464,11 +650,17 @@ Java_com_scorbutics_rubyvm_RubyVMNative_destroyInterpreter(JNIEnv *env, jclass c
 
     // Destroy the interpreter first
     ruby_interpreter_destroy(interpreter);
+    DEBUG_LOG("Interpreter destroyed");
+
+    // Stop the log queue consumer thread
+    log_queue_stop();
+    DEBUG_LOG("Log queue consumer thread stopped");
 
     // Then clean up the callback context
     if (callback_context) {
         destroy_jni_callback_context(callback_context);
     }
+    DEBUG_LOG("JNI callback context destroyed");
 }
 
 JNIEXPORT jlong JNICALL
@@ -674,10 +866,10 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enableLogging(JNIEnv *env, jclass clazz,
 
     // Setup logging
     DEBUG_LOG("Enabling logging");
-    int logging_result = ruby_vm_enable_logging(interpreter->vm);
+    int logging_result = ruby_interpreter_enable_logging(interpreter);
     if (logging_result != 0) {
-        DEBUG_LOG("ruby_vm_enable_logging() failed with code: %d", logging_result);
-        DEBUG_LOG("Error message: %s", ruby_vm_get_error_message(interpreter->vm));
+        DEBUG_LOG("ruby_interpreter_enable_logging() failed with code: %d", logging_result);
+        DEBUG_LOG("Error message: %s", ruby_interpreter_get_error_message(interpreter));
         return logging_result;
     }
 
@@ -694,10 +886,10 @@ Java_com_scorbutics_rubyvm_RubyVMNative_disableLogging(JNIEnv *env, jclass clazz
 
     // Disable logging
     DEBUG_LOG("Disabling logging");
-    int logging_result = ruby_vm_disable_logging(interpreter->vm);
+    int logging_result = ruby_interpreter_disable_logging(interpreter);
     if (logging_result != 0) {
-        DEBUG_LOG("ruby_vm_disable_logging() failed with code: %d", logging_result);
-        DEBUG_LOG("Error message: %s", ruby_vm_get_error_message(interpreter->vm));
+        DEBUG_LOG("ruby_interpreter_disable_logging() failed with code: %d", logging_result);
+        DEBUG_LOG("Error message: %s", ruby_interpreter_get_error_message(interpreter));
         return logging_result;
     }
 

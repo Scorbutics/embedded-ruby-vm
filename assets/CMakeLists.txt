@@ -242,6 +242,17 @@ set_target_properties(assets PROPERTIES
 
 target_link_libraries(assets PRIVATE minizip)
 
+# Link Android log library when building for Android
+if(ANDROID)
+    find_library(log-lib log)
+    if(log-lib)
+        target_link_libraries(assets PRIVATE ${log-lib})
+        message(STATUS "Linked Android log library to assets target")
+    else()
+        message(WARNING "Android log library not found")
+    endif()
+endif()
+
 if(ENABLE_ASSETS_JNI AND NOT ANDROID)
     target_include_directories(assets PRIVATE ${JNI_INCLUDE_DIRS})
 endif()

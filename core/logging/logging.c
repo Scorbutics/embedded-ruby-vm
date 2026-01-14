@@ -11,6 +11,7 @@
 #include <pthread.h>
 
 #include "embedded-ruby-vm/logging.h"
+#include "embedded-ruby-vm/jni_logging.h"
 
 // Configuration
 #define LOG_BUFFER_SIZE 128
@@ -93,50 +94,190 @@ static logging_state_t g_logging_state = {
     .is_running = 0
 };
 
+// Thread-local error state
+static __thread logging_error_t g_last_error = LOGGING_ERROR_NONE;
+
+/**
+ * Internal: Set the last error for the current thread
+ */
+static inline void set_last_error(logging_error_t error) {
+    g_last_error = error;
+}
+
+/**
+ * Get the last error that occurred in the current thread
+ */
+logging_error_t logging_get_last_error(void) {
+    return g_last_error;
+}
+
+/**
+ * Clear the last error for the current thread
+ */
+void logging_clear_last_error(void) {
+    g_last_error = LOGGING_ERROR_NONE;
+}
+
+/**
+ * Get a human-readable description of an error code
+ */
+const char* logging_error_string(logging_error_t error) {
+    switch (error) {
+        case LOGGING_ERROR_NONE:
+            return "No error";
+
+        /* Initialization errors */
+        case LOGGING_ERROR_NOT_INITIALIZED:
+            return "Logging system not initialized";
+        case LOGGING_ERROR_ALREADY_INITIALIZED:
+            return "Logging system already initialized";
+        case LOGGING_ERROR_INVALID_PARAMETER:
+            return "Invalid parameter";
+        case LOGGING_ERROR_MEMORY_ALLOCATION:
+            return "Memory allocation failed";
+
+        /* Stream redirection errors */
+        case LOGGING_ERROR_SOCKETPAIR_FAILED:
+            return "Failed to create socketpair";
+        case LOGGING_ERROR_DUP2_FAILED:
+            return "Failed to duplicate file descriptor (dup2)";
+        case LOGGING_ERROR_STDOUT_REDIRECT_FAILED:
+            return "Failed to redirect stdout";
+        case LOGGING_ERROR_STDERR_REDIRECT_FAILED:
+            return "Failed to redirect stderr";
+
+        /* Thread errors */
+        case LOGGING_ERROR_THREAD_CREATE_FAILED:
+            return "Failed to create logging thread";
+        case LOGGING_ERROR_THREAD_JOIN_FAILED:
+            return "Failed to join logging thread";
+        case LOGGING_ERROR_THREAD_ALREADY_RUNNING:
+            return "Logging thread already running";
+
+        /* I/O errors */
+        case LOGGING_ERROR_READ_FAILED:
+            return "Read operation failed";
+        case LOGGING_ERROR_WRITE_FAILED:
+            return "Write operation failed";
+        case LOGGING_ERROR_SELECT_FAILED:
+            return "Select operation failed";
+
+        /* Callback errors */
+        case LOGGING_ERROR_NATIVE_CALLBACK_FAILED:
+            return "Native logging callback failed";
+        case LOGGING_ERROR_CUSTOM_CALLBACK_FAILED:
+            return "Custom logging callback failed";
+        case LOGGING_ERROR_CALLBACK_NOT_FOUND:
+            return "Callback not found";
+        case LOGGING_ERROR_CALLBACK_ALREADY_EXISTS:
+            return "Callback already exists";
+
+        /* State errors */
+        case LOGGING_ERROR_NOT_RUNNING:
+            return "Logging thread not running";
+        case LOGGING_ERROR_MUTEX_LOCK_FAILED:
+            return "Mutex lock operation failed";
+
+        default:
+            return "Unknown error";
+    }
+}
+
+/**
+ * Default weak implementation of platform-specific logging setup.
+ * Platform-specific modules (e.g., Android) can provide a strong symbol to override this.
+ */
+__attribute__((weak))
+void logging_setup_platform_native(void) {
+    // Default no-op implementation
+    // Platform-specific code can override this with a strong symbol
+}
+
 /**
  * Write log message to all native logging systems
+ * Returns 0 on success, negative error code if any callback fails
+ * Sets thread-local last error to the first failure encountered
  */
-static void call_native_logging_function(int prio, const char* tag, const char* text) {
+static int call_native_logging_function(int prio, const char* tag, const char* text) {
     pthread_mutex_lock(&g_logging_state.lock);
 
     native_logger_node_t* current = g_logging_state.native_loggers;
+    int error = 0;
+    int first_error_code = 0;
+
     while (current != NULL) {
         if (current->func != NULL) {
-            current->func(prio, tag, text);
+            int callback_error = current->func(prio, tag, text);
+            if (callback_error != 0) {
+                // Store first error for detailed reporting
+                if (first_error_code == 0) {
+                    first_error_code = callback_error;
+                    set_last_error(LOGGING_ERROR_NATIVE_CALLBACK_FAILED);
+                }
+                // Accumulate all errors (preserves existing OR behavior)
+                error |= callback_error;
+            }
         }
         current = current->next;
     }
 
     pthread_mutex_unlock(&g_logging_state.lock);
+    return error;
 }
 
 /**
  * Write log message to all custom output callbacks
+ * Returns 0 on success, negative error code if any callback fails
+ * Sets thread-local last error to the first failure encountered
  */
-static void call_custom_logging_function(log_stream_t stream, const char* line) {
+static int call_custom_logging_function(log_stream_t stream, const char* line) {
     pthread_mutex_lock(&g_logging_state.lock);
 
     custom_output_node_t* current = g_logging_state.custom_outputs;
+    int error = 0;
+    int first_error_code = 0;
+
     while (current != NULL) {
-        if (current->func != NULL) {
-            current->func(line, stream, current->context);
+        if (current->func != NULL && current->context != NULL) {
+            int callback_error = current->func(line, stream, current->context);
+            if (callback_error != 0) {
+                // Store first error for detailed reporting
+                if (first_error_code == 0) {
+                    first_error_code = callback_error;
+                    set_last_error(LOGGING_ERROR_CUSTOM_CALLBACK_FAILED);
+                }
+                // Accumulate all errors (preserves existing OR behavior)
+                error |= callback_error;
+            }
         }
         current = current->next;
     }
 
     pthread_mutex_unlock(&g_logging_state.lock);
+    return error;
 }
 
 /**
  * Output a complete log line to all configured outputs
+ * Returns 0 on success, negative if any output fails
  */
-static void write_full_log_line(const char* line, log_stream_t stream) {
+static int write_full_log_line(const char* line, log_stream_t stream) {
     const char* tag = (g_logging_state.log_tag != NULL) ? g_logging_state.log_tag : "UNKNOWN";
     int priority = (stream == LOG_STREAM_STDERR) ? LOG_ERROR : LOG_INFO;
 
-    call_native_logging_function(priority, tag, line);
+    int native_logging_error = call_native_logging_function(priority, tag, line);
+    int custom_logging_error = call_custom_logging_function(stream, line);
 
-    call_custom_logging_function(stream, line);
+    if (native_logging_error != 0) {
+        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "write_full_log_line: Native logging callback failed (error %d)", native_logging_error);
+    }
+
+    if (custom_logging_error != 0) {
+        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "write_full_log_line: Custom logging callback failed (error %d)", custom_logging_error);
+    }
+
+    // Return combined error status (OR of both errors)
+    return native_logging_error | custom_logging_error;
 }
 
 /**
@@ -173,6 +314,7 @@ static int resize_stream_buffer_if_needed(stream_buffer_t* sb, size_t newSize) {
  */
 static int append_to_stream_buffer(stream_buffer_t* sb, const char* data, size_t dataSize) {
     if (resize_stream_buffer_if_needed(sb, sb->size + dataSize + 1) != 0) {
+        set_last_error(LOGGING_ERROR_MEMORY_ALLOCATION);
         call_native_logging_function(LOG_ERROR, g_logging_state.log_tag, "Memory allocation failed");
         return 1;
     }
@@ -255,6 +397,7 @@ static void* logging_function_thread(void* unused) {
     // Initialize all stream buffers
     if (init_stream_buffer(&streams[STDOUT_INDEX], LOG_STREAM_STDOUT, g_logging_state.stream_pfd[STDOUT_INDEX][0]) != 0 ||
         init_stream_buffer(&streams[STDERR_INDEX], LOG_STREAM_STDERR, g_logging_state.stream_pfd[STDERR_INDEX][0]) != 0) {
+        set_last_error(LOGGING_ERROR_MEMORY_ALLOCATION);
         call_native_logging_function(LOG_ERROR, g_logging_state.log_tag, "Failed to allocate buffers, aborting logging thread");
         return NULL;
     }
@@ -300,6 +443,7 @@ static void* logging_function_thread(void* unused) {
             if (errno == EINTR) {
                 continue;
             }
+            set_last_error(LOGGING_ERROR_SELECT_FAILED);
             char errorMessage[256];
             snprintf(errorMessage, sizeof(errorMessage),
                      "select() error: %s", strerror(errno));
@@ -320,6 +464,7 @@ static void* logging_function_thread(void* unused) {
                     send_stream_buffer_to_output_as_line(&streams[i]);
                     streams[i].is_open = 0;
                 } else if (result < 0) {
+                    set_last_error(LOGGING_ERROR_READ_FAILED);
                     const char* stream_name = (i == STDOUT_INDEX) ? "stdout" : "stderr";
                     char errorMessage[256];
                     snprintf(errorMessage, sizeof(errorMessage),
@@ -332,13 +477,19 @@ static void* logging_function_thread(void* unused) {
     }
 
     // Flush all remaining buffered data
+    // Check if we still have callbacks before flushing to avoid use-after-free
+    pthread_mutex_lock(&g_logging_state.lock);
+    int has_outputs = (g_logging_state.custom_output_count > 0 || g_logging_state.native_loggers != NULL);
+    pthread_mutex_unlock(&g_logging_state.lock);
+
     for (int i = 0; i < NUM_STREAMS; i++) {
-        send_stream_buffer_to_output_as_line(&streams[i]);
+        // Only flush if we still have active output callbacks
+        // Otherwise we risk use-after-free during shutdown
+        if (has_outputs) {
+            send_stream_buffer_to_output_as_line(&streams[i]);
+        }
         free_stream_buffer(&streams[i]);
     }
-
-    write_full_log_line("----------------------------", LOG_STREAM_STDOUT);
-    call_native_logging_function(LOG_DEBUG, g_logging_state.log_tag, "Logging thread ended");
 
     return NULL;
 }
@@ -346,19 +497,18 @@ static void* logging_function_thread(void* unused) {
 
 /**
  * Create a socketpair and redirect a file descriptor
+ * Note: This is called from internal_start_logging_thread which holds the mutex
  */
-static int create_and_redirect_stream(int stream_index, int target_fd, const char* stream_name) {
+static int create_and_redirect_stream(int stream_index, int target_fd) {
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[stream_index]) == -1) {
-        char error[256];
-        snprintf(error, sizeof(error), "socketpair() failed for %s", stream_name);
-        call_native_logging_function(LOG_ERROR, "Logging", error);
+        set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
+        // Note: Cannot call call_native_logging_function here - called with mutex held
         return -1;
     }
 
     if (dup2(g_logging_state.stream_pfd[stream_index][1], target_fd) == -1) {
-        char error[256];
-        snprintf(error, sizeof(error), "dup2() failed for %s", stream_name);
-        call_native_logging_function(LOG_ERROR, "Logging", error);
+        set_last_error(LOGGING_ERROR_DUP2_FAILED);
+        // Note: Cannot call call_native_logging_function here - called with mutex held
         return -1;
     }
 
@@ -388,38 +538,44 @@ static void cleanup_streams(void) {
  */
 static int internal_start_logging_thread(void) {
     if (g_logging_state.is_running) {
+        set_last_error(LOGGING_ERROR_THREAD_ALREADY_RUNNING);
         return 0; // Already running
     }
 
     if (!g_logging_state.is_initialized) {
-        call_native_logging_function(LOG_ERROR, "Logging", "Logging not initialized");
-        return -1;
+        set_last_error(LOGGING_ERROR_NOT_INITIALIZED);
+        // Note: Cannot call call_native_logging_function here as this function
+        // is called with the mutex already held (from logging_add_custom_output)
+        return LOGGING_ERROR_NOT_INITIALIZED;
     }
 
     setvbuf(stdout, NULL, _IOLBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
     // Create and redirect both streams
-    if (create_and_redirect_stream(STDOUT_INDEX, STDOUT_FILENO, "stdout") != 0) {
+    if (create_and_redirect_stream(STDOUT_INDEX, STDOUT_FILENO) != 0) {
+        set_last_error(LOGGING_ERROR_STDOUT_REDIRECT_FAILED);
         cleanup_streams();
-        return -2;
+        return LOGGING_ERROR_STDOUT_REDIRECT_FAILED;
     }
 
-    if (create_and_redirect_stream(STDERR_INDEX, STDERR_FILENO, "stderr") != 0) {
+    if (create_and_redirect_stream(STDERR_INDEX, STDERR_FILENO) != 0) {
+        set_last_error(LOGGING_ERROR_STDERR_REDIRECT_FAILED);
         cleanup_streams();
-        return -3;
+        return LOGGING_ERROR_STDERR_REDIRECT_FAILED;
     }
 
     // Start logging thread
     g_logging_state.thread_continue = 1;
     if (pthread_create(&g_logging_state.logging_thread, NULL, logging_function_thread, NULL) != 0) {
-        call_native_logging_function(LOG_WARN, g_logging_state.log_tag, "Failed to create logging thread");
+        set_last_error(LOGGING_ERROR_THREAD_CREATE_FAILED);
+        // Note: Cannot call call_native_logging_function here - called with mutex held
         cleanup_streams();
-        return -4;
+        return LOGGING_ERROR_THREAD_CREATE_FAILED;
     }
 
     g_logging_state.is_running = 1;
-    call_native_logging_function(LOG_DEBUG, g_logging_state.log_tag, "Logging thread started");
+    // Note: Cannot call call_native_logging_function here - called with mutex held
     return 0;
 }
 
@@ -429,6 +585,7 @@ static int internal_start_logging_thread(void) {
  */
 static int internal_stop_logging_thread(void) {
     if (!g_logging_state.is_running) {
+        set_last_error(LOGGING_ERROR_NOT_RUNNING);
         return 0; // Already stopped
     }
 
@@ -448,8 +605,9 @@ static int internal_stop_logging_thread(void) {
     pthread_mutex_lock(&g_logging_state.lock);
 
     if (result != 0) {
-        call_native_logging_function(LOG_WARN, g_logging_state.log_tag, "Failed to join logging thread");
-        return -1;
+        set_last_error(LOGGING_ERROR_THREAD_JOIN_FAILED);
+        // Note: Cannot call call_native_logging_function here - called with mutex held
+        return LOGGING_ERROR_THREAD_JOIN_FAILED;
     }
 
     g_logging_state.logging_thread = 0;
@@ -463,26 +621,36 @@ static int internal_stop_logging_thread(void) {
  */
 int logging_init(const char* appname) {
     if (appname == NULL) {
-        return -1;
+        set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+        return LOGGING_ERROR_INVALID_PARAMETER;
     }
 
     pthread_mutex_lock(&g_logging_state.lock);
 
     if (g_logging_state.is_initialized) {
+        set_last_error(LOGGING_ERROR_ALREADY_INITIALIZED);
         pthread_mutex_unlock(&g_logging_state.lock);
         return 0; // Already initialized
     }
 
     g_logging_state.log_tag = strdup(appname);
     if (g_logging_state.log_tag == NULL) {
+        set_last_error(LOGGING_ERROR_MEMORY_ALLOCATION);
         pthread_mutex_unlock(&g_logging_state.lock);
-        call_native_logging_function(LOG_ERROR, appname, "Failed to allocate tag");
-        return -2;
+        // Note: Cannot call call_native_logging_function here as it would try to lock the mutex
+        // that we just unlocked, and we're in an error path during initialization.
+        return LOGGING_ERROR_MEMORY_ALLOCATION;
     }
 
     g_logging_state.is_initialized = 1;
 
     pthread_mutex_unlock(&g_logging_state.lock);
+
+    // Setup platform-specific native logging (e.g., Android logcat)
+    // This is called AFTER initialization completes so platform code can safely
+    // call logging_add_native_function() without holding the lock.
+    logging_setup_platform_native();
+
     return 0;
 }
 
@@ -538,7 +706,8 @@ int logging_shutdown(void) {
  */
 int logging_add_native_function(logging_native_logging_func_t func) {
     if (func == NULL) {
-        return -1;
+        set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+        return LOGGING_ERROR_INVALID_PARAMETER;
     }
 
     pthread_mutex_lock(&g_logging_state.lock);
@@ -547,6 +716,7 @@ int logging_add_native_function(logging_native_logging_func_t func) {
     native_logger_node_t* current = g_logging_state.native_loggers;
     while (current != NULL) {
         if (current->func == func) {
+            set_last_error(LOGGING_ERROR_CALLBACK_ALREADY_EXISTS);
             pthread_mutex_unlock(&g_logging_state.lock);
             return 0; // Already added
         }
@@ -556,8 +726,9 @@ int logging_add_native_function(logging_native_logging_func_t func) {
     // Create new node
     native_logger_node_t* new_node = (native_logger_node_t*)malloc(sizeof(native_logger_node_t));
     if (new_node == NULL) {
+        set_last_error(LOGGING_ERROR_MEMORY_ALLOCATION);
         pthread_mutex_unlock(&g_logging_state.lock);
-        return -2;
+        return LOGGING_ERROR_MEMORY_ALLOCATION;
     }
 
     new_node->func = func;
@@ -573,7 +744,8 @@ int logging_add_native_function(logging_native_logging_func_t func) {
  */
 int logging_remove_native_function(logging_native_logging_func_t func) {
     if (func == NULL) {
-        return -1;
+        set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+        return LOGGING_ERROR_INVALID_PARAMETER;
     }
 
     pthread_mutex_lock(&g_logging_state.lock);
@@ -596,8 +768,9 @@ int logging_remove_native_function(logging_native_logging_func_t func) {
         current = current->next;
     }
 
+    set_last_error(LOGGING_ERROR_CALLBACK_NOT_FOUND);
     pthread_mutex_unlock(&g_logging_state.lock);
-    return -1; // Not found
+    return LOGGING_ERROR_CALLBACK_NOT_FOUND;
 }
 
 /**
@@ -605,12 +778,14 @@ int logging_remove_native_function(logging_native_logging_func_t func) {
  */
 int logging_add_custom_output(logging_custom_output_func_t func, void* context) {
     if (func == NULL) {
-        return -1;
+        set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+        return LOGGING_ERROR_INVALID_PARAMETER;
     }
-    
+
     if (g_logging_state.is_initialized == 0) {
+        set_last_error(LOGGING_ERROR_NOT_INITIALIZED);
         call_native_logging_function(LOG_ERROR, "Logging", "Logging not initialized");
-        return -2;
+        return LOGGING_ERROR_NOT_INITIALIZED;
     }
 
     pthread_mutex_lock(&g_logging_state.lock);
@@ -619,7 +794,10 @@ int logging_add_custom_output(logging_custom_output_func_t func, void* context) 
     custom_output_node_t* current = g_logging_state.custom_outputs;
     while (current != NULL) {
         if (current->func == func && current->context == context) {
+            set_last_error(LOGGING_ERROR_CALLBACK_ALREADY_EXISTS);
             pthread_mutex_unlock(&g_logging_state.lock);
+            jni_log_printf(JNI_LOG_DEBUG, g_logging_state.log_tag,
+                           "Custom logging output already added");
             return 0; // Already added
         }
         current = current->next;
@@ -628,8 +806,9 @@ int logging_add_custom_output(logging_custom_output_func_t func, void* context) 
     // Create new node
     custom_output_node_t* new_node = (custom_output_node_t*)malloc(sizeof(custom_output_node_t));
     if (new_node == NULL) {
+        set_last_error(LOGGING_ERROR_MEMORY_ALLOCATION);
         pthread_mutex_unlock(&g_logging_state.lock);
-        return -3;
+        return LOGGING_ERROR_MEMORY_ALLOCATION;
     }
 
     new_node->func = func;
@@ -637,6 +816,10 @@ int logging_add_custom_output(logging_custom_output_func_t func, void* context) 
     new_node->next = g_logging_state.custom_outputs;
     g_logging_state.custom_outputs = new_node;
     g_logging_state.custom_output_count++;
+
+    jni_log_printf(JNI_LOG_DEBUG, g_logging_state.log_tag,
+                   "Added custom logging output, total count: %d, with context %p",
+                   g_logging_state.custom_output_count, context);
 
     // Start logging thread if this is the first custom output
     if (g_logging_state.custom_output_count == 1) {
@@ -660,7 +843,8 @@ int logging_add_custom_output(logging_custom_output_func_t func, void* context) 
  */
 int logging_remove_custom_output(logging_custom_output_func_t func, void* context) {
     if (func == NULL) {
-        return -1;
+        set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+        return LOGGING_ERROR_INVALID_PARAMETER;
     }
 
     pthread_mutex_lock(&g_logging_state.lock);
@@ -690,6 +874,7 @@ int logging_remove_custom_output(logging_custom_output_func_t func, void* contex
         current = current->next;
     }
 
+    set_last_error(LOGGING_ERROR_CALLBACK_NOT_FOUND);
     pthread_mutex_unlock(&g_logging_state.lock);
-    return -1; // Not found
+    return LOGGING_ERROR_CALLBACK_NOT_FOUND;
 }

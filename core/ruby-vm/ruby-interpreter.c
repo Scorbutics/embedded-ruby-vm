@@ -114,16 +114,30 @@ int ruby_interpreter_execute_sync(RubyInterpreter* interpreter, RubyScript* scri
 }
 
 int ruby_interpreter_enable_logging(RubyInterpreter* interpreter) {
-    if (!interpreter || !interpreter->vm) {
+    if (!interpreter) {
         return -1;
     }
+
+    // Ensure VM is initialized before enabling logging
+    // This allows enableLogging() to be called before the first script execution
+    int init_result = ensure_vm_initialized(interpreter);
+    if (init_result != 0) {
+        return -2;
+    }
+
     return ruby_vm_enable_logging(interpreter->vm);
 }
 
 int ruby_interpreter_disable_logging(RubyInterpreter* interpreter) {
-    if (!interpreter || !interpreter->vm) {
+    if (!interpreter) {
         return -1;
     }
+
+    // If VM was never initialized, there's nothing to disable
+    if (!interpreter->vm) {
+        return 0;
+    }
+
     return ruby_vm_disable_logging(interpreter->vm);
 }
 

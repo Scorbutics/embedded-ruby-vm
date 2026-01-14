@@ -154,13 +154,31 @@ static void* script_execution_thread_func(void* arg) {
     return NULL;
 }
 
-static void native_log_callbacks(const char* line, log_stream_t stream, void* context) {
-    RubyVM* vm = (RubyVM*)context;
-    if (stream == LOG_STREAM_STDOUT && vm->log_listener.accept) {
-        vm->log_listener.accept(&vm->log_listener, line);
-    } else if (stream == LOG_STREAM_STDERR && vm->log_listener.on_log_error) {
-        vm->log_listener.on_log_error(&vm->log_listener, line);
+static int native_log_callbacks(const char* line, log_stream_t stream, void* context) {
+    if (context == NULL) {
+        return -1;
     }
+
+    RubyVM* vm = (RubyVM*)context;
+
+    if (stream == LOG_STREAM_STDOUT) {
+        if (vm->log_listener.accept == NULL) {
+            // No accept handler defined
+            return -2;
+        }
+        vm->log_listener.accept(&vm->log_listener, line);
+    } else if (stream == LOG_STREAM_STDERR) {
+        if (vm->log_listener.on_log_error == NULL) {
+            // No error handler defined
+            return -2;
+        }
+        vm->log_listener.on_log_error(&vm->log_listener, line);
+    } else {
+        // Unknown stream type
+        return -3;
+    }
+
+    return 0;
 }
 
 RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, LogListener listener) {
@@ -181,15 +199,17 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
 void ruby_vm_destroy(RubyVM* vm) {
     if (!vm) return;
 
-    // Stop the logging thread
+    DEBUG_LOG("ruby_vm_destroy: Disabling logging for VM before destruction");
     ruby_vm_disable_logging(vm);
 
-    // Close communication channels
+    DEBUG_LOG("ruby_vm_destroy: Stopping VM if running");
+    // Now it's safe to free VM resources
     close_comm_channel(&vm->commands_channel);
 
     // Destroy mutex
     pthread_mutex_destroy(&vm->socket_lock);
 
+    DEBUG_LOG("ruby_vm_destroy: Freeing VM memory");
     free(vm->application_path);
     free(vm);
 }
@@ -273,16 +293,28 @@ int ruby_vm_enable_logging(RubyVM* vm) {
 }
 
 int ruby_vm_disable_logging(RubyVM* vm) {
-    DEBUG_LOG("ruby_vm_disable_logging: Stopping logging thread");
-    const int result = logging_shutdown();
+    DEBUG_LOG("ruby_vm_disable_logging: Removing logging callback for this VM");
+
+    // CRITICAL FIX: We should remove only THIS VM's callback, not shutdown everything!
+    // logging_shutdown() would shut down the entire logging system for ALL VMs.
+    // Instead, we remove just this VM's custom output callback.
+    // The logging thread will automatically stop when the last callback is removed.
+    const int result = logging_remove_custom_output(native_log_callbacks, vm);
+
     if (result != 0) {
-        DEBUG_LOG("ruby_vm_disable_logging: Logging thread failed to stop (error %d)", result);
-        DEBUG_LOG("Continuing without logging redirection - output will go to normal stdout/stderr");
+        DEBUG_LOG("ruby_vm_disable_logging: Failed to remove logging callback (error %d)", result);
+        // Note: -1 means callback was not found, which could mean it was never added
+        // or already removed. This is not necessarily a fatal error.
+        if (result == -1) {
+            DEBUG_LOG("ruby_vm_disable_logging: Callback not found (may not have been enabled)");
+            return 0; // Not an error - logging may not have been enabled
+        }
         ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_LOGGING,
-                          "Failed to stop logging thread (error code: %d)", result);
+                          "Failed to remove logging callback (error code: %d)", result);
         return result;
     }
-    DEBUG_LOG("ruby_vm_disable_logging: Logging thread stopped successfully");
+
+    DEBUG_LOG("ruby_vm_disable_logging: Logging callback removed successfully");
     return 0;
 }
 
@@ -333,7 +365,7 @@ int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
     // This prevents Ruby's GC signals (SIGPROF/SIGALRM) from hitting JVM threads
     // which can cause segmentation faults when Ruby's signal handler tries to
     // interact with JVM-managed memory.
-    // 
+    //
     // Context: Ruby's GC uses signals to coordinate thread pausing during the
     // marking phase. When a JVM thread calls this function and Ruby's GC runs,
     // the signal can be delivered to the JVM thread. Ruby's signal handler may
