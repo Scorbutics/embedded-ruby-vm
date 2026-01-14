@@ -9,6 +9,7 @@
 
 #include <jni.h>
 #include <string.h>
+#include <stdio.h>
 #include "embedded-ruby-vm/assets-install.h"
 #include "embedded-ruby-vm/assets-error.h"
 
@@ -327,4 +328,38 @@ Java_com_scorbutics_rubyvm_AssetsNative_getNativeLibPath(
     assets_free_layout(layout);
 
     return result;
+}
+
+/**
+ * Set the Android app data directory for asset installation.
+ *
+ * This function is called from Android/Kotlin code to inform the native layer
+ * about the app's internal data directory. The directory will be used automatically
+ * by get_default_install_dir() when no explicit install directory is provided.
+ *
+ * @param dir The Android app data directory (e.g., "/data/data/com.example.app/files")
+ */
+JNIEXPORT void JNICALL
+Java_com_scorbutics_rubyvm_AssetsNative_setAndroidAppDataDir(
+    JNIEnv *env,
+    jobject obj,
+    jstring dir
+) {
+    (void)obj; // Unused parameter
+
+    if (dir == NULL) {
+        return;
+    }
+
+    // Convert Java string to C string
+    const char *dir_str = (*env)->GetStringUTFChars(env, dir, NULL);
+    if (dir_str == NULL) {
+        return;
+    }
+
+    // Set the Android app data directory
+    set_android_app_data_dir(dir_str);
+
+    // Release the string
+    (*env)->ReleaseStringUTFChars(env, dir, dir_str);
 }

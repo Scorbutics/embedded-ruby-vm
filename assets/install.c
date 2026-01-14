@@ -802,9 +802,29 @@ int install_embedded_files(const char *install_dir, AssetsError* error) {
     return result;
 }
 
+// Global variable to store Android app data directory (set via JNI)
+static char g_android_app_data_dir[1000] = {0};
+
+// Function to set Android app data directory (called from JNI)
+void set_android_app_data_dir(const char* dir) {
+    if (dir && strlen(dir) < sizeof(g_android_app_data_dir)) {
+        strncpy(g_android_app_data_dir, dir, sizeof(g_android_app_data_dir) - 1);
+        g_android_app_data_dir[sizeof(g_android_app_data_dir) - 1] = '\0';
+    }
+}
+
 // Convenience function to get default install directory (can be customized)
 const char* get_default_install_dir(void) {
     static char install_dir[1024];
+
+    // Priority 1: Check if Android app data directory has been set (via JNI)
+    // This is automatically set on Android platforms
+    if (g_android_app_data_dir[0] != '\0') {
+        snprintf(install_dir, sizeof(install_dir), "%s/ruby-vm", g_android_app_data_dir);
+        return install_dir;
+    }
+
+    // Priority 2: Allow user override via environment variables
     const char *cache_dir = getenv("XDG_CACHE_HOME");
 
     if (!cache_dir) {
@@ -812,7 +832,7 @@ const char* get_default_install_dir(void) {
         if (home) {
             snprintf(install_dir, sizeof(install_dir), "%s/.cache/embedded-ruby-vm", home);
         } else {
-            // Fallback for Android or systems without HOME
+            // Fallback for systems without HOME (non-Android Unix-like systems)
             snprintf(install_dir, sizeof(install_dir), "/tmp/embedded-ruby-vm");
         }
     } else {

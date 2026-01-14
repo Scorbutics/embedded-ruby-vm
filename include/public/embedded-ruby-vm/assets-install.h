@@ -57,12 +57,26 @@ typedef struct {
 int install_embedded_files(const char *install_dir, AssetsError* error);
 
 /**
+ * Set the Android app data directory for use as the installation base.
+ *
+ * This function should be called early during Android initialization (via JNI)
+ * to specify where the app's internal data directory is located.
+ * Once set, get_default_install_dir() will automatically use this path.
+ *
+ * This is typically set to context.getFilesDir().getAbsolutePath() on Android.
+ *
+ * @param dir The Android app data directory path
+ */
+void set_android_app_data_dir(const char* dir);
+
+/**
  * Get a default installation directory.
  *
  * Returns a platform-appropriate directory for installing files:
- * - Uses $XDG_CACHE_HOME/your_app if available
- * - Falls back to $HOME/.cache/your_app
- * - Falls back to /tmp/your_app_install
+ * - On Android: Uses the app data directory set via set_android_app_data_dir()
+ * - On other platforms: Uses $XDG_CACHE_HOME/embedded-ruby-vm if available
+ * - Falls back to $HOME/.cache/embedded-ruby-vm
+ * - Falls back to /tmp/embedded-ruby-vm as last resort
  *
  * @return Pointer to static string containing default install directory
  */

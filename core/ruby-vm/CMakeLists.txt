@@ -90,10 +90,18 @@ else()
 
     if(UNIX AND NOT APPLE)
         # Linux: Use --whole-archive for static extension libraries
-        # Find libbsd, libmd, and libcrypt with full paths since HOST triplet detection may not match
-        find_library(BSD_LIBRARY NAMES bsd PATHS ${CMAKE_SOURCE_DIR}/external/lib/*/static NO_DEFAULT_PATH)
-        find_library(MD_LIBRARY NAMES md PATHS ${CMAKE_SOURCE_DIR}/external/lib/*/static NO_DEFAULT_PATH)
-        find_library(CRYPT_LIBRARY NAMES crypt PATHS ${CMAKE_SOURCE_DIR}/external/lib/*/static NO_DEFAULT_PATH)
+        # Find libbsd, libmd, and libcrypt using the correct HOST architecture
+        # Inherit BUILD_TYPE_DIR and HOST from parent scope
+        if(BUILD_SHARED_LIBS)
+            set(BUILD_TYPE_DIR "shared")
+        else()
+            set(BUILD_TYPE_DIR "static")
+        endif()
+        set(RUBY_VM_EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${BUILD_TYPE_DIR})
+
+        find_library(BSD_LIBRARY NAMES bsd PATHS ${RUBY_VM_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
+        find_library(MD_LIBRARY NAMES md PATHS ${RUBY_VM_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
+        find_library(CRYPT_LIBRARY NAMES crypt PATHS ${RUBY_VM_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
         
         if(BSD_LIBRARY)
             message(STATUS "Found libbsd: ${BSD_LIBRARY}")

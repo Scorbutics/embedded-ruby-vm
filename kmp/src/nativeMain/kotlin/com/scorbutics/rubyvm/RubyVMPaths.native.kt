@@ -217,11 +217,22 @@ object RubyVMPaths {
      * Get default installation directory based on environment.
      *
      * Follows XDG Base Directory specification:
+     * - Uses $EMBEDDED_RUBY_INSTALL_DIR if set (highest priority, useful for Android)
      * - Uses $XDG_CACHE_HOME/embedded-ruby-vm if set
      * - Falls back to $HOME/.cache/embedded-ruby-vm
-     * - Falls back to /tmp/embedded-ruby-vm
+     * - Falls back to /tmp/embedded-ruby-vm as last resort
+     *
+     * Note: The EMBEDDED_RUBY_INSTALL_DIR variable is particularly useful on Android
+     * where it's set to the app's internal data directory by the Kotlin layer.
      */
     private fun getDefaultInstallDir(): String {
+        // First check EMBEDDED_RUBY_INSTALL_DIR (set by platform-specific code, e.g., Android)
+        getenv("EMBEDDED_RUBY_INSTALL_DIR")?.toKString()?.let { installDir ->
+            if (installDir.isNotEmpty()) {
+                return installDir
+            }
+        }
+
         // Try XDG_CACHE_HOME
         getenv("XDG_CACHE_HOME")?.toKString()?.let { cacheHome ->
             if (cacheHome.isNotEmpty()) {

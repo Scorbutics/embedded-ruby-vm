@@ -37,7 +37,10 @@ endif()
 
 # Build Android logging module if on Android
 if(BUILD_JNI_ANDROID_LOG)
+    message(STATUS "Building for Android with logs enabled")
     add_subdirectory(android)
+elseif(ANDROID)
+    message(STATUS "Building for Android with logs disabled")
 endif()
 
 add_library(jni OBJECT
@@ -68,7 +71,7 @@ target_link_libraries(jni
 )
 
 # Link Android logging module if available
-if(BUILD_JNI_ANDROID_LOG AND TARGET jni_logging_android)
+if(BUILD_JNI_ANDROID_LOG)
     target_link_libraries(jni jni_logging_android)
     message(STATUS "Linked Android logging module to jni target")
 endif()

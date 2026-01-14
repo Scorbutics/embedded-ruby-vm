@@ -55,6 +55,20 @@ internal object AssetsNative {
     external fun getNativeLibsPath(installDir: String): String?
 
     /**
+     * Set the Android app data directory for asset installation.
+     *
+     * This function informs the native layer about the Android app's internal
+     * data directory. The directory will be automatically used by the C code
+     * when determining where to install Ruby VM assets.
+     *
+     * This should be called early during initialization on Android platforms,
+     * typically with context.filesDir.absolutePath
+     *
+     * @param dir The Android app data directory path
+     */
+    external fun setAndroidAppDataDir(dir: String)
+
+    /**
      * Get the count of extracted native libraries.
      *
      * @param installDir The installation directory
@@ -97,7 +111,7 @@ internal object AssetsNative {
             val inputStream = AssetsNative::class.java.getResourceAsStream(sharedResourcePath)
 
             if (inputStream != null) {
-                NativeLibraryLoader.loadFromStream(inputStream, sharedFileName)
+                NativeLibraryLoaderHelper.loadFromStream(inputStream, sharedFileName)
                 loaded = true
                 println("✓ Loaded shared assets library from JAR: $sharedResourcePath")
             } else {

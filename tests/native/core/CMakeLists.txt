@@ -24,9 +24,17 @@ target_link_libraries(test_core
 # These are already linked via embedded-ruby's dependencies (from ruby-vm), but we need them AFTER -lcrypt
 # Use link options to append them at the end of the link line
 if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
-    # Find the libraries with full paths
-    find_library(BSD_LIB_TEST NAMES bsd PATHS ${CMAKE_SOURCE_DIR}/external/lib/*/static NO_DEFAULT_PATH)
-    find_library(MD_LIB_TEST NAMES md PATHS ${CMAKE_SOURCE_DIR}/external/lib/*/static NO_DEFAULT_PATH)
+    # Determine the correct library directory based on HOST
+    if(BUILD_SHARED_LIBS)
+        set(TEST_BUILD_TYPE_DIR "shared")
+    else()
+        set(TEST_BUILD_TYPE_DIR "static")
+    endif()
+    set(TEST_EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${TEST_BUILD_TYPE_DIR})
+
+    # Find the libraries using the correct HOST architecture
+    find_library(BSD_LIB_TEST NAMES bsd PATHS ${TEST_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
+    find_library(MD_LIB_TEST NAMES md PATHS ${TEST_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
     
     if(BSD_LIB_TEST AND MD_LIB_TEST)
         message(STATUS "Appending libbsd and libmd to end of link line for test_core")

@@ -45,7 +45,14 @@ message(NOTICE "Configuring for host: ${HOST}")
 option(BUILD_WRAPPER_SHARED "Build libassets and libembedded-ruby as shared libraries (required for JVM/JNI)" OFF)
 option(BUILD_SHARED_LIBS "Link against shared Ruby libraries instead of static" OFF)
 option(BUILD_JNI "Build JNI binding" OFF)
-option(BUILD_JNI_ANDROID_LOG "Build Android Logcat output" OFF)
+
+# Default BUILD_JNI_ANDROID_LOG to ON for Android, OFF for other platforms
+if(ANDROID)
+    option(BUILD_JNI_ANDROID_LOG "Build Android Logcat output" ON)
+else()
+    option(BUILD_JNI_ANDROID_LOG "Build Android Logcat output" OFF)
+endif()
+
 option(BUILD_TESTS "Build tests" ON)
 
 # Set build type directory for library resolution based on BUILD_SHARED_LIBS
@@ -104,6 +111,7 @@ if(BUILD_WRAPPER_SHARED)
         $<TARGET_OBJECTS:logging>
         $<TARGET_OBJECTS:ruby-vm>
         $<$<BOOL:${BUILD_JNI}>:$<TARGET_OBJECTS:jni>>
+        $<$<BOOL:${BUILD_JNI_ANDROID_LOG}>:$<TARGET_OBJECTS:jni_logging_android>>
     )
 else()
     # Static library: Include all OBJECT files directly
@@ -111,6 +119,7 @@ else()
         $<TARGET_OBJECTS:logging>
         $<TARGET_OBJECTS:ruby-vm>
         $<$<BOOL:${BUILD_JNI}>:$<TARGET_OBJECTS:jni>>
+        $<$<BOOL:${BUILD_JNI_ANDROID_LOG}>:$<TARGET_OBJECTS:jni_logging_android>>
     )
 endif()
 
@@ -140,6 +149,9 @@ target_include_directories(embedded-ruby PUBLIC
 add_dependencies(embedded-ruby logging ruby-vm)
 if(BUILD_JNI)
     add_dependencies(embedded-ruby jni)
+endif()
+if(BUILD_JNI_ANDROID_LOG)
+    add_dependencies(embedded-ruby jni_logging_android)
 endif()
 
 # This ensures the embedded dependency list is always up-to-date

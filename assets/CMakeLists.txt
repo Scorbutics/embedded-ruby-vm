@@ -10,6 +10,10 @@ include(FetchContent)
 if(NOT DEFINED ENV{JAVA_HOME})
     message(WARNING "JAVA_HOME not set. JNI bindings will not be built for assets library.")
     set(ENABLE_ASSETS_JNI OFF)
+elseif(ANDROID)
+    message(STATUS "Building for Android - using NDK JNI headers")
+    set(JNI_INCLUDE_DIRS "")
+    set(ENABLE_ASSETS_JNI ON)
 else()
     find_package(JNI)
     if(JNI_FOUND)
@@ -238,7 +242,7 @@ set_target_properties(assets PROPERTIES
 
 target_link_libraries(assets PRIVATE minizip)
 
-if(ENABLE_ASSETS_JNI)
+if(ENABLE_ASSETS_JNI AND NOT ANDROID)
     target_include_directories(assets PRIVATE ${JNI_INCLUDE_DIRS})
 endif()
 

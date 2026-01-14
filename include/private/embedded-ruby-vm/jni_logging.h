@@ -26,17 +26,20 @@ typedef enum {
  *
  * This function uses WEAK linkage, allowing platform-specific modules
  * to override it with their own implementation. The default (weak)
- * implementation is a no-op.
+ * implementation in jni_logging.c is a no-op.
  *
  * Platform modules (e.g., jni/android/) provide strong symbol implementations.
  * Users can also provide their own implementation for custom platforms.
+ *
+ * Note: The weak attribute is only on the definition in jni_logging.c,
+ * not on this declaration, so that platform-specific implementations
+ * can provide strong symbols.
  *
  * @param priority Log priority level
  * @param tag Log tag/category (e.g., "RubyVM")
  * @param message Log message
  */
-void jni_log_impl(JNILogPriority priority, const char* tag, const char* message)
-    __attribute__((weak));
+void jni_log_impl(JNILogPriority priority, const char* tag, const char* message);
 
 /**
  * Public logging functions used by JNI code.

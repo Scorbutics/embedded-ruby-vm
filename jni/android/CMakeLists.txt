@@ -10,12 +10,17 @@ if(NOT log-lib)
 endif()
 
 # Create static library with Android-specific implementations
-add_library(jni_logging_android STATIC
+add_library(jni_logging_android OBJECT
     android_logging.c
     get_activity_parameters.c
 )
 
-target_include_directories(jni_logging_android PUBLIC ..)
+target_include_directories(jni_logging_android 
+    PRIVATE
+        ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/private
+    PUBLIC
+        ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public
+)
 
 target_link_libraries(jni_logging_android PUBLIC ${log-lib})
 
