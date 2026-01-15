@@ -16,207 +16,7 @@
 // Forward declarations
 static JNIEnv* get_jni_env(JavaVM* jvm);
 
-// ============================================================================
-// Async Log Queue for Non-Blocking JVM Callbacks
-// ============================================================================
 
-/**
- * Log message types
- */
-typedef enum {
-    LOG_TYPE_INFO,
-    LOG_TYPE_ERROR
-} LogMessageType;
-
-/**
- * Queued log message
- */
-typedef struct LogQueueNode {
-    char* message;
-    LogMessageType type;
-    JNICallbackContext* context;
-    struct LogQueueNode* next;
-} LogQueueNode;
-
-/**
- * Thread-safe log queue
- */
-typedef struct {
-    LogQueueNode* head;
-    LogQueueNode* tail;
-    pthread_mutex_t lock;
-    pthread_cond_t cond;
-    volatile int should_stop;
-    pthread_t consumer_thread;
-    int is_running;
-} LogQueue;
-
-// Global log queue (one per process is fine since we're in JNI context)
-static LogQueue g_log_queue = {
-    .head = NULL,
-    .tail = NULL,
-    .lock = PTHREAD_MUTEX_INITIALIZER,
-    .cond = PTHREAD_COND_INITIALIZER,
-    .should_stop = 0,
-    .consumer_thread = 0,
-    .is_running = 0
-};
-
-/**
- * Push a log message to the queue (non-blocking, thread-safe)
- */
-static int log_queue_push(JNICallbackContext* context, const char* message, LogMessageType type) {
-    if (!context || !message) return -1;
-
-    LogQueueNode* node = (LogQueueNode*)malloc(sizeof(LogQueueNode));
-    if (!node) return -1;
-
-    node->message = strdup(message);
-    if (!node->message) {
-        free(node);
-        return -1;
-    }
-
-    node->type = type;
-    node->context = context;
-    node->next = NULL;
-
-    pthread_mutex_lock(&g_log_queue.lock);
-
-    if (g_log_queue.tail == NULL) {
-        g_log_queue.head = node;
-        g_log_queue.tail = node;
-    } else {
-        g_log_queue.tail->next = node;
-        g_log_queue.tail = node;
-    }
-
-    pthread_cond_signal(&g_log_queue.cond);
-    pthread_mutex_unlock(&g_log_queue.lock);
-
-    return 0;
-}
-
-/**
- * Pop a log message from the queue (blocking)
- */
-static LogQueueNode* log_queue_pop(void) {
-    pthread_mutex_lock(&g_log_queue.lock);
-
-    while (g_log_queue.head == NULL && !g_log_queue.should_stop) {
-        pthread_cond_wait(&g_log_queue.cond, &g_log_queue.lock);
-    }
-
-    if (g_log_queue.should_stop && g_log_queue.head == NULL) {
-        pthread_mutex_unlock(&g_log_queue.lock);
-        return NULL;
-    }
-
-    LogQueueNode* node = g_log_queue.head;
-    g_log_queue.head = node->next;
-
-    if (g_log_queue.head == NULL) {
-        g_log_queue.tail = NULL;
-    }
-
-    pthread_mutex_unlock(&g_log_queue.lock);
-    return node;
-}
-
-/**
- * Consumer thread that processes log messages and invokes JVM callbacks
- */
-static void* log_queue_consumer_thread(void* arg) {
-    (void)arg;
-
-    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue consumer thread started");
-
-    while (1) {
-        LogQueueNode* node = log_queue_pop();
-        if (!node) break; // Queue stopped
-
-        // Get JNI environment for this consumer thread
-        JNIEnv* env = get_jni_env(node->context->jvm);
-        if (env) {
-            jstring j_message = (*env)->NewStringUTF(env, node->message);
-            if (j_message) {
-                // Call the appropriate Kotlin method based on message type
-                jmethodID method_id = (node->type == LOG_TYPE_INFO)
-                    ? node->context->accept_method_id
-                    : node->context->error_method_id;
-
-                (*env)->CallVoidMethod(env, node->context->kotlin_listener,
-                                       method_id, j_message);
-
-                // Clean up local reference
-                (*env)->DeleteLocalRef(env, j_message);
-
-                // Check for exceptions
-                if ((*env)->ExceptionCheck(env)) {
-                    jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log callback");
-                    (*env)->ExceptionDescribe(env);
-                    (*env)->ExceptionClear(env);
-                }
-            }
-        } else {
-            jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in consumer thread");
-        }
-
-        // Free the node
-        free(node->message);
-        free(node);
-    }
-
-    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue consumer thread stopped");
-    return NULL;
-}
-
-/**
- * Start the log queue consumer thread
- */
-static int log_queue_start(void) {
-    pthread_mutex_lock(&g_log_queue.lock);
-
-    if (g_log_queue.is_running) {
-        pthread_mutex_unlock(&g_log_queue.lock);
-        return 0; // Already running
-    }
-
-    g_log_queue.should_stop = 0;
-    int result = pthread_create(&g_log_queue.consumer_thread, NULL, log_queue_consumer_thread, NULL);
-    if (result != 0) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to start log queue consumer thread");
-        pthread_mutex_unlock(&g_log_queue.lock);
-        return -1;
-    }
-
-    pthread_detach(g_log_queue.consumer_thread);
-    g_log_queue.is_running = 1;
-
-    pthread_mutex_unlock(&g_log_queue.lock);
-    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue consumer thread created");
-    return 0;
-}
-
-/**
- * Stop the log queue consumer thread
- */
-static void log_queue_stop(void) {
-    pthread_mutex_lock(&g_log_queue.lock);
-
-    if (!g_log_queue.is_running) {
-        pthread_mutex_unlock(&g_log_queue.lock);
-        return;
-    }
-
-    g_log_queue.should_stop = 1;
-    pthread_cond_signal(&g_log_queue.cond);
-    g_log_queue.is_running = 0;
-
-    pthread_mutex_unlock(&g_log_queue.lock);
-
-    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Log queue stopped");
-}
 
 // Completion callback context
 typedef struct {
@@ -224,6 +24,52 @@ typedef struct {
     jobject callback_obj;
     jmethodID invoke_method_id;
 } CompletionCallbackContext;
+
+// ============================================================================
+// Script Completion Synchronization
+// ============================================================================
+
+// Sentinel message that Ruby sends after flushing all logs
+#define SCRIPT_COMPLETE_SENTINEL "<<<LOGS_FLUSHED>>>"
+
+// Global state for waiting on script completion
+static pthread_mutex_t g_completion_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_completion_cond = PTHREAD_COND_INITIALIZER;
+static volatile int g_logs_flushed = 0;
+
+static void signal_logs_flushed(void) {
+    pthread_mutex_lock(&g_completion_mutex);
+    g_logs_flushed = 1;
+    pthread_cond_signal(&g_completion_cond);
+    pthread_mutex_unlock(&g_completion_mutex);
+}
+
+static void reset_logs_flushed(void) {
+    pthread_mutex_lock(&g_completion_mutex);
+    g_logs_flushed = 0;
+    pthread_mutex_unlock(&g_completion_mutex);
+}
+
+static int wait_for_logs_flushed(int timeout_ms) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += timeout_ms / 1000;
+    ts.tv_nsec += (timeout_ms % 1000) * 1000000;
+    if (ts.tv_nsec >= 1000000000) {
+        ts.tv_sec += 1;
+        ts.tv_nsec -= 1000000000;
+    }
+    
+    pthread_mutex_lock(&g_completion_mutex);
+    int result = 0;
+    while (!g_logs_flushed && result == 0) {
+        result = pthread_cond_timedwait(&g_completion_cond, &g_completion_mutex, &ts);
+    }
+    int flushed = g_logs_flushed;
+    pthread_mutex_unlock(&g_completion_mutex);
+    
+    return flushed ? 0 : -1;  // 0 = success, -1 = timeout
+}
 
 // ============================================================================
 // JNI Environment Helpers
@@ -320,7 +166,7 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
     }
 
     // Get method IDs for the LogListener interface methods
-    context->accept_method_id = (*env)->GetMethodID(env, listener_class,
+        context->accept_method_id = (*env)->GetMethodID(env, listener_class,
                                                     "accept", "(Ljava/lang/String;)V");
     context->error_method_id = (*env)->GetMethodID(env, listener_class,
                                                    "onLogError", "(Ljava/lang/String;)V");
@@ -351,12 +197,12 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
         // Not attached, need to attach temporarily to delete global ref
         if ((*context->jvm)->AttachCurrentThread(context->jvm, (JNIEnv**)&env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->kotlin_listener);
-            (*context->jvm)->DetachCurrentThread(context->jvm);
+                        (*context->jvm)->DetachCurrentThread(context->jvm);
         }
     } else if (result == JNI_OK) {
         // Already attached, just delete the reference
         (*env)->DeleteGlobalRef(env, context->kotlin_listener);
-    }
+            }
 
     free(context);
 }
@@ -366,43 +212,124 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
 // ============================================================================
 
 /**
- * C callback for log messages.
- * Called from native Ruby VM threads, context passed directly.
- * No global state access - completely thread-safe.
+ * C callback for log messages (stdout).
+ * Called from native logging thread via LogListener.
+ * Calls JVM directly - logging thread is daemon-attached so this is safe.
+ *
+ * Updated signature to match LogAcceptFunc with source parameter.
  */
 static void jni_log_accept_callback(LogListener* listener, const char* message) {
+    // Validate listener pointer
+    if (!listener) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL listener");
+        return;
+    }
+    
+    // Validate message pointer
+    if (!message) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL message");
+        return;
+    }
+    
+    // Debug: Log all incoming messages to understand what we're receiving
+    jni_log_printf(JNI_LOG_DEBUG, "RubyVM", "jni_log_accept_callback: Received message (len=%zu): '%s'", strlen(message), message);
+    
+    // Check for sentinel message indicating all logs have been flushed
+    // Use strstr to handle potential trailing whitespace
+    if (strstr(message, SCRIPT_COMPLETE_SENTINEL) != NULL) {
+        jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Sentinel message detected - signaling log completion");
+        signal_logs_flushed();
+        return;  // Don't forward sentinel to user
+    }
+        // Validate context pointer
     JNICallbackContext* context = (JNICallbackContext*) listener->context;
+    if (!context) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL context");
+        return;
+    }
 
-    // CRITICAL FIX FOR DEADLOCK:
-    // Calling into the JVM synchronously from the logging thread can cause deadlock
-    // when used with synchronous script execution (executeWithResult).
-    //
-    // SOLUTION: Use an async producer/consumer queue
-    // - Logging thread (producer) pushes message to queue and returns immediately
-    // - Consumer thread pops from queue and invokes JVM callbacks safely
-    // - This breaks the circular dependency and prevents deadlock
+    // Get JNI environment for this thread (attaches as daemon if needed)
+    JNIEnv* env = get_jni_env(context->jvm);
+    if (!env) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in log callback");
+        jni_log_printf(JNI_LOG_DEBUG, "RubyVM", "Message was: %s", message);
+        return;
+    }
 
-    // Push to queue (non-blocking, returns immediately)
-    if (log_queue_push(context, message, LOG_TYPE_INFO) != 0) {
-        // Fallback to direct logcat if queue push fails
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to queue log message, falling back to logcat");
-        jni_log_write(JNI_LOG_DEBUG, "RubyVM", message);
+    // Create Java String for message content
+    jstring j_message = (*env)->NewStringUTF(env, message);
+    if (!j_message) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create Java string from message");
+        return;
+    }
+
+    // Call the Kotlin accept method
+    (*env)->CallVoidMethod(env, context->kotlin_listener,
+                            context->accept_method_id, j_message);
+
+    // Clean up
+    (*env)->DeleteLocalRef(env, j_message);
+
+    // Check for exceptions
+    if ((*env)->ExceptionCheck(env)) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log callback");
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
     }
 }
 
 /**
- * C callback for log errors.
- * Called from native Ruby VM threads, context passed directly.
- * No global state access - completely thread-safe.
+ * C callback for log errors (stderr).
+ * Called from native logging thread via LogListener.
+ * Calls JVM directly - logging thread is daemon-attached so this is safe.
  */
 static void jni_log_error_callback(LogListener* listener, const char* error_message) {
+    // Validate listener pointer
+    if (!listener) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_error_callback: NULL listener");
+        return;
+    }
+    
+    // Validate message pointer
+    if (!error_message) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_error_callback: NULL error_message");
+        return;
+    }
+    
+    // Validate context pointer
     JNICallbackContext* context = (JNICallbackContext*) listener->context;
+    if (!context) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_error_callback: NULL context");
+        return;
+    }
 
-    // Use async queue to avoid deadlock (same as jni_log_accept_callback)
-    if (log_queue_push(context, error_message, LOG_TYPE_ERROR) != 0) {
-        // Fallback to direct logcat if queue push fails
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to queue error message, falling back to logcat");
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", error_message);
+    // Get JNI environment for this thread (attaches as daemon if needed)
+    JNIEnv* env = get_jni_env(context->jvm);
+    if (!env) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in error callback");
+        jni_log_printf(JNI_LOG_ERROR, "RubyVM", "Error message was: %s", error_message);
+        return;
+    }
+
+    // Create Java String for message content
+    jstring j_message = (*env)->NewStringUTF(env, error_message);
+    if (!j_message) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create Java string from error_message");
+        return;
+    }
+
+    // Call the Kotlin onLogError method
+    (*env)->CallVoidMethod(env, context->kotlin_listener,
+                            context->error_method_id, j_message);
+
+    // Clean up
+    (*env)->DeleteLocalRef(env, j_message);
+
+    // Check for exceptions
+    if ((*env)->ExceptionCheck(env)) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in error callback");
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
     }
 }
 
@@ -583,17 +510,6 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createInterpreter(JNIEnv *env, jclass cl
         return 0; // null pointer
     }
 
-    // Start the async log queue consumer thread
-    // This thread will handle all JVM callbacks asynchronously to prevent deadlock
-    if (log_queue_start() != 0) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to start log queue consumer thread");
-        destroy_jni_callback_context(callback_context);
-        free(c_app_path);
-        free(c_ruby_base_directory);
-        free(c_native_libs_directory);
-        return 0;
-    }
-
     // Create LogListener with C callback functions and context
     // The context is stored IN the LogListener and will be passed to callbacks
     LogListener listener = {
@@ -639,8 +555,6 @@ Java_com_scorbutics_rubyvm_RubyVMNative_destroyInterpreter(JNIEnv *env, jclass c
     RubyInterpreter* interpreter = (RubyInterpreter*)interpreter_ptr;
 
     // Get the callback context from the interpreter before destroying it
-    // Assuming your ruby_interpreter_get_log_context() or similar exists
-    // If not, you'll need to store the context pointer separately and pass it here
     LogListener* listener = &interpreter->log_listener;
     JNICallbackContext* callback_context = NULL;
 
@@ -652,11 +566,7 @@ Java_com_scorbutics_rubyvm_RubyVMNative_destroyInterpreter(JNIEnv *env, jclass c
     ruby_interpreter_destroy(interpreter);
     DEBUG_LOG("Interpreter destroyed");
 
-    // Stop the log queue consumer thread
-    log_queue_stop();
-    DEBUG_LOG("Log queue consumer thread stopped");
-
-    // Then clean up the callback context
+    // Clean up the callback context
     if (callback_context) {
         destroy_jni_callback_context(callback_context);
     }
@@ -821,6 +731,10 @@ Java_com_scorbutics_rubyvm_RubyVMNative_executeScriptSync(JNIEnv *env, jclass cl
 
     DEBUG_LOG("executeScriptSync: Executing script synchronously on JVM thread");
 
+    // Reset the log flush flag before execution
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: Resetting log flush flag");
+    reset_logs_flushed();
+
     // Execute the script synchronously on the calling (JVM) thread
     // This BLOCKS until the script completes and returns the result directly
     // No native pthread is created, so JVM GC won't scan native stacks!
@@ -828,6 +742,18 @@ Java_com_scorbutics_rubyvm_RubyVMNative_executeScriptSync(JNIEnv *env, jclass cl
     const int result = ruby_interpreter_execute_sync(interpreter, script);
 
     DEBUG_LOG("executeScriptSync: Script execution completed with result: %d", result);
+
+    // CRITICAL: Wait for all logs to be flushed
+    // The Ruby VM sends a sentinel message after flushing stdout/stderr.
+    // We wait for this sentinel to ensure all logs are processed before returning.
+    // This prevents race conditions where logs are lost or appear out of order.
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: Waiting for log flush signal...");
+    int wait_result = wait_for_logs_flushed(5000);  // 5 second timeout
+    if (wait_result == 0) {
+        jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: All logs flushed successfully");
+    } else {
+        jni_log_write(JNI_LOG_WARN, "RubyVM", "executeScriptSync: Timeout waiting for log flush");
+    }
 
     return (jint)result;
 }
