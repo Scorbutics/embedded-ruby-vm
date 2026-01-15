@@ -166,18 +166,25 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
     }
 
     // Get method IDs for the LogListener interface methods
-        context->accept_method_id = (*env)->GetMethodID(env, listener_class,
+    context->accept_method_id = (*env)->GetMethodID(env, listener_class,
                                                     "accept", "(Ljava/lang/String;)V");
     context->error_method_id = (*env)->GetMethodID(env, listener_class,
                                                    "onLogError", "(Ljava/lang/String;)V");
+    context->log_message_method_id = (*env)->GetMethodID(env, listener_class,
+                                                         "onLogMessage", "(Ljava/lang/String;I)V");
 
     (*env)->DeleteLocalRef(env, listener_class);
 
     if (!context->accept_method_id || !context->error_method_id) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get method IDs");
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get legacy method IDs");
         (*env)->DeleteGlobalRef(env, context->kotlin_listener);
         free(context);
         return NULL;
+    }
+
+    // log_message_method_id is optional (for backward compatibility)
+    if (!context->log_message_method_id) {
+        jni_log_write(JNI_LOG_WARN, "RubyVM", "onLogMessage method not found, using legacy callbacks only");
     }
 
     return context;
@@ -328,6 +335,68 @@ static void jni_log_error_callback(LogListener* listener, const char* error_mess
     // Check for exceptions
     if ((*env)->ExceptionCheck(env)) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in error callback");
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+    }
+}
+
+/**
+ * C callback for log messages with source information.
+ * Called from native logging thread via LogListener.
+ * Calls JVM directly - logging thread is daemon-attached so this is safe.
+ */
+static void jni_log_message_callback(LogListener* listener, const char* message, log_stream_t source) {
+    // Validate listener pointer
+    if (!listener) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_message_callback: NULL listener");
+        return;
+    }
+
+    // Validate message pointer
+    if (!message) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_message_callback: NULL message");
+        return;
+    }
+
+    // Check for sentinel message indicating all logs have been flushed
+    if (strstr(message, SCRIPT_COMPLETE_SENTINEL) != NULL) {
+        jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Sentinel message detected in new callback - signaling log completion");
+        signal_logs_flushed();
+        return;  // Don't forward sentinel to user
+    }
+
+    // Validate context pointer
+    JNICallbackContext* context = (JNICallbackContext*) listener->context;
+    if (!context) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_message_callback: NULL context");
+        return;
+    }
+
+    // Get JNI environment for this thread (attaches as daemon if needed)
+    JNIEnv* env = get_jni_env(context->jvm);
+    if (!env) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in log message callback");
+        jni_log_printf(JNI_LOG_DEBUG, "RubyVM", "Message was: %s", message);
+        return;
+    }
+
+    // Create Java String for message content
+    jstring j_message = (*env)->NewStringUTF(env, message);
+    if (!j_message) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create Java string from message");
+        return;
+    }
+
+    // Call the Kotlin onLogMessage method with source
+    (*env)->CallVoidMethod(env, context->kotlin_listener,
+                            context->log_message_method_id, j_message, (jint)source);
+
+    // Clean up
+    (*env)->DeleteLocalRef(env, j_message);
+
+    // Check for exceptions
+    if ((*env)->ExceptionCheck(env)) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log message callback");
         (*env)->ExceptionDescribe(env);
         (*env)->ExceptionClear(env);
     }
@@ -516,7 +585,8 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createInterpreter(JNIEnv *env, jclass cl
             .context = callback_context,
             .user_data = NULL,
             .accept = jni_log_accept_callback,
-            .on_log_error = jni_log_error_callback
+            .on_log_error = jni_log_error_callback,
+            .on_log_message = callback_context->log_message_method_id != NULL ? jni_log_message_callback : NULL
     };
 
     // Create interpreter

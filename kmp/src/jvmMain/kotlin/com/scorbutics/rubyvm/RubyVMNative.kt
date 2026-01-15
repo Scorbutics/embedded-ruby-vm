@@ -51,6 +51,7 @@ internal object RubyVMNative {
 internal interface JNILogListener {
     fun accept(message: String)
     fun onLogError(message: String)
+    fun onLogMessage(message: String, source: Int)
 }
 
 /**

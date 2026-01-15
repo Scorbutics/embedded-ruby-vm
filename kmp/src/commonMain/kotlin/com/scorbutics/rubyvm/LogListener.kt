@@ -3,20 +3,46 @@ package com.scorbutics.rubyvm
 /**
  * Callback interface for Ruby VM log messages.
  *
- * Implement this interface to receive stdout and stderr output from Ruby scripts.
+ * Implement this interface to receive log output from different sources:
+ * - Ruby stdout/stderr
+ * - VMLogger (internal VM logging)
+ * - Native C code stdout/stderr
  */
 interface LogListener {
     /**
-     * Called when Ruby outputs to stdout (via puts, print, etc.)
+     * Called when a log message is received from any source.
      *
-     * @param message The log message
+     * @param logMessage The log message with its source
      */
-    fun onLog(message: String)
+    fun onLogMessage(logMessage: LogMessage)
 
     /**
-     * Called when Ruby outputs to stderr or encounters an error
+     * Legacy method: Called when Ruby outputs to stdout (via puts, print, etc.)
      *
+     * @deprecated Use onLogMessage instead for better source tracking
+     * @param message The log message
+     */
+    @Deprecated(
+        message = "Use onLogMessage(LogMessage) instead",
+        replaceWith = ReplaceWith("onLogMessage(LogMessage(message, LogSource.RUBY_STDOUT))")
+    )
+    fun onLog(message: String) {
+        // Default implementation calls new method for backward compatibility
+        onLogMessage(LogMessage(message, LogSource.RUBY_STDOUT))
+    }
+
+    /**
+     * Legacy method: Called when Ruby outputs to stderr or encounters an error
+     *
+     * @deprecated Use onLogMessage instead for better source tracking
      * @param message The error message
      */
-    fun onError(message: String)
+    @Deprecated(
+        message = "Use onLogMessage(LogMessage) instead",
+        replaceWith = ReplaceWith("onLogMessage(LogMessage(message, LogSource.RUBY_STDERR))")
+    )
+    fun onError(message: String) {
+        // Default implementation calls new method for backward compatibility
+        onLogMessage(LogMessage(message, LogSource.RUBY_STDERR))
+    }
 }

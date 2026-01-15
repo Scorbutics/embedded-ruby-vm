@@ -161,21 +161,37 @@ static int native_log_callbacks(const char* line, log_stream_t stream, void* con
 
     RubyVM* vm = (RubyVM*)context;
 
-    if (stream == LOG_STREAM_STDOUT) {
-        if (vm->log_listener.accept == NULL) {
-            // No accept handler defined
-            return -2;
-        }
-        vm->log_listener.accept(&vm->log_listener, line);
-    } else if (stream == LOG_STREAM_STDERR) {
-        if (vm->log_listener.on_log_error == NULL) {
-            // No error handler defined
-            return -2;
-        }
-        vm->log_listener.on_log_error(&vm->log_listener, line);
-    } else {
-        // Unknown stream type
-        return -3;
+    // Prefer new callback with source information if available
+    if (vm->log_listener.on_log_message != NULL) {
+        vm->log_listener.on_log_message(&vm->log_listener, line, stream);
+        return 0;
+    }
+
+    // Fall back to legacy callbacks for backward compatibility
+    // Map new stream types to old callbacks as best as possible
+    switch (stream) {
+        case LOG_STREAM_RUBY_STDOUT:
+        case LOG_STREAM_NATIVE_STDOUT:
+        case LOG_STREAM_VMLOGGER:  // VMLogger info/debug goes to stdout callback
+            if (vm->log_listener.accept == NULL) {
+                // No accept handler defined
+                return -2;
+            }
+            vm->log_listener.accept(&vm->log_listener, line);
+            break;
+
+        case LOG_STREAM_RUBY_STDERR:
+        case LOG_STREAM_NATIVE_STDERR:
+            if (vm->log_listener.on_log_error == NULL) {
+                // No error handler defined
+                return -2;
+            }
+            vm->log_listener.on_log_error(&vm->log_listener, line);
+            break;
+
+        default:
+            // Unknown stream type
+            return -3;
     }
 
     return 0;
@@ -228,6 +244,17 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
 
     // Clear any previous errors
     ruby_vm_clear_error(vm);
+
+    // Auto-enable logging if a listener was provided
+    // This ensures log streams are available before Ruby VM needs them
+    if (vm->log_listener.accept != NULL || vm->log_listener.on_log_error != NULL || vm->log_listener.on_log_message != NULL) {
+        DEBUG_LOG("ruby_vm_start: Auto-enabling logging (listener provided)");
+        int logging_result = ruby_vm_enable_logging(vm);
+        if (logging_result != 0) {
+            DEBUG_LOG("ruby_vm_start: Warning - failed to enable logging (error %d)", logging_result);
+            // Continue anyway - VM can still work without logging
+        }
+    }
 
     DEBUG_LOG("ruby_vm_start: Creating socket pair");
     // Create socket pair for communication

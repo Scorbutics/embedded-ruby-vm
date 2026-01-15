@@ -8,8 +8,9 @@
 typedef struct {
     JavaVM* jvm;
     jobject kotlin_listener; // Global reference to Kotlin LogListener
-    jmethodID accept_method_id;
-    jmethodID error_method_id;
+    jmethodID accept_method_id;       // Legacy: accept(String)
+    jmethodID error_method_id;        // Legacy: onLogError(String)
+    jmethodID log_message_method_id;  // New: onLogMessage(String, int)
 } JNICallbackContext;
 
 JNIEXPORT jint JNICALL

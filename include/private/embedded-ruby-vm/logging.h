@@ -6,11 +6,20 @@ extern "C" {
 #endif
 
 /**
- * Log stream type
+ * Log stream type - identifies the source of log messages
+ *
+ * LOG_STREAM_RUBY_STDOUT: Ruby VM stdout (puts, print, p)
+ * LOG_STREAM_RUBY_STDERR: Ruby VM stderr (warn, raise)
+ * LOG_STREAM_VMLOGGER: VMLogger output (VMLogger.debug/info/error)
+ * LOG_STREAM_NATIVE_STDOUT: Native C code stdout
+ * LOG_STREAM_NATIVE_STDERR: Native C code stderr
  */
 typedef enum {
-    LOG_STREAM_STDOUT = 1,
-    LOG_STREAM_STDERR = 2
+    LOG_STREAM_RUBY_STDOUT = 1,
+    LOG_STREAM_RUBY_STDERR = 2,
+    LOG_STREAM_VMLOGGER = 3,
+    LOG_STREAM_NATIVE_STDOUT = 4,
+    LOG_STREAM_NATIVE_STDERR = 5
 } log_stream_t;
 
 /**
@@ -152,6 +161,21 @@ const char* logging_error_string(logging_error_t error);
  * Resets the error state to LOGGING_ERROR_NONE
  */
 void logging_clear_last_error(void);
+
+/**
+ * Get a file descriptor for a specific log stream
+ * This allows external code to write directly to a specific log stream
+ *
+ * Use case: Ruby VM can get FDs for RUBY_STDOUT, RUBY_STDERR, and VMLOGGER
+ * to redirect different output sources to different streams
+ *
+ * @param stream The log stream type to get FD for
+ * @return File descriptor (>= 0) on success, negative on error
+ *
+ * Note: Only returns FDs for non-native streams (RUBY_STDOUT, RUBY_STDERR, VMLOGGER)
+ * Returns LOGGING_ERROR_INVALID_PARAMETER for NATIVE_STDOUT/NATIVE_STDERR
+ */
+int logging_get_stream_fd(log_stream_t stream);
 
 #ifdef __cplusplus
 }

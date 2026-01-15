@@ -81,6 +81,18 @@ actual class RubyInterpreter private constructor(
                 override fun onLogError(message: String) {
                     listener.onError(message)
                 }
+
+                override fun onLogMessage(message: String, source: Int) {
+                    val logSource = when (source) {
+                        1 -> LogSource.RUBY_STDOUT
+                        2 -> LogSource.RUBY_STDERR
+                        3 -> LogSource.VMLOGGER
+                        4 -> LogSource.NATIVE_STDOUT
+                        5 -> LogSource.NATIVE_STDERR
+                        else -> LogSource.NATIVE_STDERR // fallback
+                    }
+                    listener.onLogMessage(LogMessage(message, logSource))
+                }
             }
 
             val interpreterPtr = RubyVMNative.createInterpreter(

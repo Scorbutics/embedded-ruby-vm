@@ -16,9 +16,12 @@
 // Configuration
 #define LOG_BUFFER_SIZE 128
 #define LOG_BUFFER_GROWTH_FACTOR 1.5
-#define NUM_STREAMS 2
-#define STDOUT_INDEX 0
-#define STDERR_INDEX 1
+#define NUM_STREAMS 5
+#define RUBY_STDOUT_INDEX 0
+#define RUBY_STDERR_INDEX 1
+#define VMLOGGER_INDEX 2
+#define NATIVE_STDOUT_INDEX 3
+#define NATIVE_STDERR_INDEX 4
 
 // Log levels
 enum {
@@ -85,7 +88,7 @@ static logging_state_t g_logging_state = {
     .log_tag = NULL,
     .logging_thread = 0,
     .thread_continue = 0,
-    .stream_pfd = {{-1, -1}, {-1, -1}},
+    .stream_pfd = {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}},
     .native_loggers = NULL,
     .custom_outputs = NULL,
     .custom_output_count = 0,
@@ -263,7 +266,7 @@ static int call_custom_logging_function(log_stream_t stream, const char* line) {
  */
 static int write_full_log_line(const char* line, log_stream_t stream) {
     const char* tag = (g_logging_state.log_tag != NULL) ? g_logging_state.log_tag : "UNKNOWN";
-    int priority = (stream == LOG_STREAM_STDERR) ? LOG_ERROR : LOG_INFO;
+    int priority = (stream == LOG_STREAM_RUBY_STDERR) ? LOG_ERROR : LOG_INFO;
 
     int native_logging_error = call_native_logging_function(priority, tag, line);
     int custom_logging_error = call_custom_logging_function(stream, line);
@@ -395,15 +398,18 @@ static void* logging_function_thread(void* unused) {
     stream_buffer_t streams[NUM_STREAMS];
 
     // Initialize all stream buffers
-    if (init_stream_buffer(&streams[STDOUT_INDEX], LOG_STREAM_STDOUT, g_logging_state.stream_pfd[STDOUT_INDEX][0]) != 0 ||
-        init_stream_buffer(&streams[STDERR_INDEX], LOG_STREAM_STDERR, g_logging_state.stream_pfd[STDERR_INDEX][0]) != 0) {
+    if (init_stream_buffer(&streams[RUBY_STDOUT_INDEX], LOG_STREAM_RUBY_STDOUT, g_logging_state.stream_pfd[RUBY_STDOUT_INDEX][0]) != 0 ||
+        init_stream_buffer(&streams[RUBY_STDERR_INDEX], LOG_STREAM_RUBY_STDERR, g_logging_state.stream_pfd[RUBY_STDERR_INDEX][0]) != 0 ||
+        init_stream_buffer(&streams[VMLOGGER_INDEX], LOG_STREAM_VMLOGGER, g_logging_state.stream_pfd[VMLOGGER_INDEX][0]) != 0 ||
+        init_stream_buffer(&streams[NATIVE_STDOUT_INDEX], LOG_STREAM_NATIVE_STDOUT, g_logging_state.stream_pfd[NATIVE_STDOUT_INDEX][0]) != 0 ||
+        init_stream_buffer(&streams[NATIVE_STDERR_INDEX], LOG_STREAM_NATIVE_STDERR, g_logging_state.stream_pfd[NATIVE_STDERR_INDEX][0]) != 0) {
         set_last_error(LOGGING_ERROR_MEMORY_ALLOCATION);
         call_native_logging_function(LOG_ERROR, g_logging_state.log_tag, "Failed to allocate buffers, aborting logging thread");
         return NULL;
     }
 
     // Find max fd for select()
-    int max_fd = streams[STDOUT_INDEX].fd;
+    int max_fd = streams[RUBY_STDOUT_INDEX].fd;
     for (int i = 1; i < NUM_STREAMS; i++) {
         if (streams[i].fd > max_fd) {
             max_fd = streams[i].fd;
@@ -465,7 +471,15 @@ static void* logging_function_thread(void* unused) {
                     streams[i].is_open = 0;
                 } else if (result < 0) {
                     set_last_error(LOGGING_ERROR_READ_FAILED);
-                    const char* stream_name = (i == STDOUT_INDEX) ? "stdout" : "stderr";
+                    const char* stream_name;
+                    switch (i) {
+                        case RUBY_STDOUT_INDEX: stream_name = "ruby_stdout"; break;
+                        case RUBY_STDERR_INDEX: stream_name = "ruby_stderr"; break;
+                        case VMLOGGER_INDEX: stream_name = "vmlogger"; break;
+                        case NATIVE_STDOUT_INDEX: stream_name = "native_stdout"; break;
+                        case NATIVE_STDERR_INDEX: stream_name = "native_stderr"; break;
+                        default: stream_name = "unknown"; break;
+                    }
                     char errorMessage[256];
                     snprintf(errorMessage, sizeof(errorMessage),
                              "Error reading %s: %s", stream_name, strerror(errno));
@@ -552,14 +566,40 @@ static int internal_start_logging_thread(void) {
     setvbuf(stdout, NULL, _IOLBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
-    // Create and redirect both streams
-    if (create_and_redirect_stream(STDOUT_INDEX, STDOUT_FILENO) != 0) {
+    // Create socketpairs for all streams
+    // Only redirect native stdout/stderr to actual STDOUT_FILENO/STDERR_FILENO
+    // Ruby streams and VMLogger get their own FDs that can be retrieved via logging_get_stream_fd()
+
+    // Ruby stdout - just create socketpair, no redirect
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[RUBY_STDOUT_INDEX]) == -1) {
+        set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
+        cleanup_streams();
+        return LOGGING_ERROR_SOCKETPAIR_FAILED;
+    }
+
+    // Ruby stderr - just create socketpair, no redirect
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[RUBY_STDERR_INDEX]) == -1) {
+        set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
+        cleanup_streams();
+        return LOGGING_ERROR_SOCKETPAIR_FAILED;
+    }
+
+    // VMLogger - just create socketpair, no redirect
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[VMLOGGER_INDEX]) == -1) {
+        set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
+        cleanup_streams();
+        return LOGGING_ERROR_SOCKETPAIR_FAILED;
+    }
+
+    // Native stdout - redirect actual stdout
+    if (create_and_redirect_stream(NATIVE_STDOUT_INDEX, STDOUT_FILENO) != 0) {
         set_last_error(LOGGING_ERROR_STDOUT_REDIRECT_FAILED);
         cleanup_streams();
         return LOGGING_ERROR_STDOUT_REDIRECT_FAILED;
     }
 
-    if (create_and_redirect_stream(STDERR_INDEX, STDERR_FILENO) != 0) {
+    // Native stderr - redirect actual stderr
+    if (create_and_redirect_stream(NATIVE_STDERR_INDEX, STDERR_FILENO) != 0) {
         set_last_error(LOGGING_ERROR_STDERR_REDIRECT_FAILED);
         cleanup_streams();
         return LOGGING_ERROR_STDERR_REDIRECT_FAILED;
@@ -877,4 +917,59 @@ int logging_remove_custom_output(logging_custom_output_func_t func, void* contex
     set_last_error(LOGGING_ERROR_CALLBACK_NOT_FOUND);
     pthread_mutex_unlock(&g_logging_state.lock);
     return LOGGING_ERROR_CALLBACK_NOT_FOUND;
+}
+
+/**
+ * Get a file descriptor for a specific log stream
+ * This allows external code (like Ruby VM) to write directly to a specific log stream
+ */
+int logging_get_stream_fd(log_stream_t stream) {
+    pthread_mutex_lock(&g_logging_state.lock);
+
+    if (!g_logging_state.is_initialized) {
+        set_last_error(LOGGING_ERROR_NOT_INITIALIZED);
+        pthread_mutex_unlock(&g_logging_state.lock);
+        return LOGGING_ERROR_NOT_INITIALIZED;
+    }
+
+    if (!g_logging_state.is_running) {
+        set_last_error(LOGGING_ERROR_NOT_RUNNING);
+        pthread_mutex_unlock(&g_logging_state.lock);
+        return LOGGING_ERROR_NOT_RUNNING;
+    }
+
+    int stream_index;
+    switch (stream) {
+        case LOG_STREAM_RUBY_STDOUT:
+            stream_index = RUBY_STDOUT_INDEX;
+            break;
+        case LOG_STREAM_RUBY_STDERR:
+            stream_index = RUBY_STDERR_INDEX;
+            break;
+        case LOG_STREAM_VMLOGGER:
+            stream_index = VMLOGGER_INDEX;
+            break;
+        case LOG_STREAM_NATIVE_STDOUT:
+        case LOG_STREAM_NATIVE_STDERR:
+            // Native streams are redirected via dup2, don't expose their FDs
+            set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+            pthread_mutex_unlock(&g_logging_state.lock);
+            return LOGGING_ERROR_INVALID_PARAMETER;
+        default:
+            set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+            pthread_mutex_unlock(&g_logging_state.lock);
+            return LOGGING_ERROR_INVALID_PARAMETER;
+    }
+
+    // Return the write end of the socketpair (index 1)
+    int fd = g_logging_state.stream_pfd[stream_index][1];
+
+    pthread_mutex_unlock(&g_logging_state.lock);
+
+    if (fd == -1) {
+        set_last_error(LOGGING_ERROR_NOT_RUNNING);
+        return LOGGING_ERROR_NOT_RUNNING;
+    }
+
+    return fd;
 }

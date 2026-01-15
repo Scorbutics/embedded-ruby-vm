@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # fifo_interpreter.rb
 #
-# Usage: ruby fifo_interpreter.rb <socket_fd>
+# Usage: ruby fifo_interpreter.rb <socket_fd> <ruby_stdout_fd> <ruby_stderr_fd> <vmlogger_fd>
 #
 # Protocol:
 # 1. C side sends: "<length>\n<script_content>"
@@ -23,43 +23,91 @@ module VMLogger
                elsif ENV['NDEBUG'] == '1'
                  LOG_ERROR  # Release build: only ERROR
                else
-                 LOG_DEBUG  # Debug build: all messages
+                 LOG_INFO   # Info build: all messages
                end
 
+  # VMLogger output IO (will be set to dedicated FD)
+  @vmlogger_io = nil
+
+  def self.set_output(io)
+    @vmlogger_io = io
+    @vmlogger_io.sync = true if @vmlogger_io
+  end
+
   def self.debug(message)
-    STDOUT.puts(message) if @log_level <= LOG_DEBUG
-    STDOUT.flush if @log_level <= LOG_DEBUG
+    return unless @log_level <= LOG_DEBUG
+    if @vmlogger_io
+      @vmlogger_io.puts(message)
+      @vmlogger_io.flush
+    else
+      STDOUT.puts(message)
+      STDOUT.flush
+    end
   end
 
   def self.info(message)
-    STDOUT.puts(message) if @log_level <= LOG_INFO
-    STDOUT.flush if @log_level <= LOG_INFO
+    return unless @log_level <= LOG_INFO
+    if @vmlogger_io
+      @vmlogger_io.puts(message)
+      @vmlogger_io.flush
+    else
+      STDOUT.puts(message)
+      STDOUT.flush
+    end
   end
 
   def self.error(message)
-    STDERR.puts(message)  # Errors always go to STDERR
-    STDERR.flush
+    if @vmlogger_io
+      @vmlogger_io.puts(message)
+      @vmlogger_io.flush
+    else
+      STDERR.puts(message)
+      STDERR.flush
+    end
   end
 end
 
 begin
-  # Get socket file descriptor from command-line argument
-  if ARGV.empty?
-    raise ArgumentError, "Usage: #{$0} <socket_fd>"
+  # Get file descriptors from command-line arguments
+  if ARGV.length < 4
+    raise ArgumentError, "Usage: #{$0} <socket_fd> <ruby_stdout_fd> <ruby_stderr_fd> <vmlogger_fd>"
   end
 
-  ruby_fd = ARGV[0].to_i
+  socket_fd = ARGV[0].to_i
+  ruby_stdout_fd = ARGV[1].to_i
+  ruby_stderr_fd = ARGV[2].to_i
+  vmlogger_fd = ARGV[3].to_i
 
-  if ruby_fd <= 0
+  if socket_fd <= 0
     raise ArgumentError, "Invalid socket file descriptor: #{ARGV[0]}"
   end
 
-  # Wrap the file descriptor in an IO object (bidirectional)
-  socket = IO.for_fd(ruby_fd, "r+")
+  if ruby_stdout_fd <= 0 || ruby_stderr_fd <= 0 || vmlogger_fd <= 0
+    raise ArgumentError, "Invalid log file descriptors: stdout=#{ARGV[1]} stderr=#{ARGV[2]} vmlogger=#{ARGV[3]}"
+  end
+
+  # Wrap the socket file descriptor in an IO object (bidirectional)
+  socket = IO.for_fd(socket_fd, "r+")
   socket.sync = true  # Disable buffering - critical for real-time communication!
 
+  # Redirect Ruby's stdout and stderr to dedicated log streams
+  # We need to use IO.reopen to actually replace the underlying file descriptors
+  # This ensures both Ruby-level ($stdout) and C-level (STDOUT_FILENO) use the same FD
+  ruby_stdout_io = IO.for_fd(ruby_stdout_fd, "w")
+  ruby_stdout_io.sync = true
+  $stdout.reopen(ruby_stdout_io)
+
+  ruby_stderr_io = IO.for_fd(ruby_stderr_fd, "w")
+  ruby_stderr_io.sync = true
+  $stderr.reopen(ruby_stderr_io)
+
+  # Set VMLogger to use its dedicated FD
+  vmlogger_io = IO.for_fd(vmlogger_fd, "w")
+  VMLogger.set_output(vmlogger_io)
+
   # Log startup (useful for debugging)
-  VMLogger.info "[Ruby VM] FIFO interpreter started on fd=#{ruby_fd}"
+  VMLogger.info "[Ruby VM] FIFO interpreter started on socket_fd=#{socket_fd}"
+  VMLogger.info "[Ruby VM] Log streams: ruby_stdout=#{ruby_stdout_fd}, ruby_stderr=#{ruby_stderr_fd}, vmlogger=#{vmlogger_fd}"
 
   # Main REPL loop
   loop do

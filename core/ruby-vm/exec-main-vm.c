@@ -18,6 +18,7 @@
 #include "embedded-ruby-vm/debug.h"
 #include "embedded-ruby-vm/ruby-script.h"
 #include "embedded-ruby-vm/ruby-custom-ext.h"
+#include "embedded-ruby-vm/logging.h"
 
 #include "ruby/config.h"
 #include "ruby/version.h"
@@ -217,12 +218,34 @@ static int run_main_vm_node(const char* baseDirectory,
     SaveOriginalSignalHandlers();
 #endif
 
+    // Get file descriptors for separate log streams
+    int ruby_stdout_fd = logging_get_stream_fd(LOG_STREAM_RUBY_STDOUT);
+    int ruby_stderr_fd = logging_get_stream_fd(LOG_STREAM_RUBY_STDERR);
+    int vmlogger_fd = logging_get_stream_fd(LOG_STREAM_VMLOGGER);
+
+    if (ruby_stdout_fd < 0 || ruby_stderr_fd < 0 || vmlogger_fd < 0) {
+        fprintf(stderr, "Failed to get log stream file descriptors: stdout=%d, stderr=%d, vmlogger=%d\n",
+                ruby_stdout_fd, ruby_stderr_fd, vmlogger_fd);
+        // Fall back to old behavior - will use regular stdout/stderr
+        // This ensures backward compatibility if logging is not initialized
+        ruby_stdout_fd = STDOUT_FILENO;
+        ruby_stderr_fd = STDERR_FILENO;
+        vmlogger_fd = STDERR_FILENO;
+    }
+
     char socket_fd_str[32];
+    char ruby_stdout_fd_str[32];
+    char ruby_stderr_fd_str[32];
+    char vmlogger_fd_str[32];
+
     snprintf(socket_fd_str, sizeof(socket_fd_str), "%d", socket_fd);
+    snprintf(ruby_stdout_fd_str, sizeof(ruby_stdout_fd_str), "%d", ruby_stdout_fd);
+    snprintf(ruby_stderr_fd_str, sizeof(ruby_stderr_fd_str), "%d", ruby_stderr_fd);
+    snprintf(vmlogger_fd_str, sizeof(vmlogger_fd_str), "%d", vmlogger_fd);
 
     int argc;
     char **argv = build_ruby_argv_va(&argc, scriptContent, fromFilename,
-                                     1, socket_fd_str);  // 1 extra arg
+                                     4, socket_fd_str, ruby_stdout_fd_str, ruby_stderr_fd_str, vmlogger_fd_str);  // 4 extra args
 
     // Step 2: Initialize Ruby (this will overwrite signal handlers)
     ruby_sysinit(&argc, &argv);
