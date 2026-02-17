@@ -28,11 +28,14 @@ if(NOT EXISTS "${FAT_LIB_PATH}")
     message(FATAL_ERROR "Fat library not found at: ${FAT_LIB_PATH}")
 endif()
 
-# Create a dummy source file (required for CMake to create a library target)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/dummy.c" "// Dummy file\n")
-
-# Create shared library target
-add_library(rgss_runtime SHARED "${CMAKE_CURRENT_BINARY_DIR}/dummy.c")
+# Create shared library target with native_main.c
+# This provides a generic main() entry point for NativeActivity usage.
+# When loaded by an Android NativeActivity, SFML's ANativeActivity_onCreate
+# (from sfml-main.a in the fat library) sets up the rendering context and
+# spawns a thread that calls main(). The main() reads environment variables
+# to find the Ruby script to execute.
+# In regular Activity usage, main() is never called.
+add_library(rgss_runtime SHARED "${CMAKE_CURRENT_SOURCE_DIR}/native_main.c")
 
 # Link the entire fat static library into the shared library
 # Use whole-archive to ensure all symbols are included
