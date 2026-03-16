@@ -10871,6 +10871,10 @@ VALUE rb_big2str_generic(VALUE x, int base);
 VALUE rb_str2big_poweroftwo(VALUE arg, int base, int badcheck);
 VALUE rb_str2big_normal(VALUE arg, int base, int badcheck);
 VALUE rb_str2big_karatsuba(VALUE arg, int base, int badcheck);
+VALUE rb_big_mul_gmp(VALUE x, VALUE y);
+VALUE rb_big_divrem_gmp(VALUE x, VALUE y);
+VALUE rb_big2str_gmp(VALUE x, int base);
+VALUE rb_str2big_gmp(VALUE arg, int base, int badcheck);
 VALUE rb_int_parse_cstr(const char *str, ssize_t len, char **endp, size_t *ndigits, int base, int flags);
 VALUE rb_int128t2big(__int128 n);
 static inline _Bool
@@ -13950,14 +13954,14 @@ rb_iseq_only_kwparam_p(const rb_iseq_t *iseq)
            iseq->body->param.flags.has_block == 0;
 }
 static _Bool
-rb_splat_or_kwargs_p(const struct rb_callinfo *__restrict__ ci)
+rb_splat_or_kwargs_p(const struct rb_callinfo *__restrict ci)
 {
     return (vm_ci_flag(ci) & (0x01 << VM_CALL_ARGS_SPLAT_bit)) || (vm_ci_flag(ci) & ((0x01 << VM_CALL_KWARG_bit) | (0x01 << VM_CALL_KW_SPLAT_bit)));
 }
 static inline void
-CALLER_SETUP_ARG(struct rb_control_frame_struct *__restrict__ cfp,
-                 struct rb_calling_info *__restrict__ calling,
-                 const struct rb_callinfo *__restrict__ ci)
+CALLER_SETUP_ARG(struct rb_control_frame_struct *__restrict cfp,
+                 struct rb_calling_info *__restrict calling,
+                 const struct rb_callinfo *__restrict ci)
 {
     if ((__builtin_expect(!!((vm_ci_flag(ci) & (0x01 << VM_CALL_ARGS_SPLAT_bit))), 0))) {
         VALUE final_hash;
@@ -13986,9 +13990,9 @@ CALLER_SETUP_ARG(struct rb_control_frame_struct *__restrict__ cfp,
     }
 }
 static inline void
-CALLER_REMOVE_EMPTY_KW_SPLAT(struct rb_control_frame_struct *__restrict__ cfp,
-                             struct rb_calling_info *__restrict__ calling,
-                             const struct rb_callinfo *__restrict__ ci)
+CALLER_REMOVE_EMPTY_KW_SPLAT(struct rb_control_frame_struct *__restrict cfp,
+                             struct rb_calling_info *__restrict calling,
+                             const struct rb_callinfo *__restrict ci)
 {
     if ((__builtin_expect(!!(calling->kw_splat), 0))) {
         if (RHASH_EMPTY_P(cfp->sp[-1])) {
@@ -17171,33 +17175,21 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define RUBY_RUBY_H 1
 #define RBIMPL_CONFIG_H 
 #define INCLUDE_RUBY_CONFIG_H 1
-#define HAVE_STDIO_H 1
+#define STDC_HEADERS 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_STAT_H 1
 #define HAVE_STDLIB_H 1
 #define HAVE_STRING_H 1
+#define HAVE_MEMORY_H 1
+#define HAVE_STRINGS_H 1
 #define HAVE_INTTYPES_H 1
 #define HAVE_STDINT_H 1
-#define HAVE_STRINGS_H 1
-#define HAVE_SYS_STAT_H 1
-#define HAVE_SYS_TYPES_H 1
 #define HAVE_UNISTD_H 1
-#define HAVE_WCHAR_H 1
-#define STDC_HEADERS 1
-#define _ALL_SOURCE 1
-#define _DARWIN_C_SOURCE 1
-#define _GNU_SOURCE 1
-#define _HPUX_ALT_XOPEN_SOCKET_API 1
-#define _NETBSD_SOURCE 1
-#define _OPENBSD_SOURCE 1
-#define _POSIX_PTHREAD_SEMANTICS 1
-#define __STDC_WANT_IEC_60559_ATTRIBS_EXT__ 1
-#define __STDC_WANT_IEC_60559_BFP_EXT__ 1
-#define __STDC_WANT_IEC_60559_DFP_EXT__ 1
-#define __STDC_WANT_IEC_60559_FUNCS_EXT__ 1
-#define __STDC_WANT_IEC_60559_TYPES_EXT__ 1
-#define __STDC_WANT_LIB_EXT2__ 1
-#define __STDC_WANT_MATH_SPEC_FUNCS__ 1
-#define _TANDEM_SOURCE 1
 #define __EXTENSIONS__ 1
+#define _ALL_SOURCE 1
+#define _GNU_SOURCE 1
+#define _POSIX_PTHREAD_SEMANTICS 1
+#define _TANDEM_SOURCE 1
 #define RUBY_SYMBOL_EXPORT_BEGIN _Pragma("GCC visibility push(default)")
 #define RUBY_SYMBOL_EXPORT_END _Pragma("GCC visibility pop")
 #define HAVE_STMT_AND_DECL_IN_EXPR 1
@@ -17237,9 +17229,10 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_TIME_H 1
 #define HAVE_UCONTEXT_H 1
 #define HAVE_UTIME_H 1
-#define __CHAR_UNSIGNED__ 1
+#define HAVE_GMP_H 1
+#define HAVE_LIBGMP 1
 #define HAVE_TYPEOF 1
-#define restrict __restrict__
+#define restrict __restrict
 #define HAVE_LONG_LONG 1
 #define HAVE_OFF_T 1
 #define SIZEOF_INT 4
@@ -17592,8 +17585,8 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define HAVE_LIBZ 1
 #define DLEXT_MAXLEN 3
 #define DLEXT ".so"
+#define EXTSTATIC 1
 #define CROSS_COMPILING 1
-#define LIBDIR_BASENAME "lib"
 #define HAVE__SETJMP 1
 #define HAVE_SIGSETJMP 1
 #define RUBY_SETJMP(env) _setjmp((env))
@@ -18332,17 +18325,6 @@ vm_call_iseq_setup_func(const struct rb_callinfo *ci, const int param_size, cons
 #define FLT_HAS_SUBNORM __FLT_HAS_DENORM__
 #define DBL_HAS_SUBNORM __DBL_HAS_DENORM__
 #define LDBL_HAS_SUBNORM __LDBL_HAS_DENORM__
-#define FLT16_MANT_DIG __FLT16_MANT_DIG__
-#define FLT16_DECIMAL_DIG __FLT16_DECIMAL_DIG__
-#define FLT16_DIG __FLT16_DIG__
-#define FLT16_MIN_EXP __FLT16_MIN_EXP__
-#define FLT16_MIN_10_EXP __FLT16_MIN_10_EXP__
-#define FLT16_MAX_EXP __FLT16_MAX_EXP__
-#define FLT16_MAX_10_EXP __FLT16_MAX_10_EXP__
-#define FLT16_MAX __FLT16_MAX__
-#define FLT16_EPSILON __FLT16_EPSILON__
-#define FLT16_MIN __FLT16_MIN__
-#define FLT16_TRUE_MIN __FLT16_TRUE_MIN__
 #define _UAPI_LINUX_LIMITS_H 
 #define NR_OPEN 1024
 #define NGROUPS_MAX 65536

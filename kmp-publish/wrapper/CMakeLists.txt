@@ -18,10 +18,17 @@ if(NOT TARGET_ABI)
     message(FATAL_ERROR "TARGET_ABI must be set (e.g., x86_64, arm64-v8a)")
 endif()
 
-# Construct path to the fat static library
-set(FAT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/target/${TARGET_ABI}-android/usr/local/lib/librgss_runtime.a")
+# TARGET_ARCH is the filesystem directory name (e.g., arm64, x86_64)
+# TARGET_ABI is the Android ABI name (e.g., arm64-v8a, x86_64)
+if(NOT TARGET_ARCH)
+    set(TARGET_ARCH "${TARGET_ABI}")
+endif()
+
+# Construct path to the fat static library using filesystem arch name
+set(FAT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/target/${TARGET_ARCH}-android/usr/local/lib/librgss_runtime.a")
 
 message(STATUS "Target ABI: ${TARGET_ABI}")
+message(STATUS "Target Arch (filesystem): ${TARGET_ARCH}")
 message(STATUS "Creating shared library wrapper for: ${FAT_LIB_PATH}")
 
 if(NOT EXISTS "${FAT_LIB_PATH}")

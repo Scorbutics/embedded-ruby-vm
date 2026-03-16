@@ -72,26 +72,10 @@ android {
     // Point to the AndroidManifest in androidMain
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
 
-    // Use external CMake build to convert static library to shared library
-    externalNativeBuild {
-        cmake {
-            path = file("wrapper/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-
-    defaultConfig {
-        externalNativeBuild {
-            cmake {
-                val targetAbi = findProperty("targetArch")?.toString() ?: "x86_64"
-                arguments(
-                    "-DTARGET_ABI=$targetAbi",
-                    "-DANDROID_STL=c++_shared"
-                )
-                abiFilters(targetAbi)
-            }
-        }
-    }
+    // Native .so files are pre-staged into src/main/jniLibs/{ABI}/ by the Makefile's
+    // publish-kmp target (CMake is invoked outside of AGP). This allows accumulating
+    // multiple ABIs across builds — each `make install` adds its ABI's .so alongside
+    // previously built ones.
 }
 
 // Publishing configuration
@@ -119,4 +103,5 @@ publishing {
     }
 }
 
-// CMake will automatically handle the library conversion via externalNativeBuild
+// Native .so files are pre-staged by the build system into src/main/jniLibs/{ABI}/
+// See the Makefile's publish-kmp target for the CMake invocation
