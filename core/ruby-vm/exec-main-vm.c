@@ -295,3 +295,10 @@ int ExecMainRubyVM(RubyVM* vm, const char* rubyDirectoryPath, const char* native
 
     return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation, scriptContent, 0, commandsFd);
 }
+
+int ExecRubyScriptInline(const char* rubyDirectoryPath,
+                         const char* nativeLibsDirLocation,
+                         const char* scriptFilePath) {
+    return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation,
+                            scriptFilePath, 1, -1);
+}

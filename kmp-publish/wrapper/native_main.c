@@ -7,7 +7,12 @@
  * ANativeActivity_onCreate (from sfml-main.a) sets up the EGL context
  * and spawns a thread that calls main(). This file provides that main()
  * function, which reads configuration from environment variables and
- * executes a Ruby script using the embedded Ruby VM.
+ * executes a Ruby script directly on the calling thread (inline).
+ *
+ * Running Ruby inline on the SFML thread is critical: SFML prepares an
+ * ALooper on this thread for event processing. If Ruby ran on a separate
+ * VM thread (as in the multi-threaded KMP path), SFML's ALooper_pollAll
+ * would fail with "No looper for this thread!" on every frame.
  *
  * Environment variables (set by Kotlin LauncherActivity before starting NativeActivity):
  *   RGSS_RUBY_BASE_DIR   - Path to Ruby standard library
@@ -31,14 +36,12 @@
 #define LOGE(...) do { fprintf(stderr, "[RGSSMain ERROR] "); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while(0)
 #endif
 
-/* Forward declarations matching embedded-ruby-vm C API */
-struct RubyInterpreter;
-struct RubyScript;
-struct LogListener;
+/* Inline execution: runs Ruby directly on the calling thread */
+extern int ExecRubyScriptInline(const char* rubyDirectoryPath,
+                                const char* nativeLibsDirLocation,
+                                const char* scriptFilePath);
 
-typedef void (*LogAcceptFunc)(struct LogListener* listener, const char* lineMessage);
-typedef void (*LogErrorFunc)(struct LogListener* listener, const char* errorMessage);
-
+/* Logging API */
 typedef enum {
     LOG_STREAM_RUBY_STDOUT_M = 1,
     LOG_STREAM_RUBY_STDERR_M = 2,
@@ -47,78 +50,30 @@ typedef enum {
     LOG_STREAM_NATIVE_STDERR_M = 5
 } log_stream_main_t;
 
-typedef void (*LogMessageFunc)(struct LogListener* listener, const char* message, log_stream_main_t source);
+extern int logging_init(const char* appname);
+extern int logging_add_custom_output(
+    int (*func)(const char* line, log_stream_main_t stream, void* context),
+    void* context);
 
-typedef struct LogListener {
-    void* context;
-    void* user_data;
-    LogAcceptFunc accept;
-    LogErrorFunc on_log_error;
-    LogMessageFunc on_log_message;
-} LogListener;
-
-/* Extern declarations for Ruby C API functions (linked from fat library) */
-extern struct RubyInterpreter* ruby_interpreter_create(
-    const char* application_path,
-    const char* ruby_base_directory,
-    const char* native_libs_location,
-    LogListener listener
-);
-extern void ruby_interpreter_destroy(struct RubyInterpreter* interpreter);
-extern int ruby_interpreter_execute_sync(struct RubyInterpreter* interpreter, struct RubyScript* script);
-extern int ruby_interpreter_enable_logging(struct RubyInterpreter* interpreter);
-
-extern struct RubyScript* ruby_script_create_from_content(const char* content, size_t content_size);
-extern void ruby_script_destroy(struct RubyScript* script);
-
-/* Log callbacks */
-static void on_log(struct LogListener* listener, const char* message) {
-    LOGI("[Ruby] %s", message);
-}
-
-static void on_log_error(struct LogListener* listener, const char* message) {
-    LOGE("[Ruby] %s", message);
-}
-
-static void on_log_message(struct LogListener* listener, const char* message, log_stream_main_t source) {
-    switch (source) {
+/* Log callback for the logging system */
+static int on_log_message(const char* line, log_stream_main_t stream, void* context) {
+    (void)context;
+    switch (stream) {
         case LOG_STREAM_RUBY_STDERR_M:
         case LOG_STREAM_NATIVE_STDERR_M:
-            LOGE("[Ruby] %s", message);
+            LOGE("[Ruby] %s", line);
             break;
         default:
-            LOGI("[Ruby] %s", message);
+            LOGI("[Ruby] %s", line);
             break;
     }
-}
-
-/* Read entire file into a malloc'd buffer */
-static char* read_file_contents(const char* path) {
-    FILE* f = fopen(path, "r");
-    if (!f) return NULL;
-
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (size <= 0) {
-        fclose(f);
-        return NULL;
-    }
-
-    char* buffer = (char*)malloc((size_t)size + 1);
-    if (!buffer) {
-        fclose(f);
-        return NULL;
-    }
-
-    size_t read = fread(buffer, 1, (size_t)size, f);
-    buffer[read] = '\0';
-    fclose(f);
-    return buffer;
+    return 0;
 }
 
 int main(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+
     LOGI("NativeActivity main() started");
 
     /* Read configuration from environment variables */
@@ -138,55 +93,14 @@ int main(int argc, char** argv) {
     LOGI("Native libs dir: %s", native_libs_dir);
     LOGI("Script path: %s", script_path);
 
-    /* Read the Ruby script file */
-    char* script_content = read_file_contents(script_path);
-    if (!script_content) {
-        LOGE("Failed to read script file: %s", script_path);
-        return 1;
-    }
+    /* Set up logging */
+    logging_init("com.scorbutics.rubyvm");
+    logging_add_custom_output(on_log_message, NULL);
 
-    LOGI("Script loaded (%zu bytes)", strlen(script_content));
-
-    /* Set up log listener */
-    LogListener listener;
-    memset(&listener, 0, sizeof(listener));
-    listener.accept = on_log;
-    listener.on_log_error = on_log_error;
-    listener.on_log_message = on_log_message;
-
-    /* Create Ruby interpreter */
-    struct RubyInterpreter* interpreter = ruby_interpreter_create(
-        ".", ruby_base_dir, native_libs_dir, listener
-    );
-
-    if (!interpreter) {
-        LOGE("Failed to create Ruby interpreter");
-        free(script_content);
-        return 1;
-    }
-
-    ruby_interpreter_enable_logging(interpreter);
-
-    /* Create and execute the script */
-    struct RubyScript* script = ruby_script_create_from_content(
-        script_content, strlen(script_content)
-    );
-
-    if (!script) {
-        LOGE("Failed to create Ruby script object");
-        ruby_interpreter_destroy(interpreter);
-        free(script_content);
-        return 1;
-    }
-
-    LOGI("Executing Ruby rendering script...");
-    int result = ruby_interpreter_execute_sync(interpreter, script);
+    /* Execute Ruby script inline on this thread (the SFML thread with ALooper) */
+    LOGI("Executing Ruby script inline on SFML thread...");
+    int result = ExecRubyScriptInline(ruby_base_dir, native_libs_dir, script_path);
     LOGI("Script execution finished with result: %d", result);
-
-    /* Cleanup */
-    ruby_script_destroy(script);
-    ruby_interpreter_destroy(interpreter);
-    free(script_content);
 
     LOGI("NativeActivity main() exiting");
     return result;
