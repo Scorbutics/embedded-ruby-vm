@@ -8,6 +8,44 @@
 # 2. Ruby side executes the full script
 # 3. Ruby side responds: "<exit_code>\n"
 
+# Prevent scripts from killing the host process.
+# Kernel#exit! calls C _exit() directly, bypassing all Ruby exception handling.
+# Override it to raise SystemExit instead, so the interpreter loop can catch it.
+# Track exit calls via $__fifo_exit_code so we can detect them even if the script
+# catches SystemExit internally and continues.
+$__fifo_exit_code = nil
+
+module Kernel
+  alias_method :original_exit!, :exit!
+  def exit!(status = false)
+    status_code = status.is_a?(Integer) ? status : (status ? 0 : 1)
+    $__fifo_exit_code = status_code
+    raise SystemExit.new(status_code, "exit! intercepted by fifo_interpreter")
+  end
+
+  alias_method :original_exit, :exit
+  def exit(status = true)
+    status_code = status.is_a?(Integer) ? status : (status ? 0 : 1)
+    $__fifo_exit_code = status_code
+    raise SystemExit.new(status_code, "exit intercepted by fifo_interpreter")
+  end
+end
+
+# Also override at the Process module level
+module Process
+  class << self
+    alias_method :original_exit!, :exit!
+    def exit!(status = false)
+      Kernel.exit!(status)
+    end
+
+    alias_method :original_exit, :exit
+    def exit(status = true)
+      Kernel.exit(status)
+    end
+  end
+end
+
 # Logging system - similar to C side's NDEBUG approach
 # Log levels: DEBUG (0), INFO (1), ERROR (2)
 # Set via RUBY_VM_LOG_LEVEL environment variable (default: INFO)
@@ -158,6 +196,7 @@ begin
     VMLogger.debug "[Ruby VM] Executing script (#{script_length} bytes)"
 
     # Execute the Ruby script
+    $__fifo_exit_code = nil
     begin
       # Use TOPLEVEL_BINDING so code has access to top-level context
       result = eval(script_content, TOPLEVEL_BINDING, "<socket-script>")
@@ -171,11 +210,16 @@ begin
       $stdout.flush
       $stderr.flush
 
-      # Send success exit code
-      socket.write("0\n")
-      VMLogger.debug "[Ruby VM] Script executed successfully"
+      # Check if exit/exit! was called but caught internally by the script
+      if $__fifo_exit_code && $__fifo_exit_code != 0
+        VMLogger.error "[Ruby VM] Script called exit(#{$__fifo_exit_code}) but caught it internally"
+        socket.write("#{$__fifo_exit_code}\n")
+      else
+        socket.write("0\n")
+        VMLogger.debug "[Ruby VM] Script executed successfully"
+      end
 
-    rescue ScriptError, StandardError => error
+    rescue Exception => error
       # Log the error to stderr (visible in logcat on Android)
       VMLogger.error "[Ruby Error] #{error.class}: #{error.message}"
       error.backtrace.each { |line| VMLogger.error "  #{line}" }
@@ -185,10 +229,11 @@ begin
 
       # Flush stdout and stderr to ensure all error output is visible
       $stdout.flush
-      $stderr.flush     
+      $stderr.flush
 
       # Send failure exit code
-      socket.write("1\n")
+      exit_code = ($__fifo_exit_code && $__fifo_exit_code != 0) ? $__fifo_exit_code : 1
+      socket.write("#{exit_code}\n")
     end
 
     # Flush to ensure exit code is sent immediately
