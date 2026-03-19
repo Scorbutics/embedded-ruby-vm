@@ -8,8 +8,11 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/embed_script.cmake)
 # Embed fifo_interpreter.rb into the library
 embed_script(fifo_interpreter.rb EMBEDDED_FIFO_INTERPRETER)
 
-# Export the embedded script object file to CACHE so embedded-ruby can access it
-set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} CACHE INTERNAL "Embedded script object file from ruby-vm")
+# Embed safe_runner.rb into the library
+embed_script(safe_runner.rb EMBEDDED_SAFE_RUNNER)
+
+# Export the embedded script object files to CACHE so embedded-ruby can access them
+set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} ${EMBEDDED_SAFE_RUNNER} CACHE INTERNAL "Embedded script object files from ruby-vm")
 
 # This will be populated after embedded-ruby is built
 set(DEPENDENCY_LIST "    /* Dependencies will be populated in embedded-ruby library */")
@@ -25,6 +28,7 @@ add_library(ruby-vm OBJECT
     ruby-vm-error.c
     embedded_scripts.c
     ${EMBEDDED_FIFO_INTERPRETER}
+    ${EMBEDDED_SAFE_RUNNER}
     ${DEPS_C_OUT}
 )
 

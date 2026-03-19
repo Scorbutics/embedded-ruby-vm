@@ -18,6 +18,7 @@
 #include "embedded-ruby-vm/debug.h"
 #include "embedded-ruby-vm/ruby-script.h"
 #include "embedded-ruby-vm/ruby-custom-ext.h"
+#include "embedded-ruby-vm/embedded_scripts.h"
 #include "embedded-ruby-vm/logging.h"
 
 #include "ruby/config.h"
@@ -278,6 +279,17 @@ static int run_main_vm_node(const char* baseDirectory,
         // that will be resolvable via require statements
         if (g_custom_ext_init != NULL) {
             g_custom_ext_init();
+        }
+
+        // Load embedded safe_runner.rb from memory and mark it as provided,
+        // so that `require 'safe_runner'` in any script is a no-op
+        // (the modules are already defined in the Ruby VM)
+        {
+            const char* safe_runner_content = embedded_script_get_content("safe_runner.rb");
+            if (safe_runner_content != NULL) {
+                rb_eval_string(safe_runner_content);
+                rb_provide("safe_runner");
+            }
         }
 
         void* options = ruby_options(argc, argv);

@@ -1,109 +1,17 @@
 #!/usr/bin/env ruby
 # fifo_interpreter.rb
 #
+# FIFO-based Ruby script interpreter for the embedded Ruby VM.
+# VMLogger, exit interception (Kernel.exit/exit!, Process.exit/exit!)
+# and $__safe_runner_exit_code are provided by safe_runner.rb,
+# which is loaded from memory before this script runs.
+#
 # Usage: ruby fifo_interpreter.rb <socket_fd> <ruby_stdout_fd> <ruby_stderr_fd> <vmlogger_fd>
 #
 # Protocol:
 # 1. C side sends: "<length>\n<script_content>"
 # 2. Ruby side executes the full script
 # 3. Ruby side responds: "<exit_code>\n"
-
-# Prevent scripts from killing the host process.
-# Kernel#exit! calls C _exit() directly, bypassing all Ruby exception handling.
-# Override it to raise SystemExit instead, so the interpreter loop can catch it.
-# Track exit calls via $__fifo_exit_code so we can detect them even if the script
-# catches SystemExit internally and continues.
-$__fifo_exit_code = nil
-
-module Kernel
-  alias_method :original_exit!, :exit!
-  def exit!(status = false)
-    status_code = status.is_a?(Integer) ? status : (status ? 0 : 1)
-    $__fifo_exit_code = status_code
-    raise SystemExit.new(status_code, "exit! intercepted by fifo_interpreter")
-  end
-
-  alias_method :original_exit, :exit
-  def exit(status = true)
-    status_code = status.is_a?(Integer) ? status : (status ? 0 : 1)
-    $__fifo_exit_code = status_code
-    raise SystemExit.new(status_code, "exit intercepted by fifo_interpreter")
-  end
-end
-
-# Also override at the Process module level
-module Process
-  class << self
-    alias_method :original_exit!, :exit!
-    def exit!(status = false)
-      Kernel.exit!(status)
-    end
-
-    alias_method :original_exit, :exit
-    def exit(status = true)
-      Kernel.exit(status)
-    end
-  end
-end
-
-# Logging system - similar to C side's NDEBUG approach
-# Log levels: DEBUG (0), INFO (1), ERROR (2)
-# Set via RUBY_VM_LOG_LEVEL environment variable (default: INFO)
-module VMLogger
-  LOG_DEBUG = 0
-  LOG_INFO = 1
-  LOG_ERROR = 2
-
-  # Parse log level from environment (default to INFO in release, DEBUG if NDEBUG not set)
-  # NDEBUG=1 means release build (INFO level), NDEBUG=0 or unset means debug build (DEBUG level)
-  @log_level = if ENV['RUBY_VM_LOG_LEVEL']
-                 ENV['RUBY_VM_LOG_LEVEL'].to_i
-               elsif ENV['NDEBUG'] == '1'
-                 LOG_ERROR  # Release build: only ERROR
-               else
-                 LOG_INFO   # Info build: all messages
-               end
-
-  # VMLogger output IO (will be set to dedicated FD)
-  @vmlogger_io = nil
-
-  def self.set_output(io)
-    @vmlogger_io = io
-    @vmlogger_io.sync = true if @vmlogger_io
-  end
-
-  def self.debug(message)
-    return unless @log_level <= LOG_DEBUG
-    if @vmlogger_io
-      @vmlogger_io.puts(message)
-      @vmlogger_io.flush
-    else
-      STDOUT.puts(message)
-      STDOUT.flush
-    end
-  end
-
-  def self.info(message)
-    return unless @log_level <= LOG_INFO
-    if @vmlogger_io
-      @vmlogger_io.puts(message)
-      @vmlogger_io.flush
-    else
-      STDOUT.puts(message)
-      STDOUT.flush
-    end
-  end
-
-  def self.error(message)
-    if @vmlogger_io
-      @vmlogger_io.puts(message)
-      @vmlogger_io.flush
-    else
-      STDERR.puts(message)
-      STDERR.flush
-    end
-  end
-end
 
 begin
   # Get file descriptors from command-line arguments
@@ -139,7 +47,7 @@ begin
   ruby_stderr_io.sync = true
   $stderr.reopen(ruby_stderr_io)
 
-  # Set VMLogger to use its dedicated FD
+  # Redirect VMLogger output to its dedicated FD
   vmlogger_io = IO.for_fd(vmlogger_fd, "w")
   VMLogger.set_output(vmlogger_io)
 
@@ -196,7 +104,7 @@ begin
     VMLogger.debug "[Ruby VM] Executing script (#{script_length} bytes)"
 
     # Execute the Ruby script
-    $__fifo_exit_code = nil
+    $__safe_runner_exit_code = nil
     begin
       # Use TOPLEVEL_BINDING so code has access to top-level context
       result = eval(script_content, TOPLEVEL_BINDING, "<socket-script>")
@@ -211,9 +119,9 @@ begin
       $stderr.flush
 
       # Check if exit/exit! was called but caught internally by the script
-      if $__fifo_exit_code && $__fifo_exit_code != 0
-        VMLogger.error "[Ruby VM] Script called exit(#{$__fifo_exit_code}) but caught it internally"
-        socket.write("#{$__fifo_exit_code}\n")
+      if $__safe_runner_exit_code && $__safe_runner_exit_code != 0
+        VMLogger.error "[Ruby VM] Script called exit(#{$__safe_runner_exit_code}) but caught it internally"
+        socket.write("#{$__safe_runner_exit_code}\n")
       else
         socket.write("0\n")
         VMLogger.debug "[Ruby VM] Script executed successfully"
@@ -232,7 +140,7 @@ begin
       $stderr.flush
 
       # Send failure exit code
-      exit_code = ($__fifo_exit_code && $__fifo_exit_code != 0) ? $__fifo_exit_code : 1
+      exit_code = ($__safe_runner_exit_code && $__safe_runner_exit_code != 0) ? $__safe_runner_exit_code : 1
       socket.write("#{exit_code}\n")
     end
 
