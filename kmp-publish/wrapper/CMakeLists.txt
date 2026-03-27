@@ -25,7 +25,7 @@ if(NOT TARGET_ARCH)
 endif()
 
 # Construct path to the fat static library using filesystem arch name
-set(FAT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/target/${TARGET_ARCH}-android/usr/local/lib/librgss_runtime.a")
+set(FAT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../build/target/${TARGET_ARCH}-android/usr/local/lib/librgss_runtime.a")
 
 message(STATUS "Target ABI: ${TARGET_ABI}")
 message(STATUS "Target Arch (filesystem): ${TARGET_ARCH}")
