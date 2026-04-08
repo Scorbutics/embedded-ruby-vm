@@ -25,7 +25,12 @@ if(NOT TARGET_ARCH)
 endif()
 
 # Construct path to the fat static library using filesystem arch name
-set(FAT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../build/target/${TARGET_ARCH}-android/usr/local/lib/librgss_runtime.a")
+# FAT_LIB_PATH is normally passed via -D from the Makefile's publish-kmp target.
+# Fall back to relative path for direct invocations (e.g., local dev).
+if(NOT FAT_LIB_PATH)
+    set(FAT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../build/target/${TARGET_ARCH}-android/usr/local/lib/librgss_runtime.a")
+    message(WARNING "FAT_LIB_PATH not passed via -D flag, falling back to relative path: ${FAT_LIB_PATH}")
+endif()
 
 message(STATUS "Target ABI: ${TARGET_ABI}")
 message(STATUS "Target Arch (filesystem): ${TARGET_ARCH}")
