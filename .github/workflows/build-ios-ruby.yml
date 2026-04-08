@@ -50,7 +50,53 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          brew install autoconf automake libtool cmake
+          brew install autoconf automake libtool cmake ccache
+
+      - name: Setup ccache with compiler wrappers
+        run: |
+          ccache --set-config=max_size=500M
+          ccache --set-config=compiler_check=content
+          ccache --zero-stats
+
+          # Resolve the real compiler paths that iOS.cmake will find via xcrun
+          REAL_CC=$(xcrun --sdk ${{ matrix.sdk }} --find clang)
+          REAL_CXX="$(dirname "$REAL_CC")/clang++"
+
+          # Create wrapper scripts that route compilations through ccache
+          WRAPPER_DIR="$RUNNER_TEMP/ccache-wrappers"
+          mkdir -p "$WRAPPER_DIR"
+          printf '#!/bin/bash\nexec ccache "%s" "$@"\n' "$REAL_CC" > "$WRAPPER_DIR/ios-cc"
+          printf '#!/bin/bash\nexec ccache "%s" "$@"\n' "$REAL_CXX" > "$WRAPPER_DIR/ios-cxx"
+          chmod +x "$WRAPPER_DIR/ios-cc" "$WRAPPER_DIR/ios-cxx"
+
+          # Patch the checked-out iOS.cmake to use our ccache wrappers
+          # instead of the raw xcrun-resolved compiler paths
+          cd _ruby-build/cmake/core/platforms
+          sed -i '' \
+            's|set(CROSS_CC "${IOS_CLANG_PATH}")|set(CROSS_CC "'"$WRAPPER_DIR"'/ios-cc")|' \
+            iOS.cmake
+          sed -i '' \
+            's|set(CROSS_CXX "${IOS_TOOLCHAIN_BIN}/clang++")|set(CROSS_CXX "'"$WRAPPER_DIR"'/ios-cxx")|' \
+            iOS.cmake
+
+          echo "Patched iOS.cmake compiler paths:"
+          grep -n 'CROSS_CC\|CROSS_CXX' iOS.cmake
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ccache
+          key: ccache-ios-${{ matrix.sdk }}-${{ github.sha }}
+          restore-keys: |
+            ccache-ios-${{ matrix.sdk }}-
+
+      - name: Restore CMake build directory
+        uses: actions/cache@v4
+        with:
+          path: _ruby-build/build
+          key: cmake-ios-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-${{ github.sha }}
+          restore-keys: |
+            cmake-ios-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-
 
       - name: Show build environment
         run: |
@@ -86,6 +132,10 @@ jobs:
       - name: Build Ruby and dependencies
         working-directory: _ruby-build
         run: make build
+
+      - name: Show ccache stats
+        if: always()
+        run: ccache --show-stats
 
       - name: Print build logs on failure
         if: failure()
