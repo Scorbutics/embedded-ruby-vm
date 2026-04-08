@@ -13,6 +13,34 @@
 #include "embedded-ruby-vm/completion-task.h"
 #include "embedded-ruby-vm/debug.h"
 
+/*
+ * Cross-platform JNI thread attachment helpers.
+ *
+ * Android's jni.h declares AttachCurrentThread(JavaVM*, JNIEnv**, void*),
+ * while the standard JNI spec (OpenJDK/desktop) uses (JavaVM*, void**, void*).
+ *
+ * On Android we can pass &env directly.  On other platforms we go through a
+ * void* intermediary so every pointer conversion is well-defined C (no
+ * void** <-> T** aliasing).
+ */
+#ifdef __ANDROID__
+#define JNI_ATTACH_THREAD(jvm, env, args) \
+    (*jvm)->AttachCurrentThread(jvm, &(env), args)
+#define JNI_ATTACH_THREAD_AS_DAEMON(jvm, env, args) \
+    (*jvm)->AttachCurrentThreadAsDaemon(jvm, &(env), args)
+#else
+#define JNI_ATTACH_THREAD(jvm, env, args) \
+    ({ void* _jni_env_void = NULL; \
+       jint _jni_rc = (*(jvm))->AttachCurrentThread((jvm), &_jni_env_void, (args)); \
+       if (_jni_rc == JNI_OK) (env) = (JNIEnv*)_jni_env_void; \
+       _jni_rc; })
+#define JNI_ATTACH_THREAD_AS_DAEMON(jvm, env, args) \
+    ({ void* _jni_env_void = NULL; \
+       jint _jni_rc = (*(jvm))->AttachCurrentThreadAsDaemon((jvm), &_jni_env_void, (args)); \
+       if (_jni_rc == JNI_OK) (env) = (JNIEnv*)_jni_env_void; \
+       _jni_rc; })
+#endif
+
 // Forward declarations
 static JNIEnv* get_jni_env(JavaVM* jvm);
 
@@ -90,7 +118,7 @@ static JNIEnv* get_jni_env(JavaVM* jvm) {
 
     if (result == JNI_EDETACHED) {
         // Not attached, use daemon attachment for automatic cleanup
-        if ((*jvm)->AttachCurrentThreadAsDaemon(jvm, (JNIEnv**)&env, NULL) == JNI_OK) {
+        if (JNI_ATTACH_THREAD_AS_DAEMON(jvm, env, NULL) == JNI_OK) {
             return env;
         }
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to attach thread as daemon");
@@ -202,7 +230,7 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
 
     if (result == JNI_EDETACHED) {
         // Not attached, need to attach temporarily to delete global ref
-        if ((*context->jvm)->AttachCurrentThread(context->jvm, (JNIEnv**)&env, NULL) == JNI_OK) {
+        if (JNI_ATTACH_THREAD(context->jvm, env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->kotlin_listener);
                         (*context->jvm)->DetachCurrentThread(context->jvm);
         }
@@ -485,7 +513,7 @@ static void destroy_completion_context(CompletionCallbackContext* context) {
 
     if (result == JNI_EDETACHED) {
         // Not attached, need to attach temporarily to delete global ref
-        if ((*context->jvm)->AttachCurrentThread(context->jvm, (JNIEnv**)&env, NULL) == JNI_OK) {
+        if (JNI_ATTACH_THREAD(context->jvm, env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->callback_obj);
             (*context->jvm)->DetachCurrentThread(context->jvm);
         }
