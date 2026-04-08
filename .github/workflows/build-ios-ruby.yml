@@ -18,12 +18,18 @@ on:
         required: false
         default: true
         type: boolean
+      debug_ssh:
+        description: "Open SSH session (via tmate) before building — for interactive debugging"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Build Ruby and dependencies for each iOS target (device + simulator)
+  # Build dependencies (zlib, gmp, openssl, ncurses, readline, gdbm)
+  # These rarely change and are cached across runs.
   # ---------------------------------------------------------------------------
-  build:
+  build-deps:
     strategy:
       fail-fast: false
       matrix:
@@ -35,7 +41,7 @@ jobs:
             platform_type: simulator
             dir_name: aarch64-apple-ios-simulator
     runs-on: macos-14
-    name: Build iOS (${{ matrix.platform_type }})
+    name: Build deps (${{ matrix.platform_type }})
 
     steps:
       - name: Checkout embedded-ruby-vm
@@ -50,53 +56,88 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          brew install autoconf automake libtool cmake ccache
+          brew install autoconf automake libtool cmake
 
-      - name: Setup ccache with compiler wrappers
+      - name: Create iOS toolchain params
         run: |
-          ccache --set-config=max_size=500M
-          ccache --set-config=compiler_check=content
-          ccache --zero-stats
+          DEPLOY_TARGET="${{ inputs.ios_deployment_target || '12.0' }}"
+          echo "-DIOS=TRUE -DCMAKE_OSX_SYSROOT=${{ matrix.sdk }} -DCMAKE_OSX_DEPLOYMENT_TARGET=${DEPLOY_TARGET} -DCMAKE_OSX_ARCHITECTURES=arm64" \
+            > _ruby-build/ios-${{ matrix.platform_type }}.params
+          echo "Toolchain params:"
+          cat _ruby-build/ios-${{ matrix.platform_type }}.params
 
-          # Resolve the real compiler paths that iOS.cmake will find via xcrun
-          REAL_CC=$(xcrun --sdk ${{ matrix.sdk }} --find clang)
-          REAL_CXX="$(dirname "$REAL_CC")/clang++"
+      - name: Configure ruby-for-android (deps only)
+        working-directory: _ruby-build
+        run: |
+          ./configure \
+            --without-docker \
+            --with-toolchain-params=ios-${{ matrix.platform_type }}.params \
+            --enable-static \
+            --deps-only
 
-          # Create wrapper scripts that route compilations through ccache
-          WRAPPER_DIR="$RUNNER_TEMP/ccache-wrappers"
-          mkdir -p "$WRAPPER_DIR"
-          printf '#!/bin/bash\nexec ccache "%s" "$@"\n' "$REAL_CC" > "$WRAPPER_DIR/ios-cc"
-          printf '#!/bin/bash\nexec ccache "%s" "$@"\n' "$REAL_CXX" > "$WRAPPER_DIR/ios-cxx"
-          chmod +x "$WRAPPER_DIR/ios-cc" "$WRAPPER_DIR/ios-cxx"
-
-          # Patch the checked-out iOS.cmake to use our ccache wrappers
-          # instead of the raw xcrun-resolved compiler paths
-          cd _ruby-build/cmake/core/platforms
-          sed -i '' \
-            's|set(CROSS_CC "${IOS_CLANG_PATH}")|set(CROSS_CC "'"$WRAPPER_DIR"'/ios-cc")|' \
-            iOS.cmake
-          sed -i '' \
-            's|set(CROSS_CXX "${IOS_TOOLCHAIN_BIN}/clang++")|set(CROSS_CXX "'"$WRAPPER_DIR"'/ios-cxx")|' \
-            iOS.cmake
-
-          echo "Patched iOS.cmake compiler paths:"
-          grep -n 'CROSS_CC\|CROSS_CXX' iOS.cmake
-
-      - name: Restore ccache
-        uses: actions/cache@v4
-        with:
-          path: ~/Library/Caches/ccache
-          key: ccache-ios-${{ matrix.sdk }}-${{ github.sha }}
-          restore-keys: |
-            ccache-ios-${{ matrix.sdk }}-
-
-      - name: Restore CMake build directory
+      # Cache the entire build dir (staging + downloads + ExternalProject stamps)
+      - name: Restore dependency build cache
+        id: deps-cache
         uses: actions/cache@v4
         with:
           path: _ruby-build/build
-          key: cmake-ios-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-${{ github.sha }}
-          restore-keys: |
-            cmake-ios-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-
+          key: ios-deps-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-${{ hashFiles('_ruby-build/cmake/ruby-app/dependencies/zlib.cmake', '_ruby-build/cmake/ruby-app/dependencies/openssl.cmake', '_ruby-build/cmake/ruby-app/dependencies/ncurses.cmake', '_ruby-build/cmake/ruby-app/dependencies/readline.cmake', '_ruby-build/cmake/ruby-app/dependencies/gdbm.cmake', '_ruby-build/cmake/ruby-app/dependencies/gmp.cmake') }}
+
+      - name: Build dependencies (skip if cached)
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        working-directory: _ruby-build
+        run: make build
+
+      - name: Print build logs on failure
+        if: failure()
+        working-directory: _ruby-build
+        run: |
+          echo "=== Dumping ExternalProject error logs ==="
+          find build -name '*-err.log' -type f -size +0 | sort | while read -r log; do
+            echo ""
+            echo "########## $log ##########"
+            cat "$log"
+          done
+
+      - name: Upload build directory (staging + stamps)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-deps-staging-${{ matrix.platform_type }}
+          path: _ruby-build/build
+          retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  # Build Ruby using cached dependencies
+  # ---------------------------------------------------------------------------
+  build-ruby:
+    needs: build-deps
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sdk: iphoneos
+            platform_type: device
+            dir_name: aarch64-apple-ios-device
+          - sdk: iphonesimulator
+            platform_type: simulator
+            dir_name: aarch64-apple-ios-simulator
+    runs-on: macos-14
+    name: Build Ruby (${{ matrix.platform_type }})
+
+    steps:
+      - name: Checkout embedded-ruby-vm
+        uses: actions/checkout@v4
+
+      - name: Checkout ruby-for-android
+        uses: actions/checkout@v4
+        with:
+          repository: Scorbutics/ruby-for-android
+          path: _ruby-build
+          ref: ${{ inputs.ruby_for_android_ref || 'master' }}
+
+      - name: Install build dependencies
+        run: |
+          brew install autoconf automake libtool cmake
 
       - name: Show build environment
         run: |
@@ -129,13 +170,31 @@ jobs:
             --with-toolchain-params=ios-${{ matrix.platform_type }}.params \
             --enable-static
 
+      - name: Download cached dependency staging
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-deps-staging-${{ matrix.platform_type }}
+          path: _ruby-build/build
+
+      - name: Verify restored staging
+        run: |
+          echo "=== Staging directory ==="
+          ls -la _ruby-build/build/target/ 2>/dev/null || echo "WARNING: no staging dir"
+          echo ""
+          echo "=== Downloaded sources ==="
+          ls _ruby-build/build/download/ 2>/dev/null || echo "WARNING: no downloads"
+
+      # Interactive SSH session for debugging compile errors
+      - name: Setup tmate SSH session
+        if: ${{ inputs.debug_ssh == true }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+        timeout-minutes: 30
+
       - name: Build Ruby and dependencies
         working-directory: _ruby-build
         run: make build
-
-      - name: Show ccache stats
-        if: always()
-        run: ccache --show-stats
 
       - name: Print build logs on failure
         if: failure()
@@ -147,6 +206,12 @@ jobs:
             echo "########## $log ##########"
             cat "$log"
           done
+
+      # Keep SSH open after failure so you can debug interactively
+      - name: Wait for SSH debug session
+        if: ${{ failure() && inputs.debug_ssh == true }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
 
       - name: Export build artifacts
         working-directory: _ruby-build
@@ -236,7 +301,7 @@ jobs:
   # ---------------------------------------------------------------------------
   commit:
     if: ${{ inputs.commit_artifacts != false }}
-    needs: build
+    needs: build-ruby
     runs-on: ubuntu-latest
     name: Commit iOS artifacts
 
