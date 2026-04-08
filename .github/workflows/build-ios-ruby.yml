@@ -85,7 +85,7 @@ jobs:
 
       - name: Build Ruby and dependencies
         working-directory: _ruby-build
-        run: make build 2>&1 | tee build-output.log
+        run: make build
 
       - name: Print build logs on failure
         if: failure()
