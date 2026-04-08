@@ -99,11 +99,13 @@ jobs:
             cat "$log"
           done
 
-      - name: Upload build directory (staging + stamps)
+      - name: Upload build directory (tarball to preserve permissions)
+        run: tar czf /tmp/ios-deps-${{ matrix.platform_type }}.tar.gz -C _ruby-build build
+      - name: Upload deps tarball
         uses: actions/upload-artifact@v4
         with:
           name: ios-deps-staging-${{ matrix.platform_type }}
-          path: _ruby-build/build
+          path: /tmp/ios-deps-${{ matrix.platform_type }}.tar.gz
           retention-days: 90
 
   # ---------------------------------------------------------------------------
@@ -174,7 +176,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ios-deps-staging-${{ matrix.platform_type }}
-          path: _ruby-build/build
+          path: /tmp/deps-artifact
+
+      - name: Extract deps tarball (preserves permissions)
+        run: tar xzf /tmp/deps-artifact/ios-deps-${{ matrix.platform_type }}.tar.gz -C _ruby-build
 
       - name: Verify restored staging
         run: |
