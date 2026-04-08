@@ -1,0 +1,238 @@
+name: Build iOS Ruby Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      ruby_for_android_ref:
+        description: "ruby-for-android git ref to build from"
+        required: false
+        default: "master"
+        type: string
+      ios_deployment_target:
+        description: "iOS deployment target version"
+        required: false
+        default: "12.0"
+        type: string
+      commit_artifacts:
+        description: "Commit and push artifacts to this repository"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build Ruby and dependencies for each iOS target (device + simulator)
+  # ---------------------------------------------------------------------------
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sdk: iphoneos
+            platform_type: device
+            dir_name: aarch64-apple-ios-device
+          - sdk: iphonesimulator
+            platform_type: simulator
+            dir_name: aarch64-apple-ios-simulator
+    runs-on: macos-14
+    name: Build iOS (${{ matrix.platform_type }})
+
+    steps:
+      - name: Checkout embedded-ruby-vm
+        uses: actions/checkout@v4
+
+      - name: Checkout ruby-for-android
+        uses: actions/checkout@v4
+        with:
+          repository: Scorbutics/ruby-for-android
+          path: _ruby-build
+          ref: ${{ inputs.ruby_for_android_ref || 'master' }}
+
+      - name: Install build dependencies
+        run: |
+          brew install autoconf automake libtool cmake
+
+      - name: Show build environment
+        run: |
+          echo "Xcode version:"
+          xcodebuild -version
+          echo ""
+          echo "SDK path (${{ matrix.sdk }}):"
+          xcrun --sdk ${{ matrix.sdk }} --show-sdk-path
+          echo ""
+          echo "Clang version:"
+          xcrun --sdk ${{ matrix.sdk }} --find clang
+          xcrun --sdk ${{ matrix.sdk }} clang --version
+          echo ""
+          echo "CMake version:"
+          cmake --version
+
+      - name: Create iOS toolchain params
+        run: |
+          DEPLOY_TARGET="${{ inputs.ios_deployment_target || '12.0' }}"
+          echo "-DIOS=TRUE -DCMAKE_OSX_SYSROOT=${{ matrix.sdk }} -DCMAKE_OSX_DEPLOYMENT_TARGET=${DEPLOY_TARGET} -DCMAKE_OSX_ARCHITECTURES=arm64" \
+            > _ruby-build/ios-${{ matrix.platform_type }}.params
+          echo "Toolchain params:"
+          cat _ruby-build/ios-${{ matrix.platform_type }}.params
+
+      - name: Configure ruby-for-android
+        working-directory: _ruby-build
+        run: |
+          ./configure \
+            --without-docker \
+            --with-toolchain-params=ios-${{ matrix.platform_type }}.params \
+            --enable-static
+
+      - name: Build Ruby and dependencies
+        working-directory: _ruby-build
+        run: make build
+
+      - name: Export build artifacts
+        working-directory: _ruby-build
+        run: make install
+
+      - name: Extract and reorganize artifacts
+        run: |
+          set -euo pipefail
+
+          ZIP_FILE=$(ls _ruby-build/target/ruby_full-*.zip | head -1)
+          echo "Found archive: $ZIP_FILE"
+
+          mkdir -p _extracted
+          cd _extracted
+          unzip -q "$GITHUB_WORKSPACE/$ZIP_FILE"
+
+          # ruby-for-android iOS.cmake sets HOST_TRIPLET to "aarch64-apple-darwin"
+          # We rename to include "ios" so the consumer cmake glob aarch64-*ios* matches
+          SRC_TRIPLET="aarch64-apple-darwin"
+          DEST_NAME="${{ matrix.dir_name }}"
+
+          for subdir in external/lib external/include assets/files; do
+            if [ -d "$subdir/$SRC_TRIPLET" ]; then
+              echo "Renaming $subdir/$SRC_TRIPLET -> $subdir/$DEST_NAME"
+              mv "$subdir/$SRC_TRIPLET" "$subdir/$DEST_NAME"
+            fi
+          done
+
+          # Copy libraries to embedded-ruby-vm
+          mkdir -p "$GITHUB_WORKSPACE/external/lib"
+          cp -r external/lib/$DEST_NAME "$GITHUB_WORKSPACE/external/lib/"
+
+          # Copy platform-specific includes to embedded-ruby-vm
+          mkdir -p "$GITHUB_WORKSPACE/external/include"
+          cp -r external/include/$DEST_NAME "$GITHUB_WORKSPACE/external/include/"
+
+          # Copy generic Ruby includes (shared across platforms, skip if already present)
+          if [ -d external/include/ruby ]; then
+            cp -rn external/include/ruby "$GITHUB_WORKSPACE/external/include/" 2>/dev/null || true
+          fi
+          # Copy generic headers (zlib, openssl)
+          for header in ruby.h zlib.h zconf.h; do
+            if [ -f "external/include/$header" ]; then
+              cp -n "external/include/$header" "$GITHUB_WORKSPACE/external/include/" 2>/dev/null || true
+            fi
+          done
+          if [ -d external/include/openssl ]; then
+            cp -rn external/include/openssl "$GITHUB_WORKSPACE/external/include/" 2>/dev/null || true
+          fi
+
+          # Copy asset files (ruby stdlib zips)
+          mkdir -p "$GITHUB_WORKSPACE/assets/files"
+          if [ -d "assets/files/$DEST_NAME" ]; then
+            cp -r "assets/files/$DEST_NAME" "$GITHUB_WORKSPACE/assets/files/"
+          fi
+          if [ -f "assets/files/ruby-stdlib.zip" ]; then
+            cp -n "assets/files/ruby-stdlib.zip" "$GITHUB_WORKSPACE/assets/files/" 2>/dev/null || true
+          fi
+
+      - name: Verify artifacts
+        run: |
+          echo "=== Platform include directory ==="
+          ls -la external/include/${{ matrix.dir_name }}/static/ruby/ || echo "WARNING: missing"
+          echo ""
+          echo "=== Static libraries ==="
+          ls -lh external/lib/${{ matrix.dir_name }}/static/ || echo "WARNING: missing"
+          echo ""
+          echo "=== config.h (first 20 lines) ==="
+          head -20 external/include/${{ matrix.dir_name }}/static/ruby/config.h || echo "WARNING: missing"
+          echo ""
+          echo "=== Assets ==="
+          ls -lh assets/files/${{ matrix.dir_name }}/ 2>/dev/null || echo "No platform assets"
+          ls -lh assets/files/ruby-stdlib.zip 2>/dev/null || echo "No generic stdlib"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ matrix.platform_type }}-ruby
+          path: |
+            external/lib/${{ matrix.dir_name }}/
+            external/include/${{ matrix.dir_name }}/
+            assets/files/${{ matrix.dir_name }}/
+          retention-days: 90
+
+  # ---------------------------------------------------------------------------
+  # Download both platform artifacts and commit to the repository
+  # ---------------------------------------------------------------------------
+  commit:
+    if: ${{ inputs.commit_artifacts != false }}
+    needs: build
+    runs-on: ubuntu-latest
+    name: Commit iOS artifacts
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download device artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-device-ruby
+          path: .
+
+      - name: Download simulator artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-simulator-ruby
+          path: .
+
+      - name: Show what will be committed
+        run: |
+          echo "=== iOS device libraries ==="
+          ls -lh external/lib/aarch64-apple-ios-device/static/ 2>/dev/null || echo "missing"
+          echo ""
+          echo "=== iOS simulator libraries ==="
+          ls -lh external/lib/aarch64-apple-ios-simulator/static/ 2>/dev/null || echo "missing"
+          echo ""
+          echo "=== iOS device includes ==="
+          find external/include/aarch64-apple-ios-device -type f | head -20
+          echo ""
+          echo "=== iOS simulator includes ==="
+          find external/include/aarch64-apple-ios-simulator -type f | head -20
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add external/lib/aarch64-apple-ios-device/
+          git add external/lib/aarch64-apple-ios-simulator/
+          git add external/include/aarch64-apple-ios-device/
+          git add external/include/aarch64-apple-ios-simulator/
+          git add assets/files/aarch64-apple-ios-device/ 2>/dev/null || true
+          git add assets/files/aarch64-apple-ios-simulator/ 2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit - artifacts already up to date"
+          else
+            DEPLOY_TARGET="${{ inputs.ios_deployment_target || '12.0' }}"
+            git commit -m "feat: add iOS prebuilt Ruby VM artifacts (device + simulator)
+
+Cross-compiled Ruby 3.1.1 static libraries for:
+- iOS device (arm64): aarch64-apple-ios-device
+- iOS simulator (arm64): aarch64-apple-ios-simulator
+
+Deployment target: iOS ${DEPLOY_TARGET}
+Built from ruby-for-android ref: ${{ inputs.ruby_for_android_ref || 'master' }}"
+
+            git push
+          fi
