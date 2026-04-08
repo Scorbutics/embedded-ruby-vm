@@ -91,8 +91,8 @@ jobs:
         if: failure()
         working-directory: _ruby-build
         run: |
-          echo "=== Dumping all ExternalProject log files ==="
-          find build -name '*.log' -type f | sort | while read -r log; do
+          echo "=== Dumping ExternalProject error logs ==="
+          find build -name '*-err.log' -type f -size +0 | sort | while read -r log; do
             echo ""
             echo "########## $log ##########"
             cat "$log"
