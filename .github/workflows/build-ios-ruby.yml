@@ -87,13 +87,6 @@ jobs:
         working-directory: _ruby-build
         run: make build 2>&1 | tee build-output.log
 
-      - name: Print patch debug info
-        if: always()
-        working-directory: _ruby-build
-        run: |
-          echo "=== Patch-related CMake output ==="
-          grep -i 'patch\|APP_DIR\|MISSING\|EXISTS' build-output.log || echo "(no patch-related output found)"
-
       - name: Print build logs on failure
         if: failure()
         working-directory: _ruby-build
