@@ -87,6 +87,17 @@ jobs:
         working-directory: _ruby-build
         run: make build
 
+      - name: Print build logs on failure
+        if: failure()
+        working-directory: _ruby-build
+        run: |
+          echo "=== Dumping all ExternalProject log files ==="
+          find build -name '*.log' -type f | sort | while read -r log; do
+            echo ""
+            echo "########## $log ##########"
+            cat "$log"
+          done
+
       - name: Export build artifacts
         working-directory: _ruby-build
         run: make install
