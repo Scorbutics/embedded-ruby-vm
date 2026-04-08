@@ -227,12 +227,12 @@ jobs:
             DEPLOY_TARGET="${{ inputs.ios_deployment_target || '12.0' }}"
             git commit -m "feat: add iOS prebuilt Ruby VM artifacts (device + simulator)
 
-Cross-compiled Ruby 3.1.1 static libraries for:
-- iOS device (arm64): aarch64-apple-ios-device
-- iOS simulator (arm64): aarch64-apple-ios-simulator
+          Cross-compiled Ruby 3.1.1 static libraries for:
+          - iOS device (arm64): aarch64-apple-ios-device
+          - iOS simulator (arm64): aarch64-apple-ios-simulator
 
-Deployment target: iOS ${DEPLOY_TARGET}
-Built from ruby-for-android ref: ${{ inputs.ruby_for_android_ref || 'master' }}"
+          Deployment target: iOS ${DEPLOY_TARGET}
+          Built from ruby-for-android ref: ${{ inputs.ruby_for_android_ref || 'master' }}"
 
             git push
           fi
