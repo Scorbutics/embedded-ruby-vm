@@ -88,26 +88,6 @@ jobs:
         working-directory: _ruby-build
         run: make build
 
-      - name: Print mkmf logs for readline
-        if: always()
-        working-directory: _ruby-build
-        run: |
-          echo "=== Searching for mkmf.log in Ruby source tree ==="
-          find build/ruby -name 'mkmf.log' -type f 2>/dev/null | while read -r log; do
-            echo ""
-            echo "########## $log ##########"
-            tail -80 "$log"
-          done
-          echo ""
-          echo "=== Ruby ext/readline build directory ==="
-          find build/ruby -path '*/ext/readline*' -type f 2>/dev/null | head -20
-          echo ""
-          echo "=== Ruby exts.mk (shows which extensions are built) ==="
-          find build/ruby -name 'exts.mk' -type f 2>/dev/null | while read -r f; do
-            echo "########## $f ##########"
-            grep -i readline "$f" || echo "(readline not found in exts.mk)"
-          done
-
       - name: Print build logs on failure
         if: failure()
         working-directory: _ruby-build
@@ -229,6 +209,20 @@ jobs:
       - name: Build Ruby
         working-directory: _ruby-build
         run: cmake --build build
+
+      - name: Print mkmf logs
+        if: always()
+        working-directory: _ruby-build
+        run: |
+          echo "=== All mkmf.log files ==="
+          find build/ruby -name 'mkmf.log' -type f 2>/dev/null | while read -r log; do
+            echo ""
+            echo "########## $log ##########"
+            tail -80 "$log"
+          done
+          if [ -z "$(find build/ruby -name 'mkmf.log' -type f 2>/dev/null)" ]; then
+            echo "(no mkmf.log found in Ruby build tree)"
+          fi
 
       - name: Print build logs on failure
         if: failure()
