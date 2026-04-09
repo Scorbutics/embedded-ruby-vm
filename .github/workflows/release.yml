@@ -65,11 +65,11 @@ jobs:
 
       - name: Package artifacts
         run: |
-          mkdir -p artifacts
+          mkdir -p artifacts/include
           cp build/lib/libembedded-ruby.a artifacts/
           cp build/lib/libassets.a artifacts/
           cp build/lib/libminizip.a artifacts/
-          cp -r include/public/embedded-ruby-vm artifacts/include
+          cp -r include/public/embedded-ruby-vm artifacts/include/
           tar czf embedded-ruby-vm-linux-x86_64.tar.gz -C artifacts .
 
       - name: Upload artifact
@@ -141,11 +141,11 @@ jobs:
 
       - name: Package artifacts
         run: |
-          mkdir -p artifacts
+          mkdir -p artifacts/include
           cp build/lib/libembedded-ruby.a artifacts/
           cp build/lib/libassets.a artifacts/
           cp build/lib/libminizip.a artifacts/
-          cp -r include/public/embedded-ruby-vm artifacts/include
+          cp -r include/public/embedded-ruby-vm artifacts/include/
           tar czf embedded-ruby-vm-android-${{ matrix.arch_label }}.tar.gz -C artifacts .
 
       - name: Upload artifact
@@ -198,11 +198,11 @@ jobs:
 
       - name: Package artifacts
         run: |
-          mkdir -p artifacts
+          mkdir -p artifacts/include
           cp build/lib/libembedded-ruby.a artifacts/
           cp build/lib/libassets.a artifacts/
           cp build/lib/libminizip.a artifacts/
-          cp -r include/public/embedded-ruby-vm artifacts/include
+          cp -r include/public/embedded-ruby-vm artifacts/include/
           tar czf embedded-ruby-vm-ios-arm64.tar.gz -C artifacts .
 
       - name: Upload artifact
