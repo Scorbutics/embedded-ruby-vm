@@ -1,0 +1,241 @@
+name: Release
+
+# Builds static libraries for all supported platforms and creates a GitHub Release
+# with the artifacts when a tag is pushed or manually triggered.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      ruby_libs_version:
+        description: "ruby-for-android release tag (e.g. v3.1.1-1). Leave empty to use RUBY_LIBS_VERSION file."
+        required: false
+        type: string
+      tag_name:
+        description: "Release tag name (e.g. v1.0.0). Required for manual triggers."
+        required: true
+        type: string
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    name: Build (Linux x86_64)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake make gcc g++ pkg-config
+
+      - name: Cache Ruby prebuilt libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/lib
+            external/include
+            assets/files
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-linux-x86_64
+
+      - name: Download Ruby prebuilt libraries
+        run: |
+          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+            export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
+          fi
+          ./scripts/download-ruby-libs.sh linux-x86_64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_WRAPPER_SHARED=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_JNI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DSKIP_RUBY_DOWNLOAD=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package artifacts
+        run: |
+          mkdir -p artifacts
+          cp build/lib/libembedded-ruby.a artifacts/
+          cp build/lib/libassets.a artifacts/
+          cp build/lib/libminizip.a artifacts/
+          cp -r include/public/embedded-ruby-vm artifacts/include
+          tar czf embedded-ruby-vm-linux-x86_64.tar.gz -C artifacts .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedded-ruby-vm-linux-x86_64
+          path: embedded-ruby-vm-linux-x86_64.tar.gz
+
+  build-android:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - abi: arm64-v8a
+            platform: android-arm64
+            arch_label: arm64
+          - abi: x86_64
+            platform: android-x86_64
+            arch_label: x86_64
+    name: Build (Android ${{ matrix.arch_label }})
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake make pkg-config
+
+      - name: Cache Ruby prebuilt libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/lib
+            external/include
+            assets/files
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-${{ matrix.platform }}
+
+      - name: Download Ruby prebuilt libraries
+        run: |
+          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+            export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
+          fi
+          ./scripts/download-ruby-libs.sh ${{ matrix.platform }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=Android \
+            -DCMAKE_ANDROID_ARCH_ABI=${{ matrix.abi }} \
+            -DCMAKE_ANDROID_NDK=$ANDROID_NDK_HOME \
+            -DCMAKE_SYSTEM_VERSION=24 \
+            -DBUILD_WRAPPER_SHARED=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_JNI=ON \
+            -DBUILD_JNI_ANDROID_LOG=ON \
+            -DBUILD_TESTS=OFF \
+            -DSKIP_RUBY_DOWNLOAD=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package artifacts
+        run: |
+          mkdir -p artifacts
+          cp build/lib/libembedded-ruby.a artifacts/
+          cp build/lib/libassets.a artifacts/
+          cp build/lib/libminizip.a artifacts/
+          cp -r include/public/embedded-ruby-vm artifacts/include
+          tar czf embedded-ruby-vm-android-${{ matrix.arch_label }}.tar.gz -C artifacts .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedded-ruby-vm-android-${{ matrix.arch_label }}
+          path: embedded-ruby-vm-android-${{ matrix.arch_label }}.tar.gz
+
+  build-ios:
+    runs-on: macos-latest
+    name: Build (iOS arm64)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Ruby prebuilt libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/lib
+            external/include
+            assets/files
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-ios-device
+
+      - name: Download Ruby prebuilt libraries
+        run: |
+          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+            export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
+          fi
+          ./scripts/download-ruby-libs.sh ios-device
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DBUILD_WRAPPER_SHARED=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_JNI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DSKIP_RUBY_DOWNLOAD=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package artifacts
+        run: |
+          mkdir -p artifacts
+          cp build/lib/libembedded-ruby.a artifacts/
+          cp build/lib/libassets.a artifacts/
+          cp build/lib/libminizip.a artifacts/
+          cp -r include/public/embedded-ruby-vm artifacts/include
+          tar czf embedded-ruby-vm-ios-arm64.tar.gz -C artifacts .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedded-ruby-vm-ios-arm64
+          path: embedded-ruby-vm-ios-arm64.tar.gz
+
+  release:
+    needs: [build-linux, build-android, build-ios]
+    runs-on: ubuntu-latest
+    name: Create Release
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Determine tag name
+        id: tag
+        run: |
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            echo "tag=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            artifacts/embedded-ruby-vm-linux-x86_64/embedded-ruby-vm-linux-x86_64.tar.gz
+            artifacts/embedded-ruby-vm-android-arm64/embedded-ruby-vm-android-arm64.tar.gz
+            artifacts/embedded-ruby-vm-android-x86_64/embedded-ruby-vm-android-x86_64.tar.gz
+            artifacts/embedded-ruby-vm-ios-arm64/embedded-ruby-vm-ios-arm64.tar.gz

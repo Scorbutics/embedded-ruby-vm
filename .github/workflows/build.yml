@@ -9,12 +9,6 @@ name: Build Verification
 on:
   push:
     branches: [master]
-    paths:
-      - 'RUBY_LIBS_VERSION'
-      - 'CMakeLists.txt'
-      - 'core/**'
-      - 'tests/**'
-      - 'include/**'
   pull_request:
     branches: [master]
   workflow_dispatch:
