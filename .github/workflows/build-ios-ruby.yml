@@ -81,7 +81,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _ruby-build/build
-          key: ios-deps-v2-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-${{ hashFiles('_ruby-build/cmake/ruby-app/dependencies/*.cmake', '_ruby-build/cmake/ruby-app/patches/**/*', '_ruby-build/cmake/core/platforms/iOS.cmake') }}
+          key: ios-deps-v3-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-${{ hashFiles('_ruby-build/cmake/ruby-app/dependencies/*.cmake', '_ruby-build/cmake/ruby-app/patches/**/*', '_ruby-build/cmake/core/platforms/iOS.cmake') }}
 
       - name: Build dependencies (skip if cached)
         if: steps.deps-cache.outputs.cache-hit != 'true'
