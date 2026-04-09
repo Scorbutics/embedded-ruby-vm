@@ -69,7 +69,7 @@ set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${BUILD_TYPE_DIR}
 # Fallback: if detected HOST directory doesn't exist, try alternative triplets
 if(NOT EXISTS "${EXTERNAL_LIBS_DIR}")
     message(WARNING "Directory ${EXTERNAL_LIBS_DIR} not found, trying alternatives...")
-    
+
     # Try x86_64-linux-gnu if HOST is x86_64-linux-linux
     if(HOST MATCHES "x86_64-linux")
         set(ALT_HOST "x86_64-linux-gnu")
@@ -78,6 +78,31 @@ if(NOT EXISTS "${EXTERNAL_LIBS_DIR}")
             message(STATUS "Using alternative host triplet: ${ALT_HOST}")
             set(HOST "${ALT_HOST}")
         endif()
+    endif()
+endif()
+
+# Auto-download Ruby libraries from GitHub Releases if not present
+if(NOT EXISTS "${EXTERNAL_LIBS_DIR}" AND NOT SKIP_RUBY_DOWNLOAD)
+    find_program(BASH_PROGRAM bash)
+    if(BASH_PROGRAM)
+        message(STATUS "Ruby libs not found at ${EXTERNAL_LIBS_DIR}, attempting download...")
+        execute_process(
+            COMMAND ${BASH_PROGRAM} ${CMAKE_SOURCE_DIR}/scripts/download-ruby-libs.sh
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            RESULT_VARIABLE DOWNLOAD_RESULT
+        )
+        if(NOT DOWNLOAD_RESULT EQUAL 0)
+            message(WARNING
+                "Auto-download of Ruby libs failed (exit code: ${DOWNLOAD_RESULT}).\n"
+                "Please run manually: ./scripts/download-ruby-libs.sh\n"
+                "Or set -DSKIP_RUBY_DOWNLOAD=ON to skip this step."
+            )
+        endif()
+    else()
+        message(WARNING
+            "Ruby libs not found and bash not available for auto-download.\n"
+            "Please run: ./scripts/download-ruby-libs.sh"
+        )
     endif()
 endif()
 

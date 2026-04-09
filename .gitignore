@@ -6,8 +6,18 @@ Makefile
 cmake_install.cmake
 CTestTestfile.cmake
 CMakeFiles/
-!external/lib/**/*.so
-!external/lib/**/*.a
+# Ruby prebuilt libraries are downloaded from ruby-for-android GitHub Releases
+# (see scripts/download-ruby-libs.sh and RUBY_LIBS_VERSION)
+external/lib/
+external/include/aarch64-*/
+external/include/x86_64-*/
+external/include/ruby/
+external/include/ruby.h
+external/include/openssl/
+external/include/zlib.h
+external/include/zconf.h
+assets/files/*/
+assets/files/ruby-stdlib.zip
 /_deps/
 ruby_vm_test.log
 /lib/

@@ -1,0 +1,74 @@
+name: Build Verification
+
+# Downloads prebuilt Ruby libraries from ruby-for-android GitHub Releases,
+# then builds and tests embedded-ruby-vm to verify compatibility.
+#
+# This catches issues like missing symbols, ABI mismatches, or broken archives
+# after a new ruby-for-android release.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'RUBY_LIBS_VERSION'
+      - 'CMakeLists.txt'
+      - 'core/**'
+      - 'tests/**'
+      - 'include/**'
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      ruby_libs_version:
+        description: "ruby-for-android release tag (e.g. v3.1.1-1). Leave empty to use RUBY_LIBS_VERSION file."
+        required: false
+        type: string
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    name: Build & Test (Linux x86_64)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake make gcc g++ pkg-config
+
+      - name: Cache Ruby prebuilt libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/lib
+            external/include
+            assets/files
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-linux-x86_64
+
+      - name: Download Ruby prebuilt libraries
+        run: |
+          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+            export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
+          fi
+          ./scripts/download-ruby-libs.sh linux-x86_64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_WRAPPER_SHARED=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_JNI=OFF \
+            -DBUILD_TESTS=ON \
+            -DSKIP_RUBY_DOWNLOAD=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
