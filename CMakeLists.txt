@@ -79,6 +79,17 @@ if(NOT EXISTS "${EXTERNAL_LIBS_DIR}")
             set(HOST "${ALT_HOST}")
         endif()
     endif()
+
+    # Android NDK clang's -dumpmachine may append the API level (e.g. aarch64-linux-android24).
+    # The prebuilt libraries use the base triplet without the API level suffix.
+    if(NOT EXISTS "${EXTERNAL_LIBS_DIR}" AND HOST MATCHES "^([a-z0-9_]+-linux-android)[0-9]+$")
+        set(ALT_HOST "${CMAKE_MATCH_1}")
+        set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${ALT_HOST}/${BUILD_TYPE_DIR})
+        if(EXISTS "${EXTERNAL_LIBS_DIR}")
+            message(STATUS "Using alternative host triplet (stripped API level): ${ALT_HOST}")
+            set(HOST "${ALT_HOST}")
+        endif()
+    endif()
 endif()
 
 # Auto-download Ruby libraries from GitHub Releases if not present
