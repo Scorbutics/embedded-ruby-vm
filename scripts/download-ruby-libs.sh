@@ -41,13 +41,14 @@ echo "Repository: $REPO"
 
 # Platform definitions: platform_name -> archive_name, triplet, needs_ios_rename
 # Format: "archive_name:triplet[:ios_rename_from]"
-declare -A PLATFORMS=(
-    ["android-arm64"]="ruby_full-android-arm64.zip:aarch64-linux-android"
-    ["android-x86_64"]="ruby_full-android-x86_64.zip:x86_64-linux-android"
-    ["linux-x86_64"]="ruby_full-linux-x86_64.zip:x86_64-linux-gnu"
-    ["ios-device"]="ruby_full-ios-arm64.zip:aarch64-apple-ios-device:aarch64-apple-darwin"
-    ["ios-simulator"]="ruby_full-ios-arm64.zip:aarch64-apple-ios-simulator:aarch64-apple-darwin"
-)
+# Note: entries assigned individually to avoid "unbound variable" errors with
+#       set -u on some bash versions when using compound assignment syntax.
+declare -A PLATFORMS
+PLATFORMS["android-arm64"]="ruby_full-android-arm64.zip:aarch64-linux-android"
+PLATFORMS["android-x86_64"]="ruby_full-android-x86_64.zip:x86_64-linux-android"
+PLATFORMS["linux-x86_64"]="ruby_full-linux-x86_64.zip:x86_64-linux-gnu"
+PLATFORMS["ios-device"]="ruby_full-ios-arm64.zip:aarch64-apple-ios-device:aarch64-apple-darwin"
+PLATFORMS["ios-simulator"]="ruby_full-ios-arm64.zip:aarch64-apple-ios-simulator:aarch64-apple-darwin"
 
 ALL_PLATFORMS=("android-arm64" "android-x86_64" "linux-x86_64" "ios-device" "ios-simulator")
 
