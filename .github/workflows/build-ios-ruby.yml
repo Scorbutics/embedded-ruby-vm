@@ -92,11 +92,15 @@ jobs:
         if: always()
         working-directory: _ruby-build
         run: |
-          echo "=== mkmf.log for readline extension ==="
-          find build -path '*/ext/readline/mkmf.log' -type f | while read -r log; do
+          echo "=== All mkmf.log files ==="
+          find build -name 'mkmf.log' -type f | while read -r log; do
+            echo ""
             echo "########## $log ##########"
-            cat "$log"
+            tail -50 "$log"
           done
+          echo ""
+          echo "=== Readline extension build artifacts ==="
+          find build -path '*readline*' -type f | head -20
 
       - name: Print build logs on failure
         if: failure()
