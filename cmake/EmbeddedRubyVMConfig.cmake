@@ -109,8 +109,12 @@ else()
     set(EMBEDDED_RUBY_VM_SHARED_AVAILABLE FALSE)
 endif()
 
-if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby-static.a" OR
-   EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a")
+file(GLOB _ruby_static_check
+    "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby*-static.a"
+    "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a"
+)
+list(FILTER _ruby_static_check EXCLUDE REGEX "libruby-ext")
+if(_ruby_static_check)
     set(EMBEDDED_RUBY_VM_STATIC_AVAILABLE TRUE)
 else()
     set(EMBEDDED_RUBY_VM_STATIC_AVAILABLE FALSE)
@@ -173,11 +177,16 @@ if(NOT TARGET EmbeddedRubyVM::ruby)
     elseif(EMBEDDED_RUBY_VM_LINK_TYPE STREQUAL "STATIC")
         add_library(EmbeddedRubyVM::ruby STATIC IMPORTED)
 
-        # Find the static library (try different naming conventions)
-        if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby-static.a")
+        # Find the static library: libruby-static.a, libruby.3.1-static.a, or libruby.a
+        file(GLOB _ruby_static_candidates
+            "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby*-static.a"
+            "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a"
+        )
+        list(FILTER _ruby_static_candidates EXCLUDE REGEX "libruby-ext")
+        if(_ruby_static_candidates)
+            list(GET _ruby_static_candidates 0 _ruby_lib)
+        else()
             set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby-static.a")
-        elseif(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a")
-            set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a")
         endif()
 
         set_target_properties(EmbeddedRubyVM::ruby PROPERTIES

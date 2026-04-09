@@ -88,7 +88,7 @@ if(BUILD_SHARED_LIBS)
     )
 else()
     # Static build: Link against static libraries
-    # CRITICAL: Use --whole-archive for ruby-static and ruby-ext to force inclusion of all symbols
+    # CRITICAL: Use --whole-archive for ruby and ruby-ext to force inclusion of all symbols
     # This ensures Init_monitor, Init_readline, etc. are included even if not directly referenced
     # Order matters for static linking - list dependencies from highest to lowest level
 
@@ -129,7 +129,7 @@ else()
         
         # Build the PUBLIC libraries list
         set(RUBY_VM_PUBLIC_LIBS
-            ruby-static    # libruby-static.a contains core Ruby
+            ruby           # libruby-static.a or libruby.a (imported target from core/)
             readline       # libreadline.a (contains history functions, so libhistory.a is not needed)
             ncurses        # libncurses.a (used by readline)
             ncurses++      # libncurses++.a
@@ -173,7 +173,7 @@ else()
     elseif(APPLE)
         # macOS: Use -force_load for static extension libraries
         target_link_libraries(ruby-vm
-            -Wl,-force_load,$<TARGET_FILE:ruby-static>
+            -Wl,-force_load,$<TARGET_FILE:ruby>
             -Wl,-force_load,$<TARGET_FILE:ruby-ext>
             readline       # libreadline.a (contains history functions)
             ncurses
@@ -192,7 +192,7 @@ else()
     else()
         # Other platforms: fallback (may not work correctly)
         target_link_libraries(ruby-vm
-            ruby-static
+            ruby
             ruby-ext
             readline       # libreadline.a (contains history functions)
             ncurses

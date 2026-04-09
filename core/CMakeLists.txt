@@ -20,8 +20,21 @@ set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${BUILD_TYPE_DIR}
 # For static builds, find required system libraries that Ruby depends on
 if(NOT BUILD_SHARED_LIBS)
     # Check if the static Ruby was built with musl
+    # Ruby names the static lib differently per platform:
+    #   Linux/Android: libruby-static.a
+    #   iOS/macOS:     libruby.3.1-static.a (versioned)
+    file(GLOB _ruby_static_candidates
+        "${EXTERNAL_LIBS_DIR}/libruby*-static.a"
+        "${EXTERNAL_LIBS_DIR}/libruby.a"
+    )
+    list(FILTER _ruby_static_candidates EXCLUDE REGEX "libruby-ext")
+    if(_ruby_static_candidates)
+        list(GET _ruby_static_candidates 0 _ruby_static_lib)
+    else()
+        set(_ruby_static_lib "${EXTERNAL_LIBS_DIR}/libruby-static.a")
+    endif()
     execute_process(
-        COMMAND readelf -p .comment ${EXTERNAL_LIBS_DIR}/libruby-static.a
+        COMMAND readelf -p .comment ${_ruby_static_lib}
         OUTPUT_VARIABLE RUBY_BUILD_INFO
         ERROR_QUIET
     )
@@ -167,19 +180,21 @@ FOREACH(lib_name ${libs_dependencies})
             endif()
         endif()
 
-        # TODO replace all of this with find_library
-        if(EXISTS ${EXTERNAL_LIBS_DIR}/lib${lib_name}-static.a)
-            set_target_properties(${lib_name} PROPERTIES
-                IMPORTED_LOCATION ${EXTERNAL_LIBS_DIR}/lib${lib_name}-static.a
-                INTERFACE_LINK_LIBRARIES "${RUBY_SYSTEM_LIBS}"
-            )
+        # Find the static library: try lib<name>-static.a first, then versioned
+        # variants like libruby.3.1-static.a, then fall back to lib<name>.a
+        file(GLOB _static_candidates
+            "${EXTERNAL_LIBS_DIR}/lib${lib_name}-static.a"
+            "${EXTERNAL_LIBS_DIR}/lib${lib_name}.*-static.a"
+        )
+        if(_static_candidates)
+            list(GET _static_candidates 0 _static_lib)
         else()
-            # Fallback to libruby.a if libruby-static.a doesn't exist
-            set_target_properties(${lib_name} PROPERTIES
-                IMPORTED_LOCATION ${EXTERNAL_LIBS_DIR}/lib${lib_name}.a
-                INTERFACE_LINK_LIBRARIES "${RUBY_SYSTEM_LIBS}"
-            )
+            set(_static_lib "${EXTERNAL_LIBS_DIR}/lib${lib_name}.a")
         endif()
+        set_target_properties(${lib_name} PROPERTIES
+            IMPORTED_LOCATION ${_static_lib}
+            INTERFACE_LINK_LIBRARIES "${RUBY_SYSTEM_LIBS}"
+        )
     endif()
 ENDFOREACH()
 
