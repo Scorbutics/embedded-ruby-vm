@@ -96,11 +96,11 @@ jobs:
           find build -name 'mkmf.log' -type f | while read -r log; do
             echo ""
             echo "########## $log ##########"
-            tail -50 "$log"
+            tail -80 "$log"
           done
-          echo ""
-          echo "=== Readline extension build artifacts ==="
-          find build -path '*readline*' -type f | head -20
+          if [ -z "$(find build -name 'mkmf.log' -type f)" ]; then
+            echo "(no mkmf.log found - build may have been cached)"
+          fi
 
       - name: Print build logs on failure
         if: failure()
