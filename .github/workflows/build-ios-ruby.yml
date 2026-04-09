@@ -88,6 +88,16 @@ jobs:
         working-directory: _ruby-build
         run: make build
 
+      - name: Print mkmf logs for readline
+        if: always()
+        working-directory: _ruby-build
+        run: |
+          echo "=== mkmf.log for readline extension ==="
+          find build -path '*/ext/readline/mkmf.log' -type f | while read -r log; do
+            echo "########## $log ##########"
+            cat "$log"
+          done
+
       - name: Print build logs on failure
         if: failure()
         working-directory: _ruby-build
