@@ -19,17 +19,36 @@ add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
 # This gives us the proper triplet (e.g., x86_64-linux-gnu, aarch64-linux-android)
 # If HOST is already defined (e.g., from toolchain file), use that instead
 if(NOT DEFINED HOST OR HOST STREQUAL "")
-    execute_process(
-        COMMAND ${CMAKE_C_COMPILER} -dumpmachine
-        OUTPUT_VARIABLE HOST
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
+    # For Android cross-compilation, -dumpmachine returns the build host triple
+    # (e.g. x86_64-linux-gnu) instead of the Android target.  Derive the correct
+    # triplet from CMAKE_ANDROID_ARCH_ABI which CMake always sets for Android.
+    if(ANDROID AND DEFINED CMAKE_ANDROID_ARCH_ABI)
+        if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+            set(HOST "aarch64-linux-android")
+        elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "x86_64")
+            set(HOST "x86_64-linux-android")
+        elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
+            set(HOST "armv7a-linux-androideabi")
+        elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "x86")
+            set(HOST "i686-linux-android")
+        else()
+            message(WARNING "Unknown Android ABI: ${CMAKE_ANDROID_ARCH_ABI}, falling back to -dumpmachine")
+        endif()
+    endif()
 
-    # Fallback if -dumpmachine fails (shouldn't happen with modern compilers)
-    if(NOT HOST)
-        string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}" HOST)
-        message(WARNING "Could not determine host triplet from compiler, using fallback: ${HOST}")
+    if(NOT DEFINED HOST OR HOST STREQUAL "")
+        execute_process(
+            COMMAND ${CMAKE_C_COMPILER} -dumpmachine
+            OUTPUT_VARIABLE HOST
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        # Fallback if -dumpmachine fails (shouldn't happen with modern compilers)
+        if(NOT HOST)
+            string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}" HOST)
+            message(WARNING "Could not determine host triplet from compiler, using fallback: ${HOST}")
+        endif()
     endif()
 else()
     message(STATUS "Using HOST from toolchain/cache: ${HOST}")
