@@ -164,14 +164,6 @@ jobs:
           echo "Toolchain params:"
           cat _ruby-build/ios-${{ matrix.platform_type }}.params
 
-      - name: Configure ruby-for-android
-        working-directory: _ruby-build
-        run: |
-          ./configure \
-            --without-docker \
-            --with-toolchain-params=ios-${{ matrix.platform_type }}.params \
-            --enable-static
-
       - name: Download cached dependency staging
         uses: actions/download-artifact@v4
         with:
@@ -188,6 +180,23 @@ jobs:
           echo ""
           echo "=== Downloaded sources ==="
           ls _ruby-build/build/download/ 2>/dev/null || echo "WARNING: no downloads"
+          echo ""
+          echo "=== CMakeCache.txt ==="
+          head -5 _ruby-build/build/CMakeCache.txt 2>/dev/null || echo "WARNING: no CMakeCache"
+
+      # Reconfigure cmake to add Ruby target (deps were built with --deps-only)
+      # We must re-run cmake to add the ruby target, but keep existing build state.
+      # Touch all stamp files so make won't re-run completed dep steps after reconfigure.
+      - name: Reconfigure cmake to include Ruby
+        working-directory: _ruby-build
+        run: |
+          cd build
+          # Re-run cmake with BUILD_DEPS_ONLY=OFF to add Ruby target
+          cmake -DBUILD_DEPS_ONLY=OFF ..
+          # cmake reconfigure regenerates ExternalProject scripts (tmp dir),
+          # making them newer than stamp files, which causes make to re-run
+          # completed steps. Touch all existing stamps to prevent this.
+          find . -path '*/stamps/*' -type f -exec touch {} +
 
       # Interactive SSH session for debugging compile errors
       - name: Setup tmate SSH session
@@ -197,9 +206,9 @@ jobs:
           detached: true
         timeout-minutes: 30
 
-      - name: Build Ruby and dependencies
+      - name: Build Ruby
         working-directory: _ruby-build
-        run: make build
+        run: cmake --build build
 
       - name: Print build logs on failure
         if: failure()
@@ -217,6 +226,14 @@ jobs:
         if: ${{ failure() && inputs.debug_ssh == true }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 30
+
+      - name: Generate Makefile for install target
+        working-directory: _ruby-build
+        run: |
+          ./configure \
+            --without-docker \
+            --with-toolchain-params=ios-${{ matrix.platform_type }}.params \
+            --enable-static
 
       - name: Export build artifacts
         working-directory: _ruby-build
