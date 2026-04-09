@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19.2)
 
 project("logging" C)
 
-add_library(logging OBJECT logging.c)
+add_library(logging OBJECT logging.c jni_logging_fallback.c)
 set_target_properties(logging PROPERTIES
     COMPILE_FLAGS "-Wall -Wextra -Werror"
     POSITION_INDEPENDENT_CODE ON
