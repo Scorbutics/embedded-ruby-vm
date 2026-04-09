@@ -39,18 +39,20 @@ fi
 echo "Ruby libs version: $VERSION"
 echo "Repository: $REPO"
 
-# Platform definitions: platform_name -> archive_name, triplet, needs_ios_rename
-# Format: "archive_name:triplet[:ios_rename_from]"
-# Note: entries assigned individually to avoid "unbound variable" errors with
-#       set -u on some bash versions when using compound assignment syntax.
-declare -A PLATFORMS
-PLATFORMS["android-arm64"]="ruby_full-android-arm64.zip:aarch64-linux-android"
-PLATFORMS["android-x86_64"]="ruby_full-android-x86_64.zip:x86_64-linux-android"
-PLATFORMS["linux-x86_64"]="ruby_full-linux-x86_64.zip:x86_64-linux-gnu"
-PLATFORMS["ios-device"]="ruby_full-ios-arm64.zip:aarch64-apple-ios-device:aarch64-apple-darwin"
-PLATFORMS["ios-simulator"]="ruby_full-ios-arm64.zip:aarch64-apple-ios-simulator:aarch64-apple-darwin"
-
+# Platform definitions: platform_name -> "archive_name:triplet[:ios_rename_from]"
+# Uses a function instead of associative arrays for bash 3.x compatibility (macOS).
 ALL_PLATFORMS=("android-arm64" "android-x86_64" "linux-x86_64" "ios-device" "ios-simulator")
+
+platform_info() {
+    case "$1" in
+        android-arm64)   echo "ruby_full-android-arm64.zip:aarch64-linux-android" ;;
+        android-x86_64)  echo "ruby_full-android-x86_64.zip:x86_64-linux-android" ;;
+        linux-x86_64)    echo "ruby_full-linux-x86_64.zip:x86_64-linux-gnu" ;;
+        ios-device)      echo "ruby_full-ios-arm64.zip:aarch64-apple-ios-device:aarch64-apple-darwin" ;;
+        ios-simulator)   echo "ruby_full-ios-arm64.zip:aarch64-apple-ios-simulator:aarch64-apple-darwin" ;;
+        *)               return 1 ;;
+    esac
+}
 
 # Parse arguments
 if [ $# -gt 0 ]; then
@@ -61,7 +63,7 @@ fi
 
 # Validate requested platforms
 for plat in "${REQUESTED_PLATFORMS[@]}"; do
-    if [ -z "${PLATFORMS[$plat]+x}" ]; then
+    if ! platform_info "$plat" > /dev/null 2>&1; then
         echo "Error: Unknown platform '$plat'. Available: ${ALL_PLATFORMS[*]}" >&2
         exit 1
     fi
@@ -86,7 +88,7 @@ DOWNLOAD_DIR="$(mktemp -d)"
 trap "rm -rf '$DOWNLOAD_DIR'" EXIT
 
 for plat in "${REQUESTED_PLATFORMS[@]}"; do
-    IFS=':' read -r archive_name triplet ios_rename_from <<< "${PLATFORMS[$plat]}"
+    IFS=':' read -r archive_name triplet ios_rename_from <<< "$(platform_info "$plat")"
 
     # Check if already downloaded for this version
     marker_file="$MARKER_DIR/${plat}.version"
