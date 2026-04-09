@@ -13,8 +13,8 @@ on:
         required: false
         default: "12.0"
         type: string
-      commit_artifacts:
-        description: "Commit and push artifacts to this repository"
+      create_release:
+        description: "Create a GitHub release with the built artifacts"
         required: false
         default: true
         type: boolean
@@ -81,7 +81,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _ruby-build/build
-          key: ios-deps-v3-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-${{ hashFiles('_ruby-build/cmake/ruby-app/dependencies/*.cmake', '_ruby-build/cmake/ruby-app/patches/**/*', '_ruby-build/cmake/core/platforms/iOS.cmake') }}
+          key: ios-deps-v4-${{ matrix.sdk }}-${{ inputs.ruby_for_android_ref || 'master' }}-${{ hashFiles('_ruby-build/cmake/ruby-app/dependencies/*.cmake', '_ruby-build/cmake/ruby-app/patches/**/*', '_ruby-build/cmake/core/platforms/iOS.cmake') }}
 
       - name: Build dependencies (skip if cached)
         if: steps.deps-cache.outputs.cache-hit != 'true'
@@ -210,20 +210,6 @@ jobs:
         working-directory: _ruby-build
         run: cmake --build build
 
-      - name: Print mkmf logs
-        if: always()
-        working-directory: _ruby-build
-        run: |
-          echo "=== All mkmf.log files ==="
-          find build/ruby -name 'mkmf.log' -type f 2>/dev/null | while read -r log; do
-            echo ""
-            echo "########## $log ##########"
-            tail -80 "$log"
-          done
-          if [ -z "$(find build/ruby -name 'mkmf.log' -type f 2>/dev/null)" ]; then
-            echo "(no mkmf.log found in Ruby build tree)"
-          fi
-
       - name: Print build logs on failure
         if: failure()
         working-directory: _ruby-build
@@ -333,68 +319,69 @@ jobs:
           retention-days: 90
 
   # ---------------------------------------------------------------------------
-  # Download both platform artifacts and commit to the repository
+  # Create a GitHub release with the built artifacts
   # ---------------------------------------------------------------------------
-  commit:
-    if: ${{ inputs.commit_artifacts != false }}
+  release:
+    if: ${{ inputs.create_release != false }}
     needs: build-ruby
     runs-on: ubuntu-latest
-    name: Commit iOS artifacts
+    name: Create release
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Download device artifacts
         uses: actions/download-artifact@v4
         with:
           name: ios-device-ruby
-          path: .
+          path: artifacts/
 
       - name: Download simulator artifacts
         uses: actions/download-artifact@v4
         with:
           name: ios-simulator-ruby
-          path: .
+          path: artifacts/
 
-      - name: Show what will be committed
+      - name: Package release archives
         run: |
-          echo "=== iOS device libraries ==="
-          ls -lh external/lib/aarch64-apple-ios-device/static/ 2>/dev/null || echo "missing"
-          echo ""
-          echo "=== iOS simulator libraries ==="
-          ls -lh external/lib/aarch64-apple-ios-simulator/static/ 2>/dev/null || echo "missing"
-          echo ""
-          echo "=== iOS device includes ==="
-          find external/include/aarch64-apple-ios-device -type f | head -20
-          echo ""
-          echo "=== iOS simulator includes ==="
-          find external/include/aarch64-apple-ios-simulator -type f | head -20
+          cd artifacts
+          tar czf ../ios-device-ruby.tar.gz external/lib/aarch64-apple-ios-device/ external/include/aarch64-apple-ios-device/ assets/files/aarch64-apple-ios-device/ 2>/dev/null || \
+          tar czf ../ios-device-ruby.tar.gz external/lib/aarch64-apple-ios-device/ external/include/aarch64-apple-ios-device/
+          tar czf ../ios-simulator-ruby.tar.gz external/lib/aarch64-apple-ios-simulator/ external/include/aarch64-apple-ios-simulator/ assets/files/aarch64-apple-ios-simulator/ 2>/dev/null || \
+          tar czf ../ios-simulator-ruby.tar.gz external/lib/aarch64-apple-ios-simulator/ external/include/aarch64-apple-ios-simulator/
 
-      - name: Commit and push
+          echo "=== Release archives ==="
+          ls -lh ../*.tar.gz
+
+      - name: Generate release tag
+        id: tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          DEPLOY_TARGET="${{ inputs.ios_deployment_target || '12.0' }}"
+          REF="${{ inputs.ruby_for_android_ref || 'master' }}"
+          TAG="ios-ruby-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "deploy_target=$DEPLOY_TARGET" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
 
-          git add external/lib/aarch64-apple-ios-device/
-          git add external/lib/aarch64-apple-ios-simulator/
-          git add external/include/aarch64-apple-ios-device/
-          git add external/include/aarch64-apple-ios-simulator/
-          git add assets/files/aarch64-apple-ios-device/ 2>/dev/null || true
-          git add assets/files/aarch64-apple-ios-simulator/ 2>/dev/null || true
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "iOS Ruby VM artifacts (${{ steps.tag.outputs.tag }})"
+          body: |
+            Cross-compiled Ruby 3.1.1 static libraries for iOS:
+            - **ios-device-ruby.tar.gz** — arm64 device (`aarch64-apple-ios-device`)
+            - **ios-simulator-ruby.tar.gz** — arm64 simulator (`aarch64-apple-ios-simulator`)
 
-          if git diff --cached --quiet; then
-            echo "No changes to commit - artifacts already up to date"
-          else
-            DEPLOY_TARGET="${{ inputs.ios_deployment_target || '12.0' }}"
-            git commit -m "feat: add iOS prebuilt Ruby VM artifacts (device + simulator)
+            Deployment target: iOS ${{ steps.tag.outputs.deploy_target }}
+            Built from ruby-for-android ref: `${{ steps.tag.outputs.ref }}`
 
-          Cross-compiled Ruby 3.1.1 static libraries for:
-          - iOS device (arm64): aarch64-apple-ios-device
-          - iOS simulator (arm64): aarch64-apple-ios-simulator
-
-          Deployment target: iOS ${DEPLOY_TARGET}
-          Built from ruby-for-android ref: ${{ inputs.ruby_for_android_ref || 'master' }}"
-
-            git push
-          fi
+            ### Usage
+            ```bash
+            # Download and extract into your project
+            tar xzf ios-device-ruby.tar.gz
+            tar xzf ios-simulator-ruby.tar.gz
+            ```
+          files: |
+            ios-device-ruby.tar.gz
+            ios-simulator-ruby.tar.gz
