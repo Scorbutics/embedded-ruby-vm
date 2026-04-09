@@ -19,9 +19,9 @@ add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
 # This gives us the proper triplet (e.g., x86_64-linux-gnu, aarch64-linux-android)
 # If HOST is already defined (e.g., from toolchain file), use that instead
 if(NOT DEFINED HOST OR HOST STREQUAL "")
-    # For Android cross-compilation, -dumpmachine returns the build host triple
-    # (e.g. x86_64-linux-gnu) instead of the Android target.  Derive the correct
-    # triplet from CMAKE_ANDROID_ARCH_ABI which CMake always sets for Android.
+    # For cross-compilation, -dumpmachine returns the build host triple
+    # (e.g. x86_64-linux-gnu) instead of the target.  Derive the correct
+    # triplet from CMake variables that are always set for these platforms.
     if(ANDROID AND DEFINED CMAKE_ANDROID_ARCH_ABI)
         if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
             set(HOST "aarch64-linux-android")
@@ -33,6 +33,14 @@ if(NOT DEFINED HOST OR HOST STREQUAL "")
             set(HOST "i686-linux-android")
         else()
             message(WARNING "Unknown Android ABI: ${CMAKE_ANDROID_ARCH_ABI}, falling back to -dumpmachine")
+        endif()
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        # iOS: -dumpmachine returns the macOS host triple (e.g. arm64-apple-darwin24.6.0).
+        # Derive the target triplet from sysroot to distinguish device vs simulator.
+        if(CMAKE_OSX_SYSROOT MATCHES "iphonesimulator" OR CMAKE_OSX_SYSROOT STREQUAL "iphonesimulator")
+            set(HOST "aarch64-apple-ios-simulator")
+        else()
+            set(HOST "aarch64-apple-ios-device")
         endif()
     endif()
 
