@@ -92,15 +92,21 @@ jobs:
         if: always()
         working-directory: _ruby-build
         run: |
-          echo "=== All mkmf.log files ==="
-          find build -name 'mkmf.log' -type f | while read -r log; do
+          echo "=== Searching for mkmf.log in Ruby source tree ==="
+          find build/ruby -name 'mkmf.log' -type f 2>/dev/null | while read -r log; do
             echo ""
             echo "########## $log ##########"
             tail -80 "$log"
           done
-          if [ -z "$(find build -name 'mkmf.log' -type f)" ]; then
-            echo "(no mkmf.log found - build may have been cached)"
-          fi
+          echo ""
+          echo "=== Ruby ext/readline build directory ==="
+          find build/ruby -path '*/ext/readline*' -type f 2>/dev/null | head -20
+          echo ""
+          echo "=== Ruby exts.mk (shows which extensions are built) ==="
+          find build/ruby -name 'exts.mk' -type f 2>/dev/null | while read -r f; do
+            echo "########## $f ##########"
+            grep -i readline "$f" || echo "(readline not found in exts.mk)"
+          done
 
       - name: Print build logs on failure
         if: failure()
