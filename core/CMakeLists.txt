@@ -132,14 +132,13 @@ endif()
 FOREACH(lib_name ${libs_dependencies})
     if(BUILD_SHARED_LIBS)
         # Shared library build
-        add_library(${lib_name} SHARED IMPORTED)
+        add_library(${lib_name} SHARED IMPORTED GLOBAL)
         set_target_properties(${lib_name} PROPERTIES
             IMPORTED_LOCATION ${EXTERNAL_LIBS_DIR}/lib${lib_name}.${LIB_EXT}
         )
     else()
         # Static library build
-        # Ruby provides libruby-static.a for static linking
-        add_library(${lib_name} STATIC IMPORTED)
+        add_library(${lib_name} STATIC IMPORTED GLOBAL)
 
         # Build list of required system libraries
         # Base libraries needed by all static Ruby builds:
