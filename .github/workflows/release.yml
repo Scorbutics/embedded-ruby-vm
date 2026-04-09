@@ -86,9 +86,11 @@ jobs:
           - abi: arm64-v8a
             platform: android-arm64
             arch_label: arm64
+            triplet: aarch64-linux-android
           - abi: x86_64
             platform: android-x86_64
             arch_label: x86_64
+            triplet: x86_64-linux-android
     name: Build (Android ${{ matrix.arch_label }})
     steps:
       - name: Checkout
@@ -126,6 +128,7 @@ jobs:
             -DCMAKE_ANDROID_ARCH_ABI=${{ matrix.abi }} \
             -DCMAKE_ANDROID_NDK=$ANDROID_NDK_HOME \
             -DCMAKE_SYSTEM_VERSION=24 \
+            -DHOST=${{ matrix.triplet }} \
             -DBUILD_WRAPPER_SHARED=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_JNI=ON \
@@ -183,6 +186,7 @@ jobs:
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DHOST=aarch64-apple-ios-device \
             -DBUILD_WRAPPER_SHARED=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_JNI=OFF \
