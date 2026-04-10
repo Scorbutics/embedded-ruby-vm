@@ -5,11 +5,8 @@ project("test-jni")
 # JNI-level tests - tests JNI logging interface with custom implementation
 # This test provides its own strong symbol jni_log_impl() to override the weak default
 
-add_executable(test_jni test_jni.c)
-
-# Link with jni_logging (which has the weak symbol)
-# The test provides a strong symbol that overrides it
-target_link_libraries(test_jni
+add_executable(test_jni
+    test_jni.c
     ${CMAKE_SOURCE_DIR}/jni/jni_logging.c
 )
 
