@@ -103,17 +103,28 @@ else()
         endif()
         set(RUBY_VM_EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${HOST}/${BUILD_TYPE_DIR})
 
+        find_library(FFI_LIBRARY NAMES ffi PATHS ${RUBY_VM_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
+        if(NOT FFI_LIBRARY)
+            find_library(FFI_LIBRARY NAMES ffi)
+        endif()
         find_library(BSD_LIBRARY NAMES bsd PATHS ${RUBY_VM_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
         find_library(MD_LIBRARY NAMES md PATHS ${RUBY_VM_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
         find_library(CRYPT_LIBRARY NAMES crypt PATHS ${RUBY_VM_EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
         
+        if(FFI_LIBRARY)
+            message(STATUS "Found libffi: ${FFI_LIBRARY}")
+        else()
+            message(WARNING "libffi not found - Ruby's fiddle extension may fail to link")
+            set(FFI_LIBRARY "")
+        endif()
+
         if(BSD_LIBRARY)
             message(STATUS "Found libbsd: ${BSD_LIBRARY}")
         else()
             message(WARNING "libbsd not found - libcrypt may fail to link")
             set(BSD_LIBRARY "")
         endif()
-        
+
         if(MD_LIBRARY)
             message(STATUS "Found libmd: ${MD_LIBRARY}")
         else()
@@ -160,6 +171,10 @@ else()
             list(APPEND RUBY_VM_PUBLIC_LIBS "${MD_LIBRARY}")
         endif()
         
+        if(FFI_LIBRARY)
+            list(APPEND RUBY_VM_PUBLIC_LIBS "${FFI_LIBRARY}")  # libffi (used by Ruby's fiddle extension)
+        endif()
+
         list(APPEND RUBY_VM_PUBLIC_LIBS z)  # libz.a (used by many libraries)
         
         target_link_libraries(ruby-vm
