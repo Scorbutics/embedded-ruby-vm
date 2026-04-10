@@ -92,15 +92,18 @@ kotlin {
         // However, test binaries need linker opts to resolve C symbols.
         binaries.all {
             val libDir = project.file("libs/linux_x64").absoluteFile
+            // Konan's bundled ld.gold uses --sysroot with glibc 2.19, but
+            // libembedded-ruby.so is built against the system's newer glibc.
+            // Pass the system's libc and libm as absolute paths to bypass the
+            // sysroot and let the linker verify the .so's transitive deps
+            // against the actual system libraries.
+            val sysLibDir = "/usr/lib/x86_64-linux-gnu"
             linkerOpts(
                 "-L${libDir.absolutePath}",
                 "-lembedded-ruby",
                 "-lassets",
-                // Konan bundles glibc 2.19 but the .so is built against the system's
-                // newer glibc. Use -rpath-link to resolve the .so's transitive deps
-                // against the system libraries without affecting the executable's own linkage.
-                "-Wl,-rpath-link,/usr/lib/x86_64-linux-gnu",
-                "-ldl", "-lpthread", "-lm",
+                "$sysLibDir/libm.so.6",
+                "$sysLibDir/libc.so.6",
                 "-Wl,-rpath,${libDir.absolutePath}"
             )
         }
