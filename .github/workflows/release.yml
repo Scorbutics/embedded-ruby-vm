@@ -156,7 +156,16 @@ jobs:
 
   build-ios:
     runs-on: macos-latest
-    name: Build (iOS arm64)
+    strategy:
+      matrix:
+        include:
+          - variant: device
+            sysroot: iphoneos
+            ruby_libs_platform: ios-device
+          - variant: simulator
+            sysroot: iphonesimulator
+            ruby_libs_platform: ios-simulator
+    name: Build (iOS ${{ matrix.variant }} arm64)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -168,14 +177,14 @@ jobs:
             external/lib
             external/include
             assets/files
-          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-ios-device
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-${{ matrix.ruby_libs_platform }}
 
       - name: Download Ruby prebuilt libraries
         run: |
           if [ -n "${{ inputs.ruby_libs_version }}" ]; then
             export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
           fi
-          ./scripts/download-ruby-libs.sh ios-device
+          ./scripts/download-ruby-libs.sh ${{ matrix.ruby_libs_platform }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -184,9 +193,10 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=${{ matrix.sysroot }} \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
-            -DHOST=aarch64-apple-ios-device \
+            -DHOST=aarch64-apple-ios-${{ matrix.variant }} \
             -DBUILD_WRAPPER_SHARED=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_JNI=OFF \
@@ -203,13 +213,13 @@ jobs:
           cp build/lib/libassets.a artifacts/
           cp build/lib/libminizip.a artifacts/
           cp -r include/public/embedded-ruby-vm artifacts/include/
-          tar czf embedded-ruby-vm-ios-arm64.tar.gz -C artifacts .
+          tar czf embedded-ruby-vm-ios-${{ matrix.variant }}-arm64.tar.gz -C artifacts .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: embedded-ruby-vm-ios-arm64
-          path: embedded-ruby-vm-ios-arm64.tar.gz
+          name: embedded-ruby-vm-ios-${{ matrix.variant }}-arm64
+          path: embedded-ruby-vm-ios-${{ matrix.variant }}-arm64.tar.gz
 
   build-macos:
     runs-on: macos-14
@@ -301,5 +311,6 @@ jobs:
             artifacts/embedded-ruby-vm-linux-x86_64/embedded-ruby-vm-linux-x86_64.tar.gz
             artifacts/embedded-ruby-vm-android-arm64/embedded-ruby-vm-android-arm64.tar.gz
             artifacts/embedded-ruby-vm-android-x86_64/embedded-ruby-vm-android-x86_64.tar.gz
-            artifacts/embedded-ruby-vm-ios-arm64/embedded-ruby-vm-ios-arm64.tar.gz
+            artifacts/embedded-ruby-vm-ios-device-arm64/embedded-ruby-vm-ios-device-arm64.tar.gz
+            artifacts/embedded-ruby-vm-ios-simulator-arm64/embedded-ruby-vm-ios-simulator-arm64.tar.gz
             artifacts/embedded-ruby-vm-macos-arm64/embedded-ruby-vm-macos-arm64.tar.gz
