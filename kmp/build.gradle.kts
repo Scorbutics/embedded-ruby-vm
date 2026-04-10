@@ -18,6 +18,11 @@ if (isAndroidAvailable) {
 group = "com.scorbutics.rubyvm"
 version = "1.0.0-SNAPSHOT"
 
+// iOS/macOS targets require Xcode and iOS SDKs, only available on macOS hosts.
+// Enabling them on unsupported hosts (e.g. Linux ARM64) would cause Gradle to fail
+// trying to download missing kotlin-native-prebuilt packages.
+val isMacOs = System.getProperty("os.name").startsWith("Mac")
+
 // Configuration for the native library name
 // This can be overridden via gradle.properties: nativeLibraryName=rgss_runtime
 val nativeLibraryName: String = findProperty("nativeLibraryName")?.toString() ?: "embedded-ruby"
@@ -44,22 +49,19 @@ kotlin {
         }
     }
 
-    // NOTE: Almost all Kotlin/Native targets (iOS, macOS, Linux) are disabled.
-    // This prevents Gradle from trying to download kotlin-native-prebuilt-linux-aarch64.
-    // If you want to enable these targets, build on a supported platform (macOS, Linux x64, or Windows).
-
-    // iOS targets (uses cinterop) - DISABLED
-    // val xcf = XCFramework()
-    // listOf(
-    //     iosX64(),
-    //     iosArm64(),
-    //     iosSimulatorArm64()
-    // ).forEach { iosTarget ->
-    //     iosTarget.binaries.framework {
-    //         baseName = "RubyVM"
-    //         xcf.add(this)
-    //     }
-    // }
+    // iOS targets (uses cinterop) - requires macOS host with Xcode
+    if (isMacOs) {
+        val xcf = XCFramework()
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "RubyVM"
+                xcf.add(this)
+            }
+        }
+    }
 
     // macOS targets (uses cinterop) - DISABLED
     // listOf(
@@ -123,9 +125,17 @@ kotlin {
             dependsOn(commonMain)
         }
 
-        // val iosMain by getting {
-        //     dependsOn(nativeMain)
-        // }
+        if (isMacOs) {
+            val iosMain by creating {
+                dependsOn(nativeMain)
+            }
+            val iosArm64Main by getting {
+                dependsOn(iosMain)
+            }
+            val iosSimulatorArm64Main by getting {
+                dependsOn(iosMain)
+            }
+        }
 
         // val macosX64Main by getting {
         //     dependsOn(nativeMain)
@@ -167,7 +177,9 @@ kotlin {
                         konanTargetName.startsWith("linux_arm64") -> "linux" to "arm64"
                         konanTargetName.startsWith("macos_x64") -> "macos" to "x86_64"
                         konanTargetName.startsWith("macos_arm64") -> "macos" to "arm64"
-                        konanTargetName.startsWith("ios") -> "ios" to konanTargetName.substringAfter("_")
+                        konanTargetName == "ios_arm64" -> "ios" to "arm64"
+                        konanTargetName == "ios_simulator_arm64" -> "ios-simulator" to "arm64"
+                        konanTargetName == "ios_x64" -> "ios-simulator" to "x86_64"
                         else -> throw GradleException("Unsupported Konan target: $konanTargetName")
                     }
                     val cmakeBuildDir = file("${layout.buildDirectory.get()}/cmake/$platform-$arch/core/ruby-vm").absoluteFile
