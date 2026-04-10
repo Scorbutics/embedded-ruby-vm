@@ -56,10 +56,10 @@ kotlin {
             iosArm64(),
             iosSimulatorArm64()
         ).forEach { iosTarget ->
-            // Set iOS 13 deployment target (must match native C libraries)
+            // Set iOS 14 deployment target (must match native C libraries)
             iosTarget.compilations.all {
                 compilerOptions.configure {
-                    freeCompilerArgs.add("-Xoverride-konan-properties=osVersionMin.${iosTarget.konanTarget.name}=13.0")
+                    freeCompilerArgs.add("-Xoverride-konan-properties=osVersionMin.${iosTarget.konanTarget.name}=14.0")
                 }
             }
             iosTarget.binaries.framework {
