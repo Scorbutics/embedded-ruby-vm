@@ -69,7 +69,6 @@ kotlin {
                     "-force_load", "${libDir.absolutePath}/lib${nativeLibraryName}.a",
                     "-framework", "Compression",
                     "-framework", "CoreFoundation",
-                    "-lffi",
                     "-liconv"
                 )
             }
