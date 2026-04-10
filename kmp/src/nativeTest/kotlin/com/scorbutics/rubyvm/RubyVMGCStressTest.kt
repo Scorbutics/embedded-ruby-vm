@@ -84,7 +84,7 @@ class RubyVMGCStressTest {
 
                 // Trigger Kotlin/Native GC periodically during script submission
                 if (i % 10 == 0) {
-                    kotlin.native.internal.GC.collect()
+                    kotlin.native.runtime.GC.collect()
                     usleep(10_000u) // 10ms
                 }
 
@@ -95,7 +95,7 @@ class RubyVMGCStressTest {
             // Force Kotlin/Native GC multiple times during execution
             repeat(10) { gcRound ->
                 usleep(200_000u) // 200ms
-                kotlin.native.internal.GC.collect()
+                kotlin.native.runtime.GC.collect()
                 println("  [GC Trigger $gcRound] Forced Kotlin/Native GC")
             }
 
@@ -176,7 +176,7 @@ class RubyVMGCStressTest {
 
                 // Force Kotlin/Native GC periodically
                 if (i % 5 == 0) {
-                    kotlin.native.internal.GC.collect()
+                    kotlin.native.runtime.GC.collect()
                     println("  [Forced Kotlin/Native GC after script $i]")
                 }
 
@@ -249,7 +249,7 @@ class RubyVMGCStressTest {
                 }
 
                 // Aggressive Kotlin/Native GC
-                kotlin.native.internal.GC.collect()
+                kotlin.native.runtime.GC.collect()
                 usleep(100_000u) // 100ms
             }
 
