@@ -80,9 +80,26 @@ if(ANDROID)
 elseif(APPLE)
     # macOS uses -force_load instead of --whole-archive
     # macOS provides dl and pthread in libSystem (no separate libraries)
+    #
+    # -force_load pulls ALL objects from the fat archive, so we must link
+    # every system framework / library that any constituent library needs:
+    #   SFML        → Cocoa, IOKit, CoreFoundation, CoreVideo, Carbon, OpenGL
+    #   OpenAL-Soft → AudioToolbox, CoreAudio, AudioUnit
+    #   Ruby / misc → compression, iconv
     target_link_libraries(rgss_runtime PRIVATE
         -Wl,-force_load,${FAT_LIB_PATH}
         z m stdc++
+        "-framework AudioToolbox"
+        "-framework AudioUnit"
+        "-framework CoreAudio"
+        "-framework Cocoa"
+        "-framework IOKit"
+        "-framework CoreFoundation"
+        "-framework CoreVideo"
+        "-framework Carbon"
+        "-framework OpenGL"
+        compression
+        iconv
     )
 else()
     # Linux
