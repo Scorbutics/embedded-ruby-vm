@@ -65,7 +65,13 @@ kotlin {
                     "ios_simulator_arm64" -> stagedIosSimulator
                     else -> stagedIosDevice
                 }
-                linkerOpts("-L${libDir.absolutePath}", "-lrgss_runtime")
+                linkerOpts(
+                    "-force_load", "${libDir.absolutePath}/lib${nativeLibraryName}.a",
+                    "-framework", "Compression",
+                    "-framework", "CoreFoundation",
+                    "-lffi",
+                    "-liconv"
+                )
             }
         }
     }
