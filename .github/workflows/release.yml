@@ -162,9 +162,11 @@ jobs:
           - variant: device
             sysroot: iphoneos
             ruby_libs_platform: ios-device
+            deployment_target: "13.0"
           - variant: simulator
             sysroot: iphonesimulator
             ruby_libs_platform: ios-simulator
+            deployment_target: "14.0"  # arm64 simulator requires iOS 14.0+ (Apple Silicon)
     name: Build (iOS ${{ matrix.variant }} arm64)
     steps:
       - name: Checkout
@@ -195,7 +197,7 @@ jobs:
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_SYSROOT=${{ matrix.sysroot }} \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.deployment_target }} \
             -DHOST=aarch64-apple-ios-${{ matrix.variant }} \
             -DBUILD_WRAPPER_SHARED=OFF \
             -DBUILD_SHARED_LIBS=OFF \

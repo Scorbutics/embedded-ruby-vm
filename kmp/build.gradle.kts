@@ -56,10 +56,15 @@ kotlin {
             iosArm64(),
             iosSimulatorArm64()
         ).forEach { iosTarget ->
-            // Set iOS 13 deployment target (must match native C libraries)
+            // iOS device (arm64) supports 13.0+, but the arm64 iOS Simulator
+            // only exists since iOS 14.0 (introduced with Apple Silicon).
+            // Setting 13.0 for simulator arm64 is invalid — Clang silently
+            // bumps compiled objects to 14.0, but the linker still sees 13.0,
+            // causing a version mismatch error.
+            val minVersion = if (iosTarget.konanTarget.name == "ios_simulator_arm64") "14.0" else "13.0"
             iosTarget.compilations.all {
                 compilerOptions.configure {
-                    freeCompilerArgs.add("-Xoverride-konan-properties=osVersionMin.${iosTarget.konanTarget.name}=13.0")
+                    freeCompilerArgs.add("-Xoverride-konan-properties=osVersionMin.${iosTarget.konanTarget.name}=$minVersion")
                 }
             }
             iosTarget.binaries.framework {
@@ -543,7 +548,7 @@ tasks.register("buildNativeLibsIOS") {
                     file("libs/ios_arm64")
                 )
 
-                // iOS Simulator arm64
+                // iOS Simulator arm64 (arm64 simulator requires iOS 14.0+, introduced with Apple Silicon)
                 runCMake(
                     "ios-simulator",
                     "arm64",
@@ -551,7 +556,7 @@ tasks.register("buildNativeLibsIOS") {
                         "-DCMAKE_SYSTEM_NAME=iOS",
                         "-DCMAKE_OSX_ARCHITECTURES=arm64",
                         "-DCMAKE_OSX_SYSROOT=iphonesimulator",
-                        "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
+                        "-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0",
                         "-DBUILD_JNI=OFF"
                     ),
                     file("libs/ios_simulator_arm64")
