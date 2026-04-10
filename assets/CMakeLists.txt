@@ -240,7 +240,12 @@ set_target_properties(assets PROPERTIES
     LINKER_LANGUAGE C
 )
 
-target_link_libraries(assets PRIVATE minizip)
+# For static builds, use PUBLIC so minizip's dependencies (OpenSSL, zlib) propagate to consumers
+if(BUILD_WRAPPER_SHARED)
+    target_link_libraries(assets PRIVATE minizip)
+else()
+    target_link_libraries(assets PUBLIC minizip)
+endif()
 
 # Link Android log library when building for Android
 if(ANDROID)

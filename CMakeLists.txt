@@ -193,15 +193,22 @@ target_sources(embedded-ruby PRIVATE ${RUBY_VM_EMBEDDED_SCRIPT_OBJ})
 # Link dependencies from ruby-vm
 # Since we're using OBJECT libraries, all object files are already included
 # We just need to link against ruby-vm's external dependencies
-target_link_libraries(embedded-ruby PRIVATE $<TARGET_PROPERTY:ruby-vm,LINK_LIBRARIES>)
+# For static builds, use PUBLIC so transitive dependencies propagate to consumers
+# (static libraries don't resolve symbols themselves - the final executable needs them)
+if(BUILD_WRAPPER_SHARED)
+    set(_EMBEDDED_RUBY_LINK_VISIBILITY PRIVATE)
+else()
+    set(_EMBEDDED_RUBY_LINK_VISIBILITY PUBLIC)
+endif()
+target_link_libraries(embedded-ruby ${_EMBEDDED_RUBY_LINK_VISIBILITY} $<TARGET_PROPERTY:ruby-vm,LINK_LIBRARIES>)
 
 # We also need to link system libraries for both static and shared builds
 # These are required by Ruby but might not be fully propagated through OBJECT libraries
 # macOS provides dl and pthread in libSystem (no separate libraries)
 if(APPLE)
-    target_link_libraries(embedded-ruby PRIVATE m)
+    target_link_libraries(embedded-ruby ${_EMBEDDED_RUBY_LINK_VISIBILITY} m)
 else()
-    target_link_libraries(embedded-ruby PRIVATE m dl pthread)
+    target_link_libraries(embedded-ruby ${_EMBEDDED_RUBY_LINK_VISIBILITY} m dl pthread)
 endif()
 
 # Link Android log library when building for Android (needed by debug.h macros)

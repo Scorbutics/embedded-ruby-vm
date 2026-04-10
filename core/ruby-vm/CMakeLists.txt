@@ -178,6 +178,20 @@ else()
         # and nested generator expressions inside $<TARGET_PROPERTY> are not evaluated.
         get_target_property(_ruby_lib ruby IMPORTED_LOCATION)
         get_target_property(_ruby_ext_lib ruby-ext IMPORTED_LOCATION)
+
+        # Ruby's fiddle extension requires libffi. On macOS, Ruby uses the system libffi
+        # rather than bundling it, so we need to find and link it explicitly.
+        # Check the prebuilt external libs first, then fall back to system libffi.
+        find_library(FFI_LIBRARY NAMES ffi PATHS ${EXTERNAL_LIBS_DIR} NO_DEFAULT_PATH)
+        if(NOT FFI_LIBRARY)
+            find_library(FFI_LIBRARY NAMES ffi)
+        endif()
+        if(FFI_LIBRARY)
+            message(STATUS "Found libffi: ${FFI_LIBRARY}")
+        else()
+            message(WARNING "libffi not found - Ruby's fiddle extension may fail to link")
+        endif()
+
         target_link_libraries(ruby-vm
             -Wl,-force_load,${_ruby_lib}
             -Wl,-force_load,${_ruby_ext_lib}
@@ -193,6 +207,8 @@ else()
             crypto
             gmp            # libgmp.a (used by Ruby for bignum operations)
             z
+            ${FFI_LIBRARY}                 # libffi (used by Ruby's fiddle extension)
+            "-framework CoreFoundation"    # Used by Ruby's file.o for path normalization
             # Note: macOS doesn't need libcrypt (functionality is in libc)
         )
     else()
