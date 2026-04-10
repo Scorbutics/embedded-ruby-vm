@@ -19,11 +19,14 @@ val stagedDesktopLibs = file("src/main/desktopLibs")
 val stagedIosDevice = file("src/main/iosLibs/ios_arm64")
 val stagedIosSimulator = file("src/main/iosLibs/ios_simulator_arm64")
 
+val stagedLinuxNativeLibs = file("src/main/linuxNativeLibs/linux_x64")
+
 val hasAndroid = stagedJniLibs.exists() && stagedJniLibs.listFiles()?.isNotEmpty() == true
 val hasDesktop = stagedDesktopLibs.exists() && stagedDesktopLibs.listFiles()?.isNotEmpty() == true
 val hasIos = stagedIosDevice.exists() && stagedIosDevice.listFiles()?.isNotEmpty() == true
+val hasLinuxNative = stagedLinuxNativeLibs.exists() && stagedLinuxNativeLibs.listFiles()?.isNotEmpty() == true
 
-println("Staged platforms: android=$hasAndroid, desktop=$hasDesktop, ios=$hasIos")
+println("Staged platforms: android=$hasAndroid, desktop=$hasDesktop, ios=$hasIos, linuxNative=$hasLinuxNative")
 
 kotlin {
     // Android target (uses JNI — .so files pre-staged in jniLibs/)
@@ -67,6 +70,11 @@ kotlin {
         }
     }
 
+    // Linux native target (uses cinterop — .a files pre-staged in linuxNativeLibs/)
+    if (hasLinuxNative) {
+        linuxX64()
+    }
+
     sourceSets {
         // Common source set (platform-agnostic API)
         val commonMain by getting {
@@ -101,27 +109,37 @@ kotlin {
             resources.srcDir("src/main/desktopLibs")
         }
 
-        // iOS / Native implementations
-        if (isMacOs && hasIos) {
+        // Native implementations (cinterop-based: iOS, Linux)
+        val hasNativeTargets = (isMacOs && hasIos) || hasLinuxNative
+        if (hasNativeTargets) {
             val nativeMain by creating {
                 dependsOn(commonMain)
                 kotlin.srcDirs("../kmp/src/nativeMain/kotlin")
             }
 
-            val iosMain by creating {
-                dependsOn(nativeMain)
+            if (isMacOs && hasIos) {
+                val iosMain by creating {
+                    dependsOn(nativeMain)
+                }
+                val iosArm64Main by getting {
+                    dependsOn(iosMain)
+                }
+                val iosSimulatorArm64Main by getting {
+                    dependsOn(iosMain)
+                }
             }
-            val iosArm64Main by getting {
-                dependsOn(iosMain)
-            }
-            val iosSimulatorArm64Main by getting {
-                dependsOn(iosMain)
+
+            if (hasLinuxNative) {
+                val linuxX64Main by getting {
+                    dependsOn(nativeMain)
+                }
             }
         }
     }
 
-    // Configure cinterop for iOS native targets (uses pre-staged headers)
-    if (isMacOs && hasIos) {
+    // Configure cinterop for all native targets (iOS, Linux)
+    val hasNativeTargets = (isMacOs && hasIos) || hasLinuxNative
+    if (hasNativeTargets) {
         targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
             compilations.getByName("main") {
                 cinterops {
