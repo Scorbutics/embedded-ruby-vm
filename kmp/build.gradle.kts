@@ -163,14 +163,12 @@ kotlin {
                     packageName("com.scorbutics.rubyvm.native")
 
                     // Include directories for headers (using absolute paths)
-                    // Note: Use rootProject.file() since this is a subproject
-                    val coreRubyVmDir = project.rootProject.file("core/ruby-vm").absoluteFile
-                    val assetsDir = project.rootProject.file("assets").absoluteFile
+                    // Headers live under include/private/embedded-ruby-vm/ and include/public/embedded-ruby-vm/
+                    val privateHeadersDir = project.rootProject.file("include/private/embedded-ruby-vm").absoluteFile
+                    val publicHeadersDir = project.rootProject.file("include/public/embedded-ruby-vm").absoluteFile
 
                     // Get the CMake build directory where ruby-api-loader.h is generated
                     // Map konanTarget.name to CMake directory naming convention
-                    // konanTarget.name: "linux_x64" -> CMake dir: "linux-x86_64"
-                    // konanTarget.name: "macos_arm64" -> CMake dir: "macos-arm64"
                     val konanTargetName = this@withType.konanTarget.name
                     val (platform, arch) = when {
                         konanTargetName.startsWith("linux_x64") -> "linux" to "x86_64"
@@ -187,14 +185,14 @@ kotlin {
 
                     // Add all directories to ALL include dir categories
                     includeDirs.apply {
-                        allHeaders(coreRubyVmDir, assetsDir, cmakeBuildDir)
-                        headerFilterOnly(coreRubyVmDir, assetsDir, cmakeBuildDir)
+                        allHeaders(privateHeadersDir, publicHeadersDir, cmakeBuildDir)
+                        headerFilterOnly(privateHeadersDir, publicHeadersDir, cmakeBuildDir)
                     }
 
                     // Also pass as compiler options
                     compilerOpts(
-                        "-I${coreRubyVmDir.absolutePath}",
-                        "-I${assetsDir.absolutePath}",
+                        "-I${privateHeadersDir.absolutePath}",
+                        "-I${publicHeadersDir.absolutePath}",
                         "-I${cmakeBuildDir.absolutePath}"
                     )
 
