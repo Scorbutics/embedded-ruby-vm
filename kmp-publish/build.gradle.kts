@@ -48,7 +48,7 @@ kotlin {
     // iOS targets (uses cinterop — .a files pre-staged in iosLibs/)
     val isMacOs = System.getProperty("os.name").startsWith("Mac")
     if (isMacOs && hasIos) {
-        val xcf = XCFramework()
+        val xcf = XCFramework("RubyVM")
         listOf(
             iosArm64(),
             iosSimulatorArm64()
