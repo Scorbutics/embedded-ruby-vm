@@ -84,6 +84,22 @@ jobs:
       - name: Run Desktop tests
         run: ./gradlew desktopTest
 
+      - name: Patch Kotlin/Native linker for glibc compatibility
+        run: |
+          # Konan bundles ld.gold with glibc 2.19 sysroot, which cannot verify
+          # shared library deps built against the system's newer glibc (2.38+).
+          # Wrap ld.gold to add --allow-shlib-undefined for test linking.
+          KONAN_DIR="$HOME/.konan/dependencies"
+          LD_GOLD=$(find "$KONAN_DIR" -name "ld.gold" -type f 2>/dev/null | head -1)
+          if [ -n "$LD_GOLD" ]; then
+            mv "$LD_GOLD" "${LD_GOLD}.bin"
+            printf '#!/bin/sh\nexec "%s.bin" --allow-shlib-undefined "$@"\n' "$LD_GOLD" > "$LD_GOLD"
+            chmod +x "$LD_GOLD"
+            echo "Wrapped $LD_GOLD to allow shlib undefined symbols"
+          else
+            echo "Warning: konan ld.gold not found, skipping patch"
+          fi
+
       - name: Run Linux Native tests
         run: ./gradlew linuxX64Test
 

@@ -92,21 +92,11 @@ kotlin {
         // However, test binaries need linker opts to resolve C symbols.
         binaries.all {
             val libDir = project.file("libs/linux_x64").absoluteFile
-            // Konan bundles ld.gold with glibc 2.19, but libembedded-ruby.so is
-            // built against the system's newer glibc (2.38+). The linker cannot
-            // verify the .so's transitive glibc deps against the old sysroot,
-            // and glibc's internal GLIBC_PRIVATE symbols (libc <-> ld.so) are
-            // circular and can only ever be resolved at runtime by the dynamic
-            // linker. Allow unresolved symbols in shared library dependencies
-            // only — the executable's own symbols and our API symbols from the
-            // .so are still fully verified.
             linkerOpts(
                 "-L${libDir.absolutePath}",
                 "-lembedded-ruby",
                 "-lassets",
-                "-ldl", "-lpthread", "-lm",
-                "--unresolved-symbols=ignore-in-shared-libs",
-                "-rpath", libDir.absolutePath
+                "-ldl", "-lpthread", "-lm"
             )
         }
     }
