@@ -206,6 +206,15 @@ set_target_properties(minizip PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
+# Ensure minizip compiles against our prebuilt OpenSSL headers, not system ones.
+# minizip-ng uses pkg_check_modules(OPENSSL openssl) which can find system OpenSSL 3.x
+# on macOS, causing it to compile mz_crypt_openssl.c with EVP_MAC_* APIs that don't
+# exist in our prebuilt OpenSSL 1.1.1k. The BEFORE keyword ensures our headers take
+# precedence over any system headers in the include path.
+if(EXISTS "${EXTERNAL_LIBS_DIR}/libcrypto.a")
+    target_include_directories(minizip BEFORE PRIVATE "${EXTERNAL_INCLUDE_DIR}")
+endif()
+
 # Override HAVE_GETRANDOM and HAVE_ARC4RANDOM_BUF after minizip is configured
 # This forces minizip to use /dev/urandom instead
 target_compile_options(minizip PRIVATE -UHAVE_GETRANDOM -UHAVE_ARC4RANDOM_BUF)
