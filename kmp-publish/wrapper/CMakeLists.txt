@@ -100,6 +100,7 @@ elseif(APPLE)
         "-framework OpenGL"
         compression
         iconv
+        bz2
     )
 else()
     # Linux
