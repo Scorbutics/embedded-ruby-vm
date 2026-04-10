@@ -164,8 +164,8 @@ kotlin {
 
                     // Include directories for headers (using absolute paths)
                     // Headers live under include/private/embedded-ruby-vm/ and include/public/embedded-ruby-vm/
-                    val privateHeadersDir = project.rootProject.file("include/private/embedded-ruby-vm").absoluteFile
-                    val publicHeadersDir = project.rootProject.file("include/public/embedded-ruby-vm").absoluteFile
+                    val privateHeadersDir = project.rootProject.file("include/private").absoluteFile
+                    val publicHeadersDir = project.rootProject.file("include/public").absoluteFile
 
                     // Get the CMake build directory where ruby-api-loader.h is generated
                     // Map konanTarget.name to CMake directory naming convention
