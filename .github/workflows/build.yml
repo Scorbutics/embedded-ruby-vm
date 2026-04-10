@@ -102,7 +102,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
-            -DHOST=arm64-apple-darwin \
+            -DHOST=aarch64-apple-darwin \
             -DBUILD_WRAPPER_SHARED=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_JNI=OFF \

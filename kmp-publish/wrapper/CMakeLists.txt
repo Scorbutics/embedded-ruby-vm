@@ -79,9 +79,10 @@ if(ANDROID)
     )
 elseif(APPLE)
     # macOS uses -force_load instead of --whole-archive
+    # macOS provides dl and pthread in libSystem (no separate libraries)
     target_link_libraries(rgss_runtime PRIVATE
         -Wl,-force_load,${FAT_LIB_PATH}
-        z m dl pthread stdc++
+        z m stdc++
     )
 else()
     # Linux

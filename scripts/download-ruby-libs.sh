@@ -50,7 +50,7 @@ platform_info() {
         linux-x86_64)    echo "ruby_full-linux-x86_64.zip:x86_64-linux-gnu" ;;
         ios-device)      echo "ruby_full-ios-arm64.zip:aarch64-apple-ios-device:aarch64-apple-darwin" ;;
         ios-simulator)   echo "ruby_full-ios-arm64.zip:aarch64-apple-ios-simulator:aarch64-apple-darwin" ;;
-        macos-arm64)     echo "ruby_full-macos-arm64.zip:arm64-apple-darwin" ;;
+        macos-arm64)     echo "ruby_full-macos-arm64.zip:aarch64-apple-darwin" ;;
         *)               return 1 ;;
     esac
 }

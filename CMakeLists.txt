@@ -94,12 +94,22 @@ if(NOT EXISTS "${EXTERNAL_LIBS_DIR}")
     endif()
 
     # macOS clang's -dumpmachine includes a Darwin version suffix (e.g. arm64-apple-darwin24.0.0).
-    # The prebuilt libraries use the unversioned triplet (arm64-apple-darwin).
+    # The prebuilt libraries use the unversioned triplet with aarch64 (aarch64-apple-darwin).
+    # Step 1: Strip the Darwin version suffix (arm64-apple-darwin24.0.0 → arm64-apple-darwin)
     if(NOT EXISTS "${EXTERNAL_LIBS_DIR}" AND HOST MATCHES "^([a-z0-9_]+-apple-darwin)[0-9.]+$")
         set(ALT_HOST "${CMAKE_MATCH_1}")
         set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${ALT_HOST}/${BUILD_TYPE_DIR})
         if(EXISTS "${EXTERNAL_LIBS_DIR}")
             message(STATUS "Using alternative host triplet (stripped Darwin version): ${ALT_HOST}")
+            set(HOST "${ALT_HOST}")
+        endif()
+    endif()
+    # Step 2: Normalize arm64 → aarch64 for consistency with ruby-for-android archives
+    if(NOT EXISTS "${EXTERNAL_LIBS_DIR}" AND HOST MATCHES "^arm64-apple-darwin$")
+        set(ALT_HOST "aarch64-apple-darwin")
+        set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${ALT_HOST}/${BUILD_TYPE_DIR})
+        if(EXISTS "${EXTERNAL_LIBS_DIR}")
+            message(STATUS "Using alternative host triplet (arm64 → aarch64): ${ALT_HOST}")
             set(HOST "${ALT_HOST}")
         endif()
     endif()
