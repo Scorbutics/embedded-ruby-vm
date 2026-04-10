@@ -72,6 +72,18 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build Kotlin/Native linuxX64 & Desktop JAR
+        run: ./gradlew compileKotlinLinuxX64 desktopJar
+
+      - name: Run Desktop tests
+        run: ./gradlew desktopTest
+
       - name: Package artifacts
         run: |
           mkdir -p artifacts/include
