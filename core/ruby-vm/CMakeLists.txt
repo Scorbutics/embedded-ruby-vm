@@ -193,8 +193,8 @@ else()
         endif()
 
         target_link_libraries(ruby-vm
-            -Wl,-force_load,${_ruby_lib}
             -Wl,-force_load,${_ruby_ext_lib}
+            ruby
             readline       # libreadline.a (contains history functions)
             ncurses
             ncurses++
