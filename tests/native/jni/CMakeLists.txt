@@ -16,6 +16,7 @@ target_link_libraries(test_jni
 # Include jni directory for headers
 target_include_directories(test_jni PRIVATE
     ${CMAKE_SOURCE_DIR}/jni
+    ${CMAKE_SOURCE_DIR}/include/private
 )
 
 # Register with CTest
