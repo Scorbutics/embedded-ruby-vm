@@ -92,6 +92,17 @@ if(NOT EXISTS "${EXTERNAL_LIBS_DIR}")
             set(HOST "${ALT_HOST}")
         endif()
     endif()
+
+    # macOS clang's -dumpmachine includes a Darwin version suffix (e.g. arm64-apple-darwin24.0.0).
+    # The prebuilt libraries use the unversioned triplet (arm64-apple-darwin).
+    if(NOT EXISTS "${EXTERNAL_LIBS_DIR}" AND HOST MATCHES "^([a-z0-9_]+-apple-darwin)[0-9.]+$")
+        set(ALT_HOST "${CMAKE_MATCH_1}")
+        set(EXTERNAL_LIBS_DIR ${CMAKE_SOURCE_DIR}/external/lib/${ALT_HOST}/${BUILD_TYPE_DIR})
+        if(EXISTS "${EXTERNAL_LIBS_DIR}")
+            message(STATUS "Using alternative host triplet (stripped Darwin version): ${ALT_HOST}")
+            set(HOST "${ALT_HOST}")
+        endif()
+    endif()
 endif()
 
 # Auto-download Ruby libraries from GitHub Releases if not present
@@ -174,9 +185,14 @@ target_sources(embedded-ruby PRIVATE ${RUBY_VM_EMBEDDED_SCRIPT_OBJ})
 # We just need to link against ruby-vm's external dependencies
 target_link_libraries(embedded-ruby PRIVATE $<TARGET_PROPERTY:ruby-vm,LINK_LIBRARIES>)
 
-# We also need to link system libraries (math, dl, pthread) for both static and shared builds
+# We also need to link system libraries for both static and shared builds
 # These are required by Ruby but might not be fully propagated through OBJECT libraries
-target_link_libraries(embedded-ruby PRIVATE m dl pthread)
+# macOS provides dl and pthread in libSystem (no separate libraries)
+if(APPLE)
+    target_link_libraries(embedded-ruby PRIVATE m)
+else()
+    target_link_libraries(embedded-ruby PRIVATE m dl pthread)
+endif()
 
 # Link Android log library when building for Android (needed by debug.h macros)
 if(ANDROID)

@@ -41,7 +41,7 @@ echo "Repository: $REPO"
 
 # Platform definitions: platform_name -> "archive_name:triplet[:ios_rename_from]"
 # Uses a function instead of associative arrays for bash 3.x compatibility (macOS).
-ALL_PLATFORMS=("android-arm64" "android-x86_64" "linux-x86_64" "ios-device" "ios-simulator")
+ALL_PLATFORMS=("android-arm64" "android-x86_64" "linux-x86_64" "ios-device" "ios-simulator" "macos-arm64")
 
 platform_info() {
     case "$1" in
@@ -50,6 +50,7 @@ platform_info() {
         linux-x86_64)    echo "ruby_full-linux-x86_64.zip:x86_64-linux-gnu" ;;
         ios-device)      echo "ruby_full-ios-arm64.zip:aarch64-apple-ios-device:aarch64-apple-darwin" ;;
         ios-simulator)   echo "ruby_full-ios-arm64.zip:aarch64-apple-ios-simulator:aarch64-apple-darwin" ;;
+        macos-arm64)     echo "ruby_full-macos-arm64.zip:arm64-apple-darwin" ;;
         *)               return 1 ;;
     esac
 }

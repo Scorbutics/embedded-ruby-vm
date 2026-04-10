@@ -33,11 +33,15 @@ if(NOT BUILD_SHARED_LIBS)
     else()
         set(_ruby_static_lib "${EXTERNAL_LIBS_DIR}/libruby-static.a")
     endif()
-    execute_process(
-        COMMAND readelf -p .comment ${_ruby_static_lib}
-        OUTPUT_VARIABLE RUBY_BUILD_INFO
-        ERROR_QUIET
-    )
+    # readelf is Linux-only; skip musl detection on non-Linux platforms
+    set(RUBY_BUILD_INFO "")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        execute_process(
+            COMMAND readelf -p .comment ${_ruby_static_lib}
+            OUTPUT_VARIABLE RUBY_BUILD_INFO
+            ERROR_QUIET
+        )
+    endif()
 
     if(RUBY_BUILD_INFO MATCHES "musl")
         message(WARNING
@@ -143,9 +147,13 @@ FOREACH(lib_name ${libs_dependencies})
         # Build list of required system libraries
         # Base libraries needed by all static Ruby builds:
         # - m: math functions (sin, cos, sqrt, etc.)
-        # - dl: dynamic loading
-        # - pthread: POSIX threads
-        set(RUBY_SYSTEM_LIBS "m;dl;pthread")
+        # - dl: dynamic loading (Linux/Android only; macOS provides this in libSystem)
+        # - pthread: POSIX threads (Linux/Android only; macOS provides this in libSystem)
+        if(APPLE)
+            set(RUBY_SYSTEM_LIBS "m")
+        else()
+            set(RUBY_SYSTEM_LIBS "m;dl;pthread")
+        endif()
 
         # The following libraries are glibc-specific and not needed on Android/Bionic or musl
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT ANDROID)

@@ -211,8 +211,67 @@ jobs:
           name: embedded-ruby-vm-ios-arm64
           path: embedded-ruby-vm-ios-arm64.tar.gz
 
+  build-macos:
+    runs-on: macos-14
+    name: Build (macOS arm64)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: brew install autoconf automake libtool cmake
+
+      - name: Cache Ruby prebuilt libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/lib
+            external/include
+            assets/files
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-macos-arm64
+
+      - name: Download Ruby prebuilt libraries
+        run: |
+          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+            export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
+          fi
+          ./scripts/download-ruby-libs.sh macos-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DHOST=arm64-apple-darwin \
+            -DBUILD_WRAPPER_SHARED=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_JNI=OFF \
+            -DBUILD_TESTS=OFF \
+            -DSKIP_RUBY_DOWNLOAD=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package artifacts
+        run: |
+          mkdir -p artifacts/include
+          cp build/lib/libembedded-ruby.a artifacts/
+          cp build/lib/libassets.a artifacts/
+          cp build/lib/libminizip.a artifacts/
+          cp -r include/public/embedded-ruby-vm artifacts/include/
+          tar czf embedded-ruby-vm-macos-arm64.tar.gz -C artifacts .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedded-ruby-vm-macos-arm64
+          path: embedded-ruby-vm-macos-arm64.tar.gz
+
   release:
-    needs: [build-linux, build-android, build-ios]
+    needs: [build-linux, build-android, build-ios, build-macos]
     runs-on: ubuntu-latest
     name: Create Release
     permissions:
@@ -243,3 +302,4 @@ jobs:
             artifacts/embedded-ruby-vm-android-arm64/embedded-ruby-vm-android-arm64.tar.gz
             artifacts/embedded-ruby-vm-android-x86_64/embedded-ruby-vm-android-x86_64.tar.gz
             artifacts/embedded-ruby-vm-ios-arm64/embedded-ruby-vm-ios-arm64.tar.gz
+            artifacts/embedded-ruby-vm-macos-arm64/embedded-ruby-vm-macos-arm64.tar.gz
