@@ -147,8 +147,8 @@ kotlin {
                         defFile(project.file("../kmp/src/nativeInterop/cinterop/ruby_vm.def"))
                         packageName("com.scorbutics.rubyvm.native")
 
-                        val privateHeadersDir = project.file("../include/private/embedded-ruby-vm").absoluteFile
-                        val publicHeadersDir = project.file("../include/public/embedded-ruby-vm").absoluteFile
+                        val privateHeadersDir = project.file("../include/private").absoluteFile
+                        val publicHeadersDir = project.file("../include/public").absoluteFile
 
                         includeDirs.apply {
                             allHeaders(privateHeadersDir, publicHeadersDir)
