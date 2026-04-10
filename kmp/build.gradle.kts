@@ -96,6 +96,10 @@ kotlin {
                 "-L${libDir.absolutePath}",
                 "-lembedded-ruby",
                 "-lassets",
+                // Konan bundles glibc 2.19 but the .so is built against the system's
+                // newer glibc. Use -rpath-link to resolve the .so's transitive deps
+                // against the system libraries without affecting the executable's own linkage.
+                "-Wl,-rpath-link,/usr/lib/x86_64-linux-gnu",
                 "-ldl", "-lpthread", "-lm",
                 "-Wl,-rpath,${libDir.absolutePath}"
             )
