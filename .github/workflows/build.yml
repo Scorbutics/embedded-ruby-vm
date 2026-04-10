@@ -84,6 +84,9 @@ jobs:
       - name: Run Desktop tests
         run: ./gradlew desktopTest
 
+      - name: Run Linux Native tests
+        run: ./gradlew linuxX64Test
+
       - name: Package artifacts
         run: |
           mkdir -p artifacts/include

@@ -136,6 +136,10 @@ kotlin {
             dependsOn(commonMain)
         }
 
+        val nativeTest by creating {
+            dependsOn(commonTest)
+        }
+
         if (isMacOs) {
             val iosMain by creating {
                 dependsOn(nativeMain)
@@ -158,6 +162,10 @@ kotlin {
 
         val linuxX64Main by getting {
             dependsOn(nativeMain)
+        }
+
+        val linuxX64Test by getting {
+            dependsOn(nativeTest)
         }
 
         // val linuxArm64Main by getting {
