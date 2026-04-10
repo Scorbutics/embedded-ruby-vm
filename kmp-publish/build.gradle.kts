@@ -67,7 +67,6 @@ kotlin {
                 }
                 linkerOpts(
                     "-force_load", "${libDir.absolutePath}/lib${nativeLibraryName}.a",
-                    "-framework", "Compression",
                     "-framework", "CoreFoundation",
                     "-liconv"
                 )
