@@ -32,6 +32,10 @@ ruby_vm_test.log
 /ruby/
 /META-INF/
 
+# kmp-publish build outputs
+/kmp-publish/.gradle
+/kmp-publish/build
+
 # Docker local overrides and outputs
 docker-compose.override.yml
 /docker-output/
