@@ -105,8 +105,8 @@ kotlin {
                 "-lembedded-ruby",
                 "-lassets",
                 "-ldl", "-lpthread", "-lm",
-                "-Wl,--unresolved-symbols=ignore-in-shared-libs",
-                "-Wl,-rpath,${libDir.absolutePath}"
+                "--unresolved-symbols=ignore-in-shared-libs",
+                "-rpath", libDir.absolutePath
             )
         }
     }
