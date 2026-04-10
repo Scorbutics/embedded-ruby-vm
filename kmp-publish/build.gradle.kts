@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
+
 plugins {
     kotlin("multiplatform") version "1.9.22"
     id("com.android.library") version "8.2.2"
@@ -5,43 +7,142 @@ plugins {
 }
 
 group = "com.scorbutics.rubyvm"
-version = "1.0.0-SNAPSHOT"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "1.0.0-SNAPSHOT"
 
 val nativeLibraryName: String = findProperty("nativeLibraryName")?.toString() ?: "rgss_runtime"
 println("Native library name: $nativeLibraryName")
+println("Publishing version: $version")
+
+// Detect available platforms based on what native libs have been pre-staged
+val stagedJniLibs = file("src/main/jniLibs")
+val stagedDesktopLibs = file("src/main/desktopLibs")
+val stagedIosDevice = file("src/main/iosLibs/ios_arm64")
+val stagedIosSimulator = file("src/main/iosLibs/ios_simulator_arm64")
+
+val hasAndroid = stagedJniLibs.exists() && stagedJniLibs.listFiles()?.isNotEmpty() == true
+val hasDesktop = stagedDesktopLibs.exists() && stagedDesktopLibs.listFiles()?.isNotEmpty() == true
+val hasIos = stagedIosDevice.exists() && stagedIosDevice.listFiles()?.isNotEmpty() == true
+
+println("Staged platforms: android=$hasAndroid, desktop=$hasDesktop, ios=$hasIos")
 
 kotlin {
+    // Android target (uses JNI — .so files pre-staged in jniLibs/)
     androidTarget {
         compilations.all {
             kotlinOptions {
                 jvmTarget = "1.8"
             }
         }
-
         publishLibraryVariants("release")
     }
 
+    // Desktop JVM target (uses JNI — .so files pre-staged in desktopLibs/)
+    jvm("desktop") {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
+        }
+    }
+
+    // iOS targets (uses cinterop — .a files pre-staged in iosLibs/)
+    val isMacOs = System.getProperty("os.name").startsWith("Mac")
+    if (isMacOs && hasIos) {
+        val xcf = XCFramework()
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "RubyVM"
+                xcf.add(this)
+                // Link the pre-staged fat static library
+                val libDir = when (iosTarget.konanTarget.name) {
+                    "ios_arm64" -> stagedIosDevice
+                    "ios_simulator_arm64" -> stagedIosSimulator
+                    else -> stagedIosDevice
+                }
+                linkerOpts("-L${libDir.absolutePath}", "-lrgss_runtime")
+            }
+        }
+    }
+
     sourceSets {
+        // Common source set (platform-agnostic API)
         val commonMain by getting {
             // Reference shared Kotlin code from kmp project (no duplication)
             kotlin.srcDirs("../kmp/src/commonMain/kotlin")
-
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             }
         }
 
-        val androidMain by getting {
-            // Reference Android-specific Kotlin code from kmp project (no duplication)
-            // Android uses JVM implementation (JNI-based), so we include both jvmMain and androidMain
-            kotlin.srcDirs(
-                "../kmp/src/jvmMain/kotlin",
-                "../kmp/src/androidMain/kotlin"
-            )
+        // JVM source set (shared between Android and Desktop)
+        val jvmMain by creating {
+            dependsOn(commonMain)
+            kotlin.srcDirs("../kmp/src/jvmMain/kotlin")
+        }
 
+        // Android implementation
+        val androidMain by getting {
+            dependsOn(jvmMain)
+            kotlin.srcDirs("../kmp/src/androidMain/kotlin")
             dependencies {
                 implementation("androidx.core:core-ktx:1.12.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+            }
+        }
+
+        // Desktop JVM implementation
+        val desktopMain by getting {
+            dependsOn(jvmMain)
+            kotlin.srcDirs("../kmp/src/desktopMain/kotlin")
+            // Include the pre-staged .so files as resources
+            resources.srcDir("src/main/desktopLibs")
+        }
+
+        // iOS / Native implementations
+        if (isMacOs && hasIos) {
+            val nativeMain by creating {
+                dependsOn(commonMain)
+                kotlin.srcDirs("../kmp/src/nativeMain/kotlin")
+            }
+
+            val iosMain by creating {
+                dependsOn(nativeMain)
+            }
+            val iosArm64Main by getting {
+                dependsOn(iosMain)
+            }
+            val iosSimulatorArm64Main by getting {
+                dependsOn(iosMain)
+            }
+        }
+    }
+
+    // Configure cinterop for iOS native targets (uses pre-staged headers)
+    if (isMacOs && hasIos) {
+        targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
+            compilations.getByName("main") {
+                cinterops {
+                    val rubyVM by creating {
+                        defFile(project.file("../kmp/src/nativeInterop/cinterop/ruby_vm.def"))
+                        packageName("com.scorbutics.rubyvm.native")
+
+                        val coreRubyVmDir = project.file("../core/ruby-vm").absoluteFile
+                        val assetsDir = project.file("../assets").absoluteFile
+
+                        includeDirs.apply {
+                            allHeaders(coreRubyVmDir, assetsDir)
+                            headerFilterOnly(coreRubyVmDir, assetsDir)
+                        }
+
+                        compilerOpts(
+                            "-I${coreRubyVmDir.absolutePath}",
+                            "-I${assetsDir.absolutePath}"
+                        )
+                    }
+                }
             }
         }
     }
@@ -52,7 +153,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 26  // Must match Android API level used to build Ruby (see ruby-for-android toolchain params)
+        minSdk = 26  // Must match Android API level used to build Ruby
     }
 
     buildToolsVersion = "34.0.0"
@@ -73,9 +174,7 @@ android {
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
 
     // Native .so files are pre-staged into src/main/jniLibs/{ABI}/ by the Makefile's
-    // publish-kmp target (CMake is invoked outside of AGP). This allows accumulating
-    // multiple ABIs across builds — each `make install` adds its ABI's .so alongside
-    // previously built ones.
+    // publish-kmp target. No CMake invocation needed here.
 }
 
 // Publishing configuration
@@ -83,13 +182,11 @@ publishing {
     publications {
         withType<MavenPublication> {
             groupId = "com.scorbutics.rubyvm"
-            // Note: KMP plugin will append "-android" to the project name for Android variants
-            // So the final artifact ID will be "kmp-publish-android"
-            version = "1.0.0-SNAPSHOT"
+            version = project.version.toString()
 
             pom {
-                name.set("Embedded Ruby VM for Android")
-                description.set("Kotlin Multiplatform wrapper for embedded Ruby VM on Android")
+                name.set("LiteRGSS Runtime")
+                description.set("Kotlin Multiplatform wrapper for LiteRGSS runtime (Ruby VM + game engine)")
                 url.set("https://github.com/Scorbutics/litergss-everywhere")
 
                 licenses {
@@ -101,7 +198,17 @@ publishing {
             }
         }
     }
-}
 
-// Native .so files are pre-staged by the build system into src/main/jniLibs/{ABI}/
-// See the Makefile's publish-kmp target for the CMake invocation
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/Scorbutics/litergss-everywhere")
+            credentials {
+                username = findProperty("gpr.user")?.toString() ?: System.getenv("GITHUB_ACTOR")
+                password = findProperty("gpr.token")?.toString() ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+
+        mavenLocal()
+    }
+}

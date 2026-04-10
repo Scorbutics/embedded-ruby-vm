@@ -13,40 +13,54 @@ if(ANDROID)
     # set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--warn-unresolved-symbols")
 endif()
 
-# Get the target ABI from Gradle
+# Get the target ABI from Gradle / Makefile
 if(NOT TARGET_ABI)
-    message(FATAL_ERROR "TARGET_ABI must be set (e.g., x86_64, arm64-v8a)")
+    message(FATAL_ERROR "TARGET_ABI must be set (e.g., x86_64, arm64-v8a, linux-x86_64, ios-arm64)")
 endif()
 
 # TARGET_ARCH is the filesystem directory name (e.g., arm64, x86_64)
-# TARGET_ABI is the Android ABI name (e.g., arm64-v8a, x86_64)
+# TARGET_ABI is the platform ABI name (e.g., arm64-v8a, x86_64)
 if(NOT TARGET_ARCH)
     set(TARGET_ARCH "${TARGET_ABI}")
 endif()
 
-# Construct path to the fat static library using filesystem arch name
-# FAT_LIB_PATH is normally passed via -D from the Makefile's publish-kmp target.
-# Fall back to relative path for direct invocations (e.g., local dev).
+# FAT_LIB_PATH is passed via -D from the Makefile's publish-kmp target.
 if(NOT FAT_LIB_PATH)
-    set(FAT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../build/target/${TARGET_ARCH}-android/usr/local/lib/librgss_runtime.a")
-    message(WARNING "FAT_LIB_PATH not passed via -D flag, falling back to relative path: ${FAT_LIB_PATH}")
+    message(FATAL_ERROR "FAT_LIB_PATH must be set to the path of the fat static library (librgss_runtime.a)")
 endif()
 
 message(STATUS "Target ABI: ${TARGET_ABI}")
 message(STATUS "Target Arch (filesystem): ${TARGET_ARCH}")
-message(STATUS "Creating shared library wrapper for: ${FAT_LIB_PATH}")
+message(STATUS "Creating wrapper library for: ${FAT_LIB_PATH}")
 
 if(NOT EXISTS "${FAT_LIB_PATH}")
     message(FATAL_ERROR "Fat library not found at: ${FAT_LIB_PATH}")
 endif()
 
+# ---------------------------------------------------------------------------
+# iOS: Static framework (no .so wrapping needed, just validate & copy)
+# ---------------------------------------------------------------------------
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    # iOS uses static linking exclusively.
+    # We don't need to wrap the .a into a .so — Kotlin/Native links it directly.
+    # This CMake target just validates the fat library exists and copies it
+    # to a known output path for the Gradle build to consume.
+    add_custom_target(rgss_runtime_ios ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${FAT_LIB_PATH}"
+            "${CMAKE_BINARY_DIR}/librgss_runtime.a"
+        COMMENT "Staging iOS fat library: ${FAT_LIB_PATH}"
+    )
+    return()
+endif()
+
+# ---------------------------------------------------------------------------
+# Android & Linux: Shared library wrapping the fat static lib
+# ---------------------------------------------------------------------------
+
 # Create shared library target with native_main.c
-# This provides a generic main() entry point for NativeActivity usage.
-# When loaded by an Android NativeActivity, SFML's ANativeActivity_onCreate
-# (from sfml-main.a in the fat library) sets up the rendering context and
-# spawns a thread that calls main(). The main() reads environment variables
-# to find the Ruby script to execute.
-# In regular Activity usage, main() is never called.
+# This provides a generic main() entry point for NativeActivity usage (Android)
+# or can be used as a shared library entry point (Linux Desktop).
 add_library(rgss_runtime SHARED "${CMAKE_CURRENT_SOURCE_DIR}/native_main.c")
 
 # Link the entire fat static library into the shared library
@@ -63,14 +77,19 @@ if(ANDROID)
         OpenSLES  # OpenSL ES audio (required for OpenAL-Soft backend)
         android   # Android native API (ALooper, etc.)
     )
+elseif(APPLE)
+    # macOS uses -force_load instead of --whole-archive
+    target_link_libraries(rgss_runtime PRIVATE
+        -Wl,-force_load,${FAT_LIB_PATH}
+        z m dl pthread stdc++
+    )
 else()
+    # Linux
     target_link_libraries(rgss_runtime PRIVATE
         -Wl,--whole-archive
         ${FAT_LIB_PATH}
         -Wl,--no-whole-archive
-        z
-        m
-        stdc++
+        z m dl pthread stdc++ X11 Xrandr Xcursor Xi GL udev
     )
 endif()
 
@@ -80,5 +99,3 @@ set_target_properties(rgss_runtime PROPERTIES
     VERSION 1.0.0
     SOVERSION 1
 )
-
-# Android Gradle Plugin will automatically pick up the built library
