@@ -102,6 +102,7 @@ jobs:
 
       - name: Run Linux Native tests
         run: ./gradlew linuxX64Test
+        timeout-minutes: 5
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/kmp/libs/linux_x64
 

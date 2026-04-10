@@ -44,10 +44,11 @@ class RubyVMGCStressTest {
         }
 
         println("Creating interpreter...")
+        val paths = RubyVMPaths.getDefaultPaths()
         val interpreter = RubyInterpreter.create(
             appPath = ".",
-            rubyBaseDir = "./ruby",
-            nativeLibsDir = "./lib",
+            rubyBaseDir = paths.rubyBaseDir,
+            nativeLibsDir = paths.nativeLibsDir,
             listener = listener
         )
 
@@ -143,10 +144,11 @@ class RubyVMGCStressTest {
         }
 
         println("Creating interpreter...")
+        val paths = RubyVMPaths.getDefaultPaths()
         val interpreter = RubyInterpreter.create(
             appPath = ".",
-            rubyBaseDir = "./ruby",
-            nativeLibsDir = "./lib",
+            rubyBaseDir = paths.rubyBaseDir,
+            nativeLibsDir = paths.nativeLibsDir,
             listener = listener
         )
 
@@ -211,10 +213,11 @@ class RubyVMGCStressTest {
             }
         }
 
+        val paths = RubyVMPaths.getDefaultPaths()
         val interpreter = RubyInterpreter.create(
             appPath = ".",
-            rubyBaseDir = "./ruby",
-            nativeLibsDir = "./lib",
+            rubyBaseDir = paths.rubyBaseDir,
+            nativeLibsDir = paths.nativeLibsDir,
             listener = listener
         )
 
