@@ -172,9 +172,15 @@ else()
         )
     elseif(APPLE)
         # macOS: Use -force_load for static extension libraries
+        # Resolve IMPORTED_LOCATION at configure time rather than using $<TARGET_FILE:...>
+        # generator expressions, because these link flags are propagated via
+        # $<TARGET_PROPERTY:ruby-vm,LINK_LIBRARIES> in the parent CMakeLists.txt,
+        # and nested generator expressions inside $<TARGET_PROPERTY> are not evaluated.
+        get_target_property(_ruby_lib ruby IMPORTED_LOCATION)
+        get_target_property(_ruby_ext_lib ruby-ext IMPORTED_LOCATION)
         target_link_libraries(ruby-vm
-            -Wl,-force_load,$<TARGET_FILE:ruby>
-            -Wl,-force_load,$<TARGET_FILE:ruby-ext>
+            -Wl,-force_load,${_ruby_lib}
+            -Wl,-force_load,${_ruby_ext_lib}
             readline       # libreadline.a (contains history functions)
             ncurses
             ncurses++
