@@ -35,15 +35,12 @@ class RubyVMGCStressTest {
 
         // Simple log listener
         val listener = object : LogListener {
-            override fun onLog(message: String) {
-                // Suppress output to reduce noise, but keep callback active
-                if (message.contains("ERROR") || message.contains("WARN")) {
-                    println("[Ruby] $message")
+            override fun onLogMessage(logMessage: LogMessage) {
+                if (logMessage.isError()) {
+                    println("[Ruby ERROR] ${logMessage.message}")
+                } else if (logMessage.message.contains("ERROR") || logMessage.message.contains("WARN")) {
+                    println("[Ruby] ${logMessage.message}")
                 }
-            }
-
-            override fun onError(message: String) {
-                println("[Ruby ERROR] $message")
             }
         }
 
@@ -158,14 +155,12 @@ class RubyVMGCStressTest {
         println()
 
         val listener = object : LogListener {
-            override fun onLog(message: String) {
-                if (message.contains("ERROR")) {
-                    println("[Ruby] $message")
+            override fun onLogMessage(logMessage: LogMessage) {
+                if (logMessage.isError()) {
+                    println("[Ruby ERROR] ${logMessage.message}")
+                } else if (logMessage.message.contains("ERROR")) {
+                    println("[Ruby] ${logMessage.message}")
                 }
-            }
-
-            override fun onError(message: String) {
-                println("[Ruby ERROR] $message")
             }
         }
 
@@ -232,9 +227,10 @@ class RubyVMGCStressTest {
         println()
 
         val listener = object : LogListener {
-            override fun onLog(message: String) {}
-            override fun onError(message: String) {
-                println("[Ruby ERROR] $message")
+            override fun onLogMessage(logMessage: LogMessage) {
+                if (logMessage.isError()) {
+                    println("[Ruby ERROR] ${logMessage.message}")
+                }
             }
         }
 
