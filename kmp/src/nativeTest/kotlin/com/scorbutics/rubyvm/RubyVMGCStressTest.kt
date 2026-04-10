@@ -19,7 +19,7 @@ import platform.posix.*
  * 2. Memory pressure from both Ruby and Kotlin allocations
  * 3. Signal-safe interaction between the two runtimes
  */
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, kotlin.native.runtime.NativeRuntimeApi::class)
 class RubyVMGCStressTest {
 
     @Test
