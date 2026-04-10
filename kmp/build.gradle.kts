@@ -87,8 +87,19 @@ kotlin {
     // Linux targets (uses cinterop)
     // Uses shared wrapper libraries (buildNativeLibsLinux forces this)
     linuxX64 {
-        // No special configuration needed - shared libraries work out of the box
-        // Individual examples configure their own linker options
+        // No special configuration needed for the library itself - shared libraries
+        // work out of the box. Individual examples configure their own linker options.
+        // However, test binaries need linker opts to resolve C symbols.
+        binaries.all {
+            val libDir = project.file("libs/linux_x64").absoluteFile
+            linkerOpts(
+                "-L${libDir.absolutePath}",
+                "-lembedded-ruby",
+                "-lassets",
+                "-ldl", "-lpthread", "-lm",
+                "-Wl,-rpath,${libDir.absolutePath}"
+            )
+        }
     }
 
     // Source sets configuration
