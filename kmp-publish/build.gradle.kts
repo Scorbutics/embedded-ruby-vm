@@ -73,8 +73,24 @@ kotlin {
                 }
                 linkerOpts(
                     "-force_load", "${libDir.absolutePath}/lib${nativeLibraryName}.a",
+                    // Apple system frameworks required by OpenAL-Soft (CoreAudio backend)
+                    "-framework", "AudioToolbox",
+                    "-framework", "AudioUnit",
+                    "-framework", "CoreAudio",
+                    // SFML iOS rendering and input
+                    "-framework", "OpenGLES",
+                    "-framework", "QuartzCore",
+                    "-framework", "CoreMotion",
+                    "-framework", "UIKit",
+                    "-framework", "Foundation",
+                    "-framework", "CoreGraphics",
+                    // General dependencies
                     "-framework", "CoreFoundation",
-                    "-liconv"
+                    // Compression and encoding libraries
+                    "-lcompression",
+                    "-liconv",
+                    "-lbz2",
+                    "-lz"
                 )
             }
         }
