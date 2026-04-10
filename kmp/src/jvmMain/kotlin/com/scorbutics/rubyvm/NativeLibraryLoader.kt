@@ -1,8 +1,8 @@
 package com.scorbutics.rubyvm
 
 /**
- * Platform-specific native library loader.
- * Each platform (Android, Desktop) provides its own implementation.
+ * JVM-specific native library loader.
+ * Each JVM sub-platform (Android, Desktop) provides its own implementation.
  */
 internal expect object NativeLibraryLoader {
     /**
@@ -10,7 +10,7 @@ internal expect object NativeLibraryLoader {
      * Throws an exception if loading fails.
      */
     fun loadLibrary()
-    
+
     /**
      * Check if the native library has been loaded.
      */
