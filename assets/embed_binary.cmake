@@ -38,7 +38,8 @@ function(embed_binary INPUT_PATH INPUT_FILE OUTPUT_OBJ_VAR)
         # device, while -mios-simulator-version-min tags them as iOS simulator.
         # Using the wrong flag causes linker errors ("built for 'iOS'" when
         # linking for iOS-simulator).
-        if(CMAKE_OSX_SYSROOT MATCHES "iphonesimulator")
+        string(TOLOWER "${CMAKE_OSX_SYSROOT}" _sysroot_lower)
+        if(_sysroot_lower MATCHES "iphonesimulator")
           list(APPEND _asm_flags "-mios-simulator-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         else()
           list(APPEND _asm_flags "-mios-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
