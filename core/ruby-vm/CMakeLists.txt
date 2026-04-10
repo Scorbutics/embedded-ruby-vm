@@ -189,7 +189,12 @@ else()
         if(FFI_LIBRARY)
             message(STATUS "Found libffi: ${FFI_LIBRARY}")
         else()
-            message(WARNING "libffi not found - Ruby's fiddle extension may fail to link")
+            # On Apple platforms, libffi is always available in the SDK.
+            # find_library may fail during iOS cross-compilation because the .tbd
+            # stub in the SDK sysroot isn't found, but the linker resolves -lffi
+            # correctly via CMAKE_OSX_SYSROOT.
+            message(STATUS "libffi not found by find_library - using bare linker flag (-lffi)")
+            set(FFI_LIBRARY ffi)
         endif()
 
         target_link_libraries(ruby-vm
