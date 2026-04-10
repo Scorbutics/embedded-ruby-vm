@@ -74,8 +74,8 @@ kotlin {
                 linkerOpts(
                     "-force_load", "${libDir.absolutePath}/lib${nativeLibraryName}.a",
                     // Apple system frameworks required by OpenAL-Soft (CoreAudio backend)
+                    // Note: AudioUnit APIs are part of AudioToolbox on iOS
                     "-framework", "AudioToolbox",
-                    "-framework", "AudioUnit",
                     "-framework", "CoreAudio",
                     // SFML iOS rendering and input
                     "-framework", "OpenGLES",
