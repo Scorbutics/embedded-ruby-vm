@@ -125,14 +125,22 @@ jobs:
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/kmp/libs/linux_x64
 
-      - name: Check for crash signals
+      - name: Debug crash with strace
         if: failure()
         run: |
-          echo "=== dmesg (last 30 lines) ==="
-          dmesg | tail -30 || true
+          echo "=== dmesg ==="
+          sudo dmesg | grep -i -E "segfault|killed|signal|test.kexe" | tail -10 || true
           echo ""
           echo "=== Extracted assets ==="
-          find "$HOME/.cache/embedded-ruby-vm" -type f | head -50 || true
+          find "$HOME/.cache/embedded-ruby-vm" -maxdepth 3 -type d || true
+          echo ""
+          echo "=== Re-running test binary under strace ==="
+          cd kmp
+          LD_LIBRARY_PATH=${{ github.workspace }}/kmp/libs/linux_x64 \
+            strace -f -e trace=process,signal \
+            ./build/bin/linuxX64/debugTest/test.kexe \
+            --ktest_filter=com.scorbutics.rubyvm.RubyVMSmokeTest.testInterpreterLifecycle \
+            2>&1 | tail -80 || true
 
       - name: Package artifacts
         run: |
