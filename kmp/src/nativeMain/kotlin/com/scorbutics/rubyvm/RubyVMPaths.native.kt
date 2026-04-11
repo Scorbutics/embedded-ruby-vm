@@ -53,6 +53,10 @@ object RubyVMPaths {
         // Use provided install dir or get default
         val targetInstallDir = installDir ?: getDefaultInstallDir()
 
+        // Resolve the build libs directory to an absolute path BEFORE bootstrap,
+        // because assets_bootstrap() may change the working directory.
+        val buildLibsDir = findBuildLibsDir()
+
         // Bootstrap the Ruby runtime (extract assets if needed, load native libs)
         memScoped {
             val error = alloc<AssetsError>()
@@ -75,8 +79,8 @@ object RubyVMPaths {
 
                 // Copy libembedded-ruby.so and its .deps file to the native libs directory
                 // This is needed for dynamic loading approach
-                copyLibembeddedRuby(nativeLibsPath)
-                copyLibembeddedRubyDeps(nativeLibsPath)
+                copyLibembeddedRuby(nativeLibsPath, buildLibsDir)
+                copyLibembeddedRubyDeps(nativeLibsPath, buildLibsDir)
 
                 return Paths(
                     installDir = targetInstallDir,
@@ -91,10 +95,38 @@ object RubyVMPaths {
     }
 
     /**
+     * Find the build libs directory using an absolute path.
+     * Must be called BEFORE assets_bootstrap() which may change the working directory.
+     */
+    private fun findBuildLibsDir(): String? {
+        val possibleDirs = listOf(
+            "./libs/linux_x64",
+            "./kmp/libs/linux_x64",
+            "../kmp/libs/linux_x64",
+            "../../kmp/libs/linux_x64",
+            "../../../kmp/libs/linux_x64"
+        )
+        for (dir in possibleDirs) {
+            val soPath = "$dir/libembedded-ruby.so"
+            if (access(soPath, F_OK) == 0) {
+                // Resolve to absolute path using realpath
+                val resolved = realpath(soPath, null)
+                if (resolved != null) {
+                    val absPath = resolved.toKString()
+                    free(resolved)
+                    // Return the directory (strip the filename)
+                    return absPath.substringBeforeLast('/')
+                }
+            }
+        }
+        return null
+    }
+
+    /**
      * Copy libembedded-ruby.so from the build directory to the native libs directory.
      * This is needed for the dynamic loading approach used by RubyInterpreter.
      */
-    private fun copyLibembeddedRuby(nativeLibsDir: String) {
+    private fun copyLibembeddedRuby(nativeLibsDir: String, buildLibsDir: String?) {
         val targetPath = "$nativeLibsDir/libembedded-ruby.so"
 
         // Skip if already exists
@@ -102,41 +134,22 @@ object RubyVMPaths {
             return
         }
 
-        // Try to find libembedded-ruby.so in common build locations
-        val possibleSources = listOf(
-            "./libs/linux_x64/libembedded-ruby.so",
-            "./kmp/libs/linux_x64/libembedded-ruby.so",
-            "../kmp/libs/linux_x64/libembedded-ruby.so",
-            "../../kmp/libs/linux_x64/libembedded-ruby.so",
-            "../../../kmp/libs/linux_x64/libembedded-ruby.so"
-        )
-
-        var copied = false
-        for (sourcePath in possibleSources) {
-            // Check if source file exists
-            if (access(sourcePath, F_OK) != 0) {
-                // File doesn't exist, try next
-            } else {
-                // Try to copy the file
-                copied = tryCopyFile(sourcePath, targetPath)
-                if (copied) {
-                    break
-                }
+        if (buildLibsDir != null) {
+            val sourcePath = "$buildLibsDir/libembedded-ruby.so"
+            if (tryCopyFile(sourcePath, targetPath)) {
+                return
             }
         }
 
-        if (!copied) {
-            // If we get here, we couldn't find the source file
-            println("Warning: Could not find libembedded-ruby.so to copy. Searched locations:")
-            possibleSources.forEach { println("  - $it") }
-        }
+        println("Warning: Could not find libembedded-ruby.so to copy." +
+            if (buildLibsDir != null) " Tried: $buildLibsDir/libembedded-ruby.so" else " No build libs directory found.")
     }
 
     /**
      * Copy libembedded-ruby.deps from the build directory to the native libs directory.
      * This file contains the list of library dependencies that need to be preloaded.
      */
-    private fun copyLibembeddedRubyDeps(nativeLibsDir: String) {
+    private fun copyLibembeddedRubyDeps(nativeLibsDir: String, buildLibsDir: String?) {
         val targetPath = "$nativeLibsDir/libembedded-ruby.deps"
 
         // Skip if already exists
@@ -144,34 +157,15 @@ object RubyVMPaths {
             return
         }
 
-        // Try to find libembedded-ruby.deps in common build locations
-        val possibleSources = listOf(
-            "./libs/linux_x64/libembedded-ruby.deps",
-            "./kmp/libs/linux_x64/libembedded-ruby.deps",
-            "../kmp/libs/linux_x64/libembedded-ruby.deps",
-            "../../kmp/libs/linux_x64/libembedded-ruby.deps",
-            "../../../kmp/libs/linux_x64/libembedded-ruby.deps"
-        )
-
-        var copied = false
-        for (sourcePath in possibleSources) {
-            // Check if source file exists
-            if (access(sourcePath, F_OK) != 0) {
-                // File doesn't exist, try next
-            } else {
-                // Try to copy the file (no need to chmod for .deps file)
-                copied = tryCopyFile(sourcePath, targetPath, makeExecutable = false)
-                if (copied) {
-                    break
-                }
+        if (buildLibsDir != null) {
+            val sourcePath = "$buildLibsDir/libembedded-ruby.deps"
+            if (tryCopyFile(sourcePath, targetPath, makeExecutable = false)) {
+                return
             }
         }
 
-        if (!copied) {
-            // If we get here, we couldn't find the source file
-            println("Warning: Could not find libembedded-ruby.deps to copy. Searched locations:")
-            possibleSources.forEach { println("  - $it") }
-        }
+        println("Warning: Could not find libembedded-ruby.deps to copy." +
+            if (buildLibsDir != null) " Tried: $buildLibsDir/libembedded-ruby.deps" else " No build libs directory found.")
     }
 
     /**
