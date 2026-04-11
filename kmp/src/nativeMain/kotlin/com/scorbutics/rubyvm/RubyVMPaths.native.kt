@@ -136,13 +136,19 @@ object RubyVMPaths {
 
         if (buildLibsDir != null) {
             val sourcePath = "$buildLibsDir/libembedded-ruby.so"
+            if (access(sourcePath, F_OK) != 0) {
+                println("Warning: libembedded-ruby.so not found at resolved path: $sourcePath")
+                return
+            }
+            // Ensure target directory exists
+            mkdir(nativeLibsDir, 0x1FFu) // 0777
             if (tryCopyFile(sourcePath, targetPath)) {
                 return
             }
+            println("Warning: Failed to copy libembedded-ruby.so from $sourcePath to $targetPath")
+        } else {
+            println("Warning: Could not find libembedded-ruby.so in any build directory")
         }
-
-        println("Warning: Could not find libembedded-ruby.so to copy." +
-            if (buildLibsDir != null) " Tried: $buildLibsDir/libembedded-ruby.so" else " No build libs directory found.")
     }
 
     /**
@@ -159,13 +165,18 @@ object RubyVMPaths {
 
         if (buildLibsDir != null) {
             val sourcePath = "$buildLibsDir/libembedded-ruby.deps"
+            if (access(sourcePath, F_OK) != 0) {
+                println("Warning: libembedded-ruby.deps not found at resolved path: $sourcePath")
+                return
+            }
+            mkdir(nativeLibsDir, 0x1FFu) // 0777
             if (tryCopyFile(sourcePath, targetPath, makeExecutable = false)) {
                 return
             }
+            println("Warning: Failed to copy libembedded-ruby.deps from $sourcePath to $targetPath")
+        } else {
+            println("Warning: Could not find libembedded-ruby.deps in any build directory")
         }
-
-        println("Warning: Could not find libembedded-ruby.deps to copy." +
-            if (buildLibsDir != null) " Tried: $buildLibsDir/libembedded-ruby.deps" else " No build libs directory found.")
     }
 
     /**
