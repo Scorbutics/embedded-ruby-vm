@@ -13,8 +13,8 @@ import platform.posix.*
 /**
  * Smoke tests for Ruby VM on Kotlin/Native.
  *
- * These tests verify basic interpreter lifecycle and script execution.
- * Stress tests will be added once the basic flow is confirmed working.
+ * Note: Ruby cannot be re-initialized after cleanup in the same process,
+ * so all tests share a single interpreter lifecycle within one test method.
  */
 @OptIn(ExperimentalForeignApi::class)
 class RubyVMSmokeTest {
@@ -28,18 +28,12 @@ class RubyVMSmokeTest {
         }
     }
 
-    private fun getTimeMillis(): Long {
-        return memScoped {
-            val ts = alloc<timespec>()
-            clock_gettime(CLOCK_MONOTONIC.convert(), ts.ptr)
-            ts.tv_sec * 1000L + ts.tv_nsec / 1000000L
-        }
-    }
-
     @Test
-    fun testCreateAndDestroyInterpreter() {
-        println("=== Test: Create and Destroy Interpreter ===")
+    fun testInterpreterLifecycle() {
+        println("=== Test: Interpreter Lifecycle ===")
 
+        // Phase 1: Bootstrap and create
+        println("  Bootstrapping Ruby VM paths...")
         val paths = RubyVMPaths.getDefaultPaths()
         println("  rubyBaseDir: ${paths.rubyBaseDir}")
         println("  nativeLibsDir: ${paths.nativeLibsDir}")
@@ -53,28 +47,12 @@ class RubyVMSmokeTest {
         )
         println("  Interpreter created successfully")
 
-        println("  Destroying interpreter...")
-        interpreter.destroy()
-        println("  Interpreter destroyed successfully")
-    }
-
-    @Test
-    fun testExecuteSingleScript() {
-        println("=== Test: Execute Single Script ===")
-
-        val paths = RubyVMPaths.getDefaultPaths()
-        val interpreter = RubyInterpreter.create(
-            appPath = ".",
-            rubyBaseDir = paths.rubyBaseDir,
-            nativeLibsDir = paths.nativeLibsDir,
-            listener = createListener()
-        )
-
         try {
+            // Phase 2: Execute a single script
+            println("  Enqueuing script...")
             val latch = NativeCountDownLatch(1)
             var resultCode = -1
 
-            println("  Enqueuing script...")
             val script = RubyScript.fromContent("puts 'Hello from Ruby on Kotlin/Native!'")
             interpreter.enqueue(script) { exitCode ->
                 println("  Script completed with exit code: $exitCode")
@@ -88,11 +66,13 @@ class RubyVMSmokeTest {
 
             assertTrue(completed, "Script did not complete within 30 seconds")
             assertEquals(0, resultCode, "Script exited with non-zero code")
-            println("  Single script test PASSED")
+            println("  Single script execution PASSED")
+
         } finally {
+            // Phase 3: Destroy
             println("  Destroying interpreter...")
             interpreter.destroy()
-            println("  Done")
+            println("  Interpreter destroyed successfully")
         }
     }
 }
