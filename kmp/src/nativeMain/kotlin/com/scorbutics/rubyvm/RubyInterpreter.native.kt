@@ -88,25 +88,21 @@ actual class RubyInterpreter private constructor(
             // Create log listener structure
             memScoped {
                 val logListener = alloc<com.scorbutics.rubyvm.native.LogListener>()
-                logListener.context = listenerRef.asCPointer()
+                // IMPORTANT: All callback fields must be explicitly zeroed.
+                // If any callback is non-null, ruby_vm_start() auto-enables the
+                // logging system which spawns a C pthread. That thread invokes the
+                // callback, but Kotlin methods called from a raw C thread that isn't
+                // attached to the Kotlin/Native runtime cause a SIGSEGV.
+                //
+                // Setting all callbacks to null disables the logging redirect entirely.
+                // Ruby output goes to normal stdout/stderr instead.
+                // TODO: implement thread-safe logging using a lock-free queue that
+                //       the Kotlin main thread drains, instead of direct callbacks.
+                logListener.context = null
                 logListener.user_data = null
                 logListener.accept = null
                 logListener.on_log_error = null
-                logListener.on_log_message = staticCFunction { listenerPtr, message, source ->
-                    val listener = listenerPtr?.pointed?.context
-                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()?.get()
-                    if (listener != null && message != null) {
-                        val logSource = when (source.toInt()) {
-                            1 -> LogSource.RUBY_STDOUT
-                            2 -> LogSource.RUBY_STDERR
-                            3 -> LogSource.VMLOGGER
-                            4 -> LogSource.NATIVE_STDOUT
-                            5 -> LogSource.NATIVE_STDERR
-                            else -> LogSource.NATIVE_STDOUT
-                        }
-                        listener.onLogMessage(LogMessage(message.toKString(), logSource))
-                    }
-                }
+                logListener.on_log_message = null
 
                 // Call C function directly (works for static builds)
                 val interpreterPtr = ruby_interpreter_create(
