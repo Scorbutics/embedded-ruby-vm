@@ -125,6 +125,15 @@ jobs:
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/kmp/libs/linux_x64
 
+      - name: Check for crash signals
+        if: failure()
+        run: |
+          echo "=== dmesg (last 30 lines) ==="
+          dmesg | tail -30 || true
+          echo ""
+          echo "=== Extracted assets ==="
+          find "$HOME/.cache/embedded-ruby-vm" -type f | head -50 || true
+
       - name: Package artifacts
         run: |
           mkdir -p artifacts/include

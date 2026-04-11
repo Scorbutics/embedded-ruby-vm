@@ -49,11 +49,13 @@ class RubyVMSmokeTest {
 
         try {
             // Phase 2: Execute a single script
-            println("  Enqueuing script...")
             val latch = NativeCountDownLatch(1)
             var resultCode = -1
 
             val script = RubyScript.fromContent("puts 'Hello from Ruby on Kotlin/Native!'")
+            println("  Enqueuing script...")
+            fflush(null)
+
             interpreter.enqueue(script) { exitCode ->
                 println("  Script completed with exit code: $exitCode")
                 resultCode = exitCode
@@ -61,7 +63,8 @@ class RubyVMSmokeTest {
                 script.close()
             }
 
-            println("  Waiting for script (timeout: 30s)...")
+            println("  Enqueue returned, waiting for script (timeout: 30s)...")
+            fflush(null)
             val completed = latch.await(30)
 
             assertTrue(completed, "Script did not complete within 30 seconds")
