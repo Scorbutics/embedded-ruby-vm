@@ -108,6 +108,17 @@ jobs:
           echo "Contents of build/lib/:"
           ls -la build/lib/ || echo "Directory does not exist"
 
+      - name: Prepare native libs for Kotlin/Native tests
+        run: |
+          # assets_bootstrap() extracts Ruby stdlib but doesn't create the
+          # native-libs directory. Pre-copy the .so and .deps there so the
+          # Ruby VM can load its dependencies at runtime.
+          NATIVE_LIBS="$HOME/.cache/embedded-ruby-vm/native-libs/x86_64-linux-linux"
+          mkdir -p "$NATIVE_LIBS"
+          cp kmp/libs/linux_x64/libembedded-ruby.so "$NATIVE_LIBS/"
+          cp kmp/libs/linux_x64/libembedded-ruby.deps "$NATIVE_LIBS/"
+          ls -la "$NATIVE_LIBS/"
+
       - name: Run Linux Native tests
         run: ./gradlew linuxX64Test --console=plain --info
         timeout-minutes: 5
