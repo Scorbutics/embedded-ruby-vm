@@ -100,6 +100,14 @@ jobs:
             echo "Warning: konan ld.gold not found, skipping patch"
           fi
 
+      - name: Verify native libs
+        run: |
+          echo "Contents of kmp/libs/linux_x64/:"
+          ls -la kmp/libs/linux_x64/ || echo "Directory does not exist"
+          echo ""
+          echo "Contents of build/lib/:"
+          ls -la build/lib/ || echo "Directory does not exist"
+
       - name: Run Linux Native tests
         run: ./gradlew linuxX64Test --console=plain --info
         timeout-minutes: 5
