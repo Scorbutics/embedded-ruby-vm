@@ -104,6 +104,7 @@ object RubyVMPaths {
 
         // Try to find libembedded-ruby.so in common build locations
         val possibleSources = listOf(
+            "./libs/linux_x64/libembedded-ruby.so",
             "./kmp/libs/linux_x64/libembedded-ruby.so",
             "../kmp/libs/linux_x64/libembedded-ruby.so",
             "../../kmp/libs/linux_x64/libembedded-ruby.so",
@@ -145,6 +146,7 @@ object RubyVMPaths {
 
         // Try to find libembedded-ruby.deps in common build locations
         val possibleSources = listOf(
+            "./libs/linux_x64/libembedded-ruby.deps",
             "./kmp/libs/linux_x64/libembedded-ruby.deps",
             "../kmp/libs/linux_x64/libembedded-ruby.deps",
             "../../kmp/libs/linux_x64/libembedded-ruby.deps",
