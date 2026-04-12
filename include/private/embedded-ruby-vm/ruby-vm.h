@@ -2,6 +2,7 @@
 #define RUBY_VM_H
 
 #include <pthread.h>
+#include <stdatomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,13 +19,26 @@ struct RubyScriptCurrentLocation;
 typedef struct RubyScript RubyScript;
 typedef struct RubyScriptCurrentLocation RubyScriptCurrentLocation;
 
+/**
+ * VM lifecycle states (monotonically increasing — never goes backward)
+ */
+typedef enum {
+    RUBY_VM_STATE_CREATED = 0,       // Created but not yet started
+    RUBY_VM_STATE_RUNNING = 1,       // Started and accepting scripts
+    RUBY_VM_STATE_SHUTTING_DOWN = 2, // Destroy requested, draining in-flight scripts
+    RUBY_VM_STATE_DESTROYED = 3      // Fully destroyed, no further access allowed
+} RubyVMState;
+
 struct RubyVM {
     char* application_path;
     RubyScript* main_script;
     pthread_t main_thread;
     CommChannel commands_channel;
     LogListener log_listener;
-    int vm_started;
+    atomic_int state;              // RubyVMState — lifecycle state machine
+    atomic_int in_flight_scripts;  // ref-count of active script execution threads
+    pthread_mutex_t drain_mutex;   // protects drain_cond
+    pthread_cond_t drain_cond;     // signaled when in_flight_scripts reaches 0
     pthread_mutex_t socket_lock;
     RubyVMError last_error;
 };

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "embedded-ruby-vm/constants.h"
 #include "embedded-ruby-vm/embedded_scripts.h"
@@ -10,8 +11,9 @@
 #include "embedded-ruby-vm/ruby-interpreter.h"
 #include "embedded-ruby-vm/debug.h"
 
-// Static global VM instance
+// Static global VM instance, protected by g_vm_mutex
 static RubyVM* g_global_vm = NULL;
+static pthread_mutex_t g_vm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 RubyInterpreter* ruby_interpreter_create(const char* application_path,
                                        const char* ruby_base_directory,
@@ -23,6 +25,15 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
     interpreter->application_path = strdup(application_path);
     interpreter->ruby_base_directory = strdup(ruby_base_directory);
     interpreter->native_libs_location = strdup(native_libs_location);
+
+    if (!interpreter->application_path || !interpreter->ruby_base_directory || !interpreter->native_libs_location) {
+        free(interpreter->application_path);
+        free(interpreter->ruby_base_directory);
+        free(interpreter->native_libs_location);
+        free(interpreter);
+        return NULL;
+    }
+
     interpreter->log_listener = listener;
     interpreter->vm = NULL;
 
@@ -46,6 +57,8 @@ void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
  * @return 0 on success, error code on failure
  */
 static int ensure_vm_initialized(RubyInterpreter* interpreter) {
+    pthread_mutex_lock(&g_vm_mutex);
+
     if (g_global_vm == NULL) {
         DEBUG_LOG("Creating VM for first time");
 
@@ -57,6 +70,7 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
         );
         if (!main_script) {
             DEBUG_LOG("Failed to create main script");
+            pthread_mutex_unlock(&g_vm_mutex);
             return 1;
         }
 
@@ -65,6 +79,7 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
         if (!g_global_vm) {
             DEBUG_LOG("ruby_vm_create() failed");
             ruby_script_destroy(main_script);
+            pthread_mutex_unlock(&g_vm_mutex);
             return 2;
         }
 
@@ -76,15 +91,18 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
         if (start_result != 0) {
             DEBUG_LOG("ruby_vm_start() failed with code: %d", start_result);
             DEBUG_LOG("Error message: %s", ruby_vm_get_error_message(g_global_vm));
+            pthread_mutex_unlock(&g_vm_mutex);
             return start_result;
         }
         DEBUG_LOG("VM started successfully");
     } else {
-        // Update log listener and VM reference
+        // Update log listener under the lock to prevent concurrent reads
+        // from the logging thread seeing a partially-written struct
         g_global_vm->log_listener = interpreter->log_listener;
         interpreter->vm = g_global_vm;
     }
 
+    pthread_mutex_unlock(&g_vm_mutex);
     return 0;
 }
 

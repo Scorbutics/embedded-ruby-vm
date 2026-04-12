@@ -15,17 +15,8 @@ extern "C" {
 typedef struct RubyInterpreter RubyInterpreter;
 typedef struct RubyScript RubyScript;
 
-/* Dynamic build - manually define types needed for API structure */
-typedef struct LogListener LogListener;
-typedef void (*LogAcceptFunc)(struct LogListener* listener, const char* lineMessage);
-typedef void (*LogErrorFunc)(struct LogListener* listener, const char* errorMessage);
-
-struct LogListener {
-    void* context;
-    void* user_data;
-    LogAcceptFunc accept;
-    LogErrorFunc on_log_error;
-};
+/* LogListener struct, log_stream_t enum, and callback typedefs */
+#include "embedded-ruby-vm/log-listener.h"
 
 typedef void (*RubyCompletionCallback)(void* user_data, int result);
 
@@ -126,6 +117,7 @@ typedef struct {
         if (!(api_ptr)) { \
             fprintf(stderr, "Failed to load symbol '%s': %s\n", name, dlerror()); \
             dlclose(handle); \
+            memset(api, 0, sizeof(RubyAPI)); \
             return -1; \
         } \
     } while(0)

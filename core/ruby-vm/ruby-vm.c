@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <signal.h>
+#include <errno.h>
+#include <poll.h>
+#include <stdatomic.h>
 #include "embedded-ruby-vm/constants.h"
 
 #include "embedded-ruby-vm/logging.h"
@@ -59,6 +62,27 @@ static void* main_thread_func(void* arg) {
 }
 
 /**
+ * Write all bytes to a file descriptor, retrying on partial writes and EINTR.
+ *
+ * @param fd File descriptor
+ * @param buf Data to write
+ * @param count Number of bytes to write
+ * @return 0 on success, -1 on error
+ */
+static int write_all(int fd, const void* buf, size_t count) {
+    size_t total = 0;
+    while (total < count) {
+        ssize_t n = write(fd, (const char*)buf + total, count - total);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            return -1;
+        }
+        total += (size_t)n;
+    }
+    return 0;
+}
+
+/**
  * Send a script to the Ruby VM
  *
  * @param socket_fd Socket file descriptor
@@ -68,20 +92,78 @@ static void* main_thread_func(void* arg) {
 static int send_script_to_ruby(int socket_fd, const char* script_content) {
     size_t script_length = strlen(script_content);
     char length_buffer[32];
-    
+
     // Send length prefix: "<length>\n"
     int written = snprintf(length_buffer, sizeof(length_buffer), "%zu\n", script_length);
-    if (write(socket_fd, length_buffer, written) != written) {
+    if (write_all(socket_fd, length_buffer, (size_t)written) != 0) {
         perror("Failed to write length prefix");
         return -1;
     }
-    
+
     // Send script content (no trailing newline needed)
-    if (write(socket_fd, script_content, script_length) != (ssize_t)script_length) {
+    if (write_all(socket_fd, script_content, script_length) != 0) {
         perror("Failed to write script content");
         return -1;
     }
     return 0;
+}
+
+// Default timeout for waiting on script exit code (in milliseconds).
+// Set to 0 for no timeout (block indefinitely).
+#define SCRIPT_READ_TIMEOUT_MS 0
+
+/**
+ * Read the exit code response from the Ruby VM.
+ * The protocol is: "<exit_code>\n" where exit_code is a decimal integer (0-255).
+ *
+ * @param fd Socket file descriptor
+ * @param timeout_ms Timeout in milliseconds (0 = no timeout)
+ * @param exit_code Output parameter for the parsed exit code
+ * @return 0 on success, -1 on error/timeout
+ */
+static int read_exit_code(int fd, int timeout_ms, int* exit_code) {
+    // Wait for data with optional timeout
+    if (timeout_ms > 0) {
+        struct pollfd pfd = { .fd = fd, .events = POLLIN };
+        int poll_result;
+        do {
+            poll_result = poll(&pfd, 1, timeout_ms);
+        } while (poll_result < 0 && errno == EINTR);
+
+        if (poll_result == 0) {
+            fprintf(stderr, "Timeout waiting for script exit code (%d ms)\n", timeout_ms);
+            return -1;
+        }
+        if (poll_result < 0) {
+            perror("poll() failed waiting for exit code");
+            return -1;
+        }
+    }
+
+    // Read response byte-by-byte until newline (max 4 bytes: up to "255\n")
+    char buf[8];
+    int pos = 0;
+    while (pos < (int)(sizeof(buf) - 1)) {
+        ssize_t n = read(fd, &buf[pos], 1);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            perror("Failed to read exit code");
+            return -1;
+        }
+        if (n == 0) {
+            fprintf(stderr, "protocol error: EOF while reading exit code\n");
+            return -1;
+        }
+        if (buf[pos] == '\n') {
+            buf[pos] = '\0';
+            *exit_code = atoi(buf);
+            return 0;
+        }
+        pos++;
+    }
+
+    fprintf(stderr, "protocol error: exit code too long (no newline in %d bytes)\n", pos);
+    return -1;
 }
 
 /**
@@ -94,29 +176,29 @@ static int send_script_to_ruby(int socket_fd, const char* script_content) {
  * @return Exit code (0 = success, non-zero = error)
  */
 static int execute_script_internal(RubyVM* vm, RubyScript* script) {
-    char result = 1; // Default to error
+    int result = 1; // Default to error
     const char* content = ruby_script_get_content(script);
 
     // Lock for entire transaction
     pthread_mutex_lock(&vm->socket_lock);
 
     // Write commands as VM socket input
-    send_script_to_ruby(vm->commands_channel.main_fd, content);
+    if (send_script_to_ruby(vm->commands_channel.main_fd, content) != 0) {
+        fprintf(stderr, "Failed to send script to Ruby VM\n");
+        pthread_mutex_unlock(&vm->socket_lock);
+        return 1;
+    }
 
-    // Read exit code + newline as confirmation
-    char read_buffer[2] = {0};
-    ssize_t bytes_read = read(vm->commands_channel.main_fd, read_buffer, 2);
-
-    if (bytes_read == 2 && read_buffer[1] == '\n') {
-        result = read_buffer[0] - '0';
-    } else {
-        fprintf(stderr, "protocol error: expected 2 bytes, got %zd\n", bytes_read);
+    // Read exit code response
+    if (read_exit_code(vm->commands_channel.main_fd, SCRIPT_READ_TIMEOUT_MS, &result) != 0) {
+        fprintf(stderr, "Failed to read exit code from Ruby VM\n");
+        result = 1;
     }
 
     // Unlock for next script
     pthread_mutex_unlock(&vm->socket_lock);
 
-    return (int)result;
+    return result;
 }
 
 /**
@@ -149,6 +231,14 @@ static void* script_execution_thread_func(void* arg) {
 
     // Invoke completion callback
     ruby_completion_task_invoke(&on_complete, result);
+
+    // Decrement in-flight count and signal drain if this was the last script
+    if (atomic_fetch_sub(&vm->in_flight_scripts, 1) == 1) {
+        // We were the last in-flight script — wake up ruby_vm_destroy() if it's waiting
+        pthread_mutex_lock(&vm->drain_mutex);
+        pthread_cond_signal(&vm->drain_cond);
+        pthread_mutex_unlock(&vm->drain_mutex);
+    }
 
     DEBUG_LOG("Script execution thread finished - terminating");
     return NULL;
@@ -204,9 +294,16 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
     if (!vm) return NULL;
 
     vm->application_path = strdup(application_path);
+    if (!vm->application_path) {
+        free(vm);
+        return NULL;
+    }
     vm->main_script = main_script;
     vm->log_listener = listener;
-    vm->vm_started = 0;
+    atomic_store(&vm->state, RUBY_VM_STATE_CREATED);
+    atomic_store(&vm->in_flight_scripts, 0);
+    pthread_mutex_init(&vm->drain_mutex, NULL);
+    pthread_cond_init(&vm->drain_cond, NULL);
     pthread_mutex_init(&vm->socket_lock, NULL);
     ruby_vm_error_init(&vm->last_error);
     return vm;
@@ -215,6 +312,27 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
 void ruby_vm_destroy(RubyVM* vm) {
     if (!vm) return;
 
+    // Transition to SHUTTING_DOWN — reject new enqueues from this point
+    int expected = RUBY_VM_STATE_RUNNING;
+    if (!atomic_compare_exchange_strong(&vm->state, &expected, RUBY_VM_STATE_SHUTTING_DOWN)) {
+        // If not RUNNING, it may be CREATED (never started) — try that too
+        expected = RUBY_VM_STATE_CREATED;
+        if (!atomic_compare_exchange_strong(&vm->state, &expected, RUBY_VM_STATE_SHUTTING_DOWN)) {
+            DEBUG_LOG("ruby_vm_destroy: VM already shutting down or destroyed (state=%d)", expected);
+            return;
+        }
+    }
+
+    DEBUG_LOG("ruby_vm_destroy: Draining in-flight scripts");
+    // Wait for all in-flight script threads to complete
+    pthread_mutex_lock(&vm->drain_mutex);
+    while (atomic_load(&vm->in_flight_scripts) > 0) {
+        DEBUG_LOG("ruby_vm_destroy: Waiting for %d in-flight script(s)", atomic_load(&vm->in_flight_scripts));
+        pthread_cond_wait(&vm->drain_cond, &vm->drain_mutex);
+    }
+    pthread_mutex_unlock(&vm->drain_mutex);
+    DEBUG_LOG("ruby_vm_destroy: All scripts drained");
+
     DEBUG_LOG("ruby_vm_destroy: Disabling logging for VM before destruction");
     ruby_vm_disable_logging(vm);
 
@@ -222,8 +340,13 @@ void ruby_vm_destroy(RubyVM* vm) {
     // Now it's safe to free VM resources
     close_comm_channel(&vm->commands_channel);
 
-    // Destroy mutex
+    // Destroy synchronization primitives
     pthread_mutex_destroy(&vm->socket_lock);
+    pthread_cond_destroy(&vm->drain_cond);
+    pthread_mutex_destroy(&vm->drain_mutex);
+
+    // Mark as fully destroyed before freeing
+    atomic_store(&vm->state, RUBY_VM_STATE_DESTROYED);
 
     DEBUG_LOG("ruby_vm_destroy: Freeing VM memory");
     free(vm->application_path);
@@ -235,10 +358,12 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
         return RUBY_VM_ERROR_INVALID_PARAM;
     }
 
-    // Already started
-    if (vm->vm_started) {
+    // Only start from CREATED state
+    int expected = RUBY_VM_STATE_CREATED;
+    if (!atomic_compare_exchange_strong(&vm->state, &expected, RUBY_VM_STATE_CREATED)) {
+        // State was not CREATED — already started or shutting down
         ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_ALREADY_STARTED,
-                          "VM is already started");
+                          "VM is already started (state=%d)", expected);
         return RUBY_VM_ERROR_ALREADY_STARTED;
     }
 
@@ -278,6 +403,15 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     transferredMemoryArgs->ruby_base_directory = strdup(ruby_base_directory);
     transferredMemoryArgs->native_libs_location = strdup(native_libs_location);
 
+    if (!transferredMemoryArgs->ruby_base_directory || !transferredMemoryArgs->native_libs_location) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Failed to allocate memory for VM path strings");
+        free(transferredMemoryArgs->ruby_base_directory);
+        free(transferredMemoryArgs->native_libs_location);
+        free(transferredMemoryArgs);
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
     // Start main thread
     // "transferredMemoryArgs" is consumed and freed by the main thread
     DEBUG_LOG("ruby_vm_start: Creating main VM thread");
@@ -293,7 +427,7 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     }
     DEBUG_LOG("ruby_vm_start: Main VM thread created");
 
-    vm->vm_started = 1;
+    atomic_store(&vm->state, RUBY_VM_STATE_RUNNING);
     DEBUG_LOG("ruby_vm_start: VM started successfully, returning");
     return RUBY_VM_OK;
 }
@@ -352,10 +486,22 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
         return;
     }
 
+    // Check VM state and atomically increment in-flight count
+    // We must increment BEFORE checking state to avoid a race with destroy
+    atomic_fetch_add(&vm->in_flight_scripts, 1);
+
+    if (atomic_load(&vm->state) != RUBY_VM_STATE_RUNNING) {
+        DEBUG_LOG("ruby_vm_enqueue: VM is not running (state=%d), rejecting script", atomic_load(&vm->state));
+        atomic_fetch_sub(&vm->in_flight_scripts, 1);
+        ruby_completion_task_invoke(&on_complete, 1);
+        return;
+    }
+
     // Allocate args for the execution thread
     ScriptExecutionArgs* args = malloc(sizeof(ScriptExecutionArgs));
     if (!args) {
         fprintf(stderr, "Failed to allocate script execution args\n");
+        atomic_fetch_sub(&vm->in_flight_scripts, 1);
         ruby_completion_task_invoke(&on_complete, 1);
         return;
     }
@@ -370,6 +516,7 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
     if (thread_result != 0) {
         fprintf(stderr, "Failed to create script execution thread (error code: %d)\n", thread_result);
         free(args);
+        atomic_fetch_sub(&vm->in_flight_scripts, 1);
         ruby_completion_task_invoke(&on_complete, 1);
         return;
     }
@@ -383,6 +530,15 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
 int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
     if (!vm || !script) {
         DEBUG_LOG("ruby_vm_execute_sync: Invalid parameters");
+        return 1;
+    }
+
+    // Check VM state and increment in-flight count (same pattern as enqueue)
+    atomic_fetch_add(&vm->in_flight_scripts, 1);
+
+    if (atomic_load(&vm->state) != RUBY_VM_STATE_RUNNING) {
+        DEBUG_LOG("ruby_vm_execute_sync: VM is not running (state=%d)", atomic_load(&vm->state));
+        atomic_fetch_sub(&vm->in_flight_scripts, 1);
         return 1;
     }
 
@@ -409,6 +565,13 @@ int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
 
     // Restore original signal mask before returning to JVM context
     pthread_sigmask(SIG_SETMASK, &old_set, NULL);
+
+    // Decrement in-flight count and signal drain if this was the last script
+    if (atomic_fetch_sub(&vm->in_flight_scripts, 1) == 1) {
+        pthread_mutex_lock(&vm->drain_mutex);
+        pthread_cond_signal(&vm->drain_cond);
+        pthread_mutex_unlock(&vm->drain_mutex);
+    }
 
     DEBUG_LOG("ruby_vm_execute_sync: Script execution completed with result: %d", result);
 

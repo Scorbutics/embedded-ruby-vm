@@ -1,26 +1,11 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+#include "embedded-ruby-vm/log-listener.h"  /* log_stream_t, LogListener */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * Log stream type - identifies the source of log messages
- *
- * LOG_STREAM_RUBY_STDOUT: Ruby VM stdout (puts, print, p)
- * LOG_STREAM_RUBY_STDERR: Ruby VM stderr (warn, raise)
- * LOG_STREAM_VMLOGGER: VMLogger output (VMLogger.debug/info/error)
- * LOG_STREAM_NATIVE_STDOUT: Native C code stdout
- * LOG_STREAM_NATIVE_STDERR: Native C code stderr
- */
-typedef enum {
-    LOG_STREAM_RUBY_STDOUT = 1,
-    LOG_STREAM_RUBY_STDERR = 2,
-    LOG_STREAM_VMLOGGER = 3,
-    LOG_STREAM_NATIVE_STDOUT = 4,
-    LOG_STREAM_NATIVE_STDERR = 5
-} log_stream_t;
 
 /**
  * Detailed logging error codes

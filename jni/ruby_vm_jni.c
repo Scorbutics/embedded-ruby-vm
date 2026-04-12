@@ -60,7 +60,11 @@ typedef struct {
 // Sentinel message that Ruby sends after flushing all logs
 #define SCRIPT_COMPLETE_SENTINEL "<<<LOGS_FLUSHED>>>"
 
-// Global state for waiting on script completion
+// Global state for waiting on script completion.
+// LIMITATION: This uses a single global flag, so if multiple scripts complete
+// nearly simultaneously, one script's sentinel may signal another script's wait.
+// This is acceptable because the socket_lock serializes script execution anyway —
+// only one script can be in-flight through the IPC channel at a time.
 static pthread_mutex_t g_completion_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_completion_cond = PTHREAD_COND_INITIALIZER;
 static volatile int g_logs_flushed = 0;
@@ -232,12 +236,12 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
         // Not attached, need to attach temporarily to delete global ref
         if (JNI_ATTACH_THREAD(context->jvm, env, NULL) == JNI_OK) {
             (*env)->DeleteGlobalRef(env, context->kotlin_listener);
-                        (*context->jvm)->DetachCurrentThread(context->jvm);
+            (*context->jvm)->DetachCurrentThread(context->jvm);
         }
     } else if (result == JNI_OK) {
         // Already attached, just delete the reference
         (*env)->DeleteGlobalRef(env, context->kotlin_listener);
-            }
+    }
 
     free(context);
 }

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "embedded-ruby-vm/logging.h"
 #include "embedded-ruby-vm/jni_logging.h"
@@ -394,6 +395,13 @@ static ssize_t process_stream_data(stream_buffer_t* sb) {
  */
 static void* logging_function_thread(void* unused) {
     (void)unused;
+
+    // Block all signals to prevent Ruby's GC signal handlers (SIGPROF/SIGALRM)
+    // from being delivered to this thread. While the logging thread doesn't
+    // interact with Ruby objects, blocking signals is defense-in-depth.
+    sigset_t set;
+    sigfillset(&set);
+    pthread_sigmask(SIG_BLOCK, &set, NULL);
 
     stream_buffer_t streams[NUM_STREAMS];
 

@@ -109,7 +109,7 @@ actual class RubyInterpreter private constructor(
                         3 -> LogSource.VMLOGGER
                         4 -> LogSource.NATIVE_STDOUT
                         5 -> LogSource.NATIVE_STDERR
-                        else -> LogSource.NATIVE_STDOUT
+                        else -> LogSource.NATIVE_STDERR // fallback for unknown source
                     }
                     ktListener.onLogMessage(LogMessage(message.toKString(), logSource))
                 }

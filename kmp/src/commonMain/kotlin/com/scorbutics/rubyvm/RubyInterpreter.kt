@@ -6,6 +6,13 @@ package com.scorbutics.rubyvm
  * The interpreter manages a Ruby VM instance and provides methods to
  * execute scripts asynchronously with callbacks.
  *
+ * **Important: Singleton VM constraint.** The underlying Ruby runtime only supports
+ * a single VM per process. Creating multiple [RubyInterpreter] instances is allowed
+ * but they all share the same underlying VM. The first interpreter's paths
+ * (appPath, rubyBaseDir, nativeLibsDir) are used to initialize the VM; subsequent
+ * interpreters reuse it and only their log listener is applied. This is a Ruby
+ * limitation, not a design choice — treat [RubyInterpreter] as process-global.
+ *
  * Platform implementations:
  * - Android/JVM: Uses JNI to call native C library
  * - iOS/macOS/Linux: Uses Kotlin/Native cinterop to call C directly
