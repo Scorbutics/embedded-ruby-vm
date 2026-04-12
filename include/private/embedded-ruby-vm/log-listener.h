@@ -21,6 +21,20 @@ typedef struct LogListener {
     LogMessageFunc on_log_message;  // New callback with source information
 } LogListener;
 
+/**
+ * Initialize a LogListener to safe defaults (all fields zeroed).
+ * Always call this before setting individual callback fields to avoid
+ * uninitialized function pointers causing crashes.
+ */
+static inline void log_listener_init(LogListener* listener) {
+    if (!listener) return;
+    listener->context = NULL;
+    listener->user_data = NULL;
+    listener->accept = NULL;
+    listener->on_log_error = NULL;
+    listener->on_log_message = NULL;
+}
+
 #ifdef __cplusplus
 }
 #endif

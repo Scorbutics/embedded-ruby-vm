@@ -24,6 +24,12 @@ struct RubyInterpreter {
 };
 typedef struct RubyInterpreter RubyInterpreter;
 
+/**
+ * Create a Ruby interpreter.
+ *
+ * @param listener Log listener with callbacks. All fields must be initialized
+ *                 (use log_listener_init() to zero-init before setting callbacks).
+ */
 RubyInterpreter* ruby_interpreter_create(const char* application_path,
                                        const char* ruby_base_directory,
                                        const char* native_libs_location,
