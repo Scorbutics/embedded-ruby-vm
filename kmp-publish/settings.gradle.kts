@@ -14,4 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "kmp-publish"
+rootProject.name = providers.gradleProperty("kmpArtifactName")
+    .getOrElse("ruby-vm")
