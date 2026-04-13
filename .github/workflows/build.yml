@@ -390,7 +390,7 @@ jobs:
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            BASE_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")"
+            BASE_TAG="$(git describe --tags --abbrev=0 --exclude '*-snapshot' 2>/dev/null || echo "v0.0.0")"
             SHORT_SHA="${GITHUB_SHA::7}"
             TAG="${BASE_TAG}-${SHORT_SHA}-snapshot"
           fi
