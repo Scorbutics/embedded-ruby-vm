@@ -60,11 +60,18 @@ actual class RubyInterpreter private constructor(
 
     actual fun destroy() {
         if (!isDestroyed && interpreterPtr != null) {
+            // Disable logging BEFORE destroying the interpreter and disposing the
+            // StableRef. The logging thread runs independently and would otherwise
+            // call the Kotlin callback via the StableRef after it has been disposed,
+            // causing a use-after-free crash.
+            ruby_interpreter_disable_logging(interpreterPtr.reinterpret())
+
             // Call C function directly (works for static builds)
             ruby_interpreter_destroy(interpreterPtr.reinterpret())
             isDestroyed = true
 
-            // Dispose stable references
+            // Dispose stable references — now safe because the logging thread
+            // can no longer invoke the callback
             stableRefHolder.dispose()
         }
     }

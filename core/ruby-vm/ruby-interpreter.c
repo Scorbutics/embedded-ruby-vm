@@ -100,6 +100,15 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
         // from the logging thread seeing a partially-written struct
         g_global_vm->log_listener = interpreter->log_listener;
         interpreter->vm = g_global_vm;
+
+        // Re-enable logging if the new interpreter has listener callbacks.
+        // A previous interpreter's destroy() may have disabled logging,
+        // which stops the logging thread entirely.
+        if (interpreter->log_listener.accept != NULL ||
+            interpreter->log_listener.on_log_error != NULL ||
+            interpreter->log_listener.on_log_message != NULL) {
+            ruby_vm_enable_logging(g_global_vm);
+        }
     }
 
     pthread_mutex_unlock(&g_vm_mutex);

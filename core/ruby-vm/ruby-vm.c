@@ -244,9 +244,18 @@ static void* script_execution_thread_func(void* arg) {
     return NULL;
 }
 
+// Sentinel message that Ruby sends after flushing all script logs.
+// Must be filtered out before reaching user callbacks.
+#define SCRIPT_COMPLETE_SENTINEL "<<<LOGS_FLUSHED>>>"
+
 static int native_log_callbacks(const char* line, log_stream_t stream, void* context) {
     if (context == NULL) {
         return -1;
+    }
+
+    // Filter out the internal sentinel — it's a protocol message, not user output
+    if (strstr(line, SCRIPT_COMPLETE_SENTINEL) != NULL) {
+        return 0;
     }
 
     RubyVM* vm = (RubyVM*)context;
