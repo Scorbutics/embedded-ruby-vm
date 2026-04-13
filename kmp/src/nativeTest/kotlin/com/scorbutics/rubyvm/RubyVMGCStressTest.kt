@@ -29,9 +29,7 @@ class RubyVMGCStressTest {
         return object : LogListener {
             override fun onLogMessage(logMessage: LogMessage) {
                 val prefix = if (logMessage.isError()) "ERROR" else "LOG"
-                if (logMessage.isError() || logMessage.message.contains("ERROR") || logMessage.message.contains("WARN")) {
-                    println("  [$prefix][${logMessage.source}] ${logMessage.message}")
-                }
+                println("  [$prefix][${logMessage.source}] ${logMessage.message}")
             }
         }
     }

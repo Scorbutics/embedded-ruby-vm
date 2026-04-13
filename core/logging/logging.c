@@ -810,6 +810,13 @@ static int internal_stop_logging_thread(void) {
     g_logging_state.logging_thread = 0;
     g_logging_state.is_running = 0;
 
+    // Flush stdio buffers while stdout/stderr still point to the logging pipe.
+    // Without this, buffered data written before shutdown would either be lost
+    // (pipe write-end closed) or bypass the logging thread (flushed after dup2
+    // restores the original FDs).
+    fflush(stdout);
+    fflush(stderr);
+
     // Restore stdout/stderr to the original terminal FDs before closing anything.
     // Without this, STDOUT_FILENO/STDERR_FILENO still point to the (now dead) pipe
     // write-ends, and any subsequent printf/println would hit a bad FD or SIGPIPE.
@@ -1097,6 +1104,12 @@ int logging_remove_custom_output(logging_custom_output_func_t func, void* contex
             // the pipe and silently discards it (no callbacks to dispatch to), which
             // swallows test framework output, Gradle protocol messages, etc.
             if (g_logging_state.custom_output_count == 0) {
+                // Flush stdio buffers while stdout/stderr still point to the
+                // logging pipe. Any buffered data gets pushed into the pipe so
+                // the logging thread can drain it before we restore the FDs.
+                fflush(stdout);
+                fflush(stderr);
+
                 // Restore native stdout/stderr so host process output bypasses
                 // the logging pipe and goes directly to the terminal.
                 if (g_logging_state.original_stdout_fd != -1) {
