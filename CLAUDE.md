@@ -1,590 +1,85 @@
-# Technical Documentation - Embedded Ruby VM
+# Embedded Ruby VM - Development Guide
 
-This document provides comprehensive technical details for developers working on the Embedded Ruby VM project.
+## Interaction Rules
 
-## Table of Contents
+- **Challenge architectural decisions.** Push back on choices that seem wrong or suboptimal. The goal is to avoid blind spots — don't just agree.
+- **Ask, don't guess.** When something is ambiguous, ask a question rather than inferring from context. Only proceed without asking for straightforward, low-risk decisions.
+- **Follow this file.** Always respect the rules and constraints defined in this CLAUDE.md.
 
-1. [Architecture Overview](#architecture-overview)
-2. [API Layers](#api-layers)
-3. [Recent Improvements](#recent-improvements)
-4. [Development Guidelines](#development-guidelines)
-5. [Multi-Platform Considerations](#multi-platform-considerations)
-6. [Testing Strategy](#testing-strategy)
-7. [Build System](#build-system)
+## Critical: Docker Development Environment
 
----
+All build/test commands MUST run inside the docker container (`embedded-ruby-vm-dev`).
+Prefix commands with `docker exec embedded-ruby-vm-dev` or use `docker-dev.sh`.
 
-## Architecture Overview
+The docker-compose stack uses **named volumes** (not bind mounts). After source changes,
+resync with: `docker-compose run --rm source-sync-in`
 
-### Three-Layer Design
+See [README.docker.md](README.docker.md) for full Docker setup.
 
-The project uses a **layered architecture** where each layer has a specific purpose:
+## Build & Test
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Layer 3: High-Level Kotlin              │
-│  Purpose: Ergonomic APIs for common use cases               │
-│  Files: RubyInterpreterExtensions.kt, ScriptBatch.kt        │
-│  Examples: executeBatch(), batch(), executeSync()           │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ builds on
-┌─────────────────────────────────────────────────────────────┐
-│                   Layer 2: Low-Level Kotlin                 │
-│  Purpose: Direct wrappers over C API                        │
-│  Files: RubyInterpreter.kt, RubyScript.kt                   │
-│  Examples: enqueue(), execute(latch)                        │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ wraps
-┌─────────────────────────────────────────────────────────────┐
-│                      Layer 1: C Core API                    │
-│  Purpose: Foundation - Ruby VM integration                  │
-│  Files: ruby-api-loader.h, ruby-interpreter.h, ruby-vm.c    │
-│  Examples: ruby_api_load(), ruby_interpreter_enqueue()      │
-└─────────────────────────────────────────────────────────────┘
+```bash
+./gradlew build                              # Build all (auto-detects OS/arch)
+./gradlew build -PtargetArch=x86_64          # Specific arch
+./gradlew build -PbuildType=Debug            # Debug build
+
+# Tests (after build)
+cd build
+./bin/test_core                              # Core C library tests
+./bin/test_jni                               # JNI layer tests
+./bin/test_jni_android_log                   # Android logging tests
+
+# Examples
+cd examples/kotlin-jvm && ../../gradlew runExample
 ```
 
-### Why This Design?
+## Architecture
 
-**Layer 1 (C Core):**
-- Provides the foundation
-- Platform-agnostic Ruby VM integration
-- Thread management, IPC, asset loading
-- Direct Ruby C API integration
-- Hybrid static/dynamic library loading via `ruby-api-loader.h`
+Three-layer design: C Core -> Low-Level Kotlin -> High-Level Kotlin.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design decisions, library loading,
+and cross-platform patterns.
 
-**Layer 2 (Low-Level Kotlin):**
-- Thin wrapper over C API
-- Provides building blocks for advanced use cases
-- Enables custom synchronization patterns
-- Essential for edge cases (e.g., coordinating Ruby scripts with external systems)
-- Platform-specific implementations (JNI for JVM, cinterop for Native)
-
-**Layer 3 (High-Level Kotlin):**
-- Makes common tasks easy (80% use cases)
-- Eliminates boilerplate
-- Type-safe result handling
-- Multi-platform compatible convenience methods
-
-**Key Principle:** "Easy things should be easy, hard things should be possible."
-
-### Library Loading Architecture
-
-The project supports both **static** and **dynamic** linking through a unified API in `ruby-api-loader.h`:
-
-#### Dynamic Loading (Default)
-
-Used by Kotlin/Native and JNI platforms:
-
-```c
-// Load dependencies first (from libembedded-ruby.deps)
-load_dependencies_from_file("libembedded-ruby.deps", nativeLibsDir);
-
-// Then load the main library via dlopen
-RubyAPI api;
-ruby_api_load("./libembedded-ruby.so", &api);
-
-// Use the API
-RubyInterpreter* interp = api.interpreter.create(...);
-```
-
-**How it works:**
-1. **Asset Extraction**: `libassets.a` extracts Ruby runtime to cache directory at first run
-2. **Dependency Preloading**: `load_dependencies_from_file()` (in `ruby-api-loader.h`) reads `libembedded-ruby.deps` and preloads `libruby.so` with `RTLD_GLOBAL`
-3. **Main Library Loading**: `ruby_api_load()` uses `dlopen()` to load `libembedded-ruby.so`
-4. **Symbol Resolution**: Function pointers populated via `dlsym()`
-
-**Key files:**
-- `libembedded-ruby.so` - Shared library with all Ruby VM functions exported
-- `libembedded-ruby.deps` - List of dependencies to preload (generated by CMake)
-- `libassets.a` - Static library for asset extraction
-- `ruby-api-loader.h` - API loader with integrated dependency preloading mechanism
-
-**CMake Configuration:**
-```cmake
-# Use whole-archive to export symbols from static libraries
-if(UNIX AND NOT APPLE)
-    target_link_libraries(embedded-ruby PRIVATE
-        -Wl,--whole-archive
-        logging
-        ruby-vm
-        -Wl,--no-whole-archive
-    )
-endif()
-```
-
-The `--whole-archive` linker flag ensures all symbols from `libruby-vm.a` are exported from `libembedded-ruby.so`.
-
-#### Static Loading (Optional)
-
-Enabled by defining `RUBY_STATIC` at compile time:
-
-```c
-// Same function signature, different implementation
-RubyAPI api;
-ruby_api_load(NULL, &api);  // lib_path ignored in static mode
-
-// Use the API (identical)
-RubyInterpreter* interp = api.interpreter.create(...);
-```
-
-**How it works:**
-1. **Compile-time switching**: `#ifdef RUBY_STATIC` in `ruby-api-loader.h`
-2. **Direct assignment**: Function pointers assigned to statically-linked functions
-3. **No dlopen**: All symbols resolved at link time
-
-**When to use:**
-- Pure C applications that can statically link against Ruby VM
-- Platforms where dynamic loading is not available
-- Performance-critical scenarios (eliminates dlopen overhead)
-
-#### Unified API Design
-
-Both approaches use the same `ruby_api_load()` function signature:
-
-```c
-int ruby_api_load(const char* lib_path, RubyAPI* api);
-```
-
-**Benefits:**
-- Single API for all platforms and linking modes
-- Transparent switching via compile-time define
-- Same client code works for both approaches
-- Clean separation between build-time and runtime dependencies
-
-**Architecture constraints:**
-- Ruby runtime (`libruby.so`) must be deployed at runtime, not hardcoded at build time
-- `libembedded-ruby.so` cannot statically link Ruby (would create circular dependency)
-- Asset system handles runtime extraction of Ruby and its dependencies
-
----
-
-## API Layers
-
-### When to Use Each Layer
-
-| Use Case | Recommended Layer | Example |
-|----------|------------------|---------|
-| Execute multiple scripts | Layer 3 | `executeBatch(scripts)` |
-| Named scripts with metrics | Layer 3 | `batch().addScript(...).execute()` |
-| Simple blocking execution | Layer 3 | `executeSync(script)` |
-| Custom external sync | Layer 2 | `execute(script, latch)` |
-| Low-level Ruby VM control | Layer 1 | `ruby_vm_enqueue()` |
-
-### Layer Design Philosophy
-
-**Don't flatten the layers.** Each serves a purpose:
-
-```kotlin
-// Layer 3: High-level (recommended for most users)
-val results = interpreter.executeBatch(scripts)
-
-// Layer 2: Low-level (for power users)
-val latch = CountDownLatch(scripts.size + externalTasks)
-scripts.forEach { interpreter.execute(it, latch) { ... } }
-externalSystem.work { latch.countDown() }
-latch.await()
-
-// Layer 1: C API (internal implementation)
-ruby_vm_enqueue(vm, script, callback)
-```
-
-## Development Guidelines
-
-> WARNING: Please note that ALL of your commands must be executed INSIDE the docker container!
->
-> That means you will have to prefix every exposed command down here with `docker exec <container_name>` (the container name should be `embedded-ruby-vm-dev`).
->
-> The docker container stack mounted using docker-compose.yml is using a named volume and not a bind mount. In order to sync the sources, each time you are doing a source code modification, you have to remove the `source-sync-in` (`docker-compose run --rm source-sync-in`) container which will trigger a resync next build.
-> Alternatively, you can also use the `docker-dev.sh` script for convenient usage.
-
-### Adding New Features
-
-#### Decision Tree: Where to Add?
-
-```
-Does it require new Ruby VM functionality, or can it be beneficial to be included in the C API?
-├─ YES → Add to Layer 1 (C Core)
-│   ├─ Update ruby-vm.h
-│   ├─ Implement in ruby-vm.c
-│   ├─ Add JNI bindings (jni/ruby_vm_jni.c)
-│   ├─ Add Kotlin wrappers (Layer 2)
-│   └─ Optionally add Layer 3 convenience methods
-│
-└─ NO → Add to Layer 3 (Kotlin conveniences)
-    ├─ Define interface in commonMain
-    ├─ Implement for JVM in jvmMain
-    ├─ Implement for Native in nativeMain
-    └─ Add examples and documentation
-```
-
-#### Example: Adding a "Warmup" Feature
-
-**If it requires C changes** (e.g., pre-compile scripts):
-1. Add `ruby_vm_warmup()` to `core/ruby-vm/ruby-vm.h`
-2. Implement in `core/ruby-vm/ruby-vm.c`
-3. Add JNI binding: `Java_com_scorbutics_rubyvm_RubyVMNative_warmup()`
-4. Add Kotlin wrapper: `fun RubyInterpreter.warmup()`
-5. Optionally add convenience: `fun RubyInterpreter.warmupBatch(scripts: List<String>)`
-
-**If it's just a Kotlin pattern** (e.g., run init scripts on startup):
-```kotlin
-// Just add to Layer 3
-fun RubyInterpreter.warmup(initScripts: List<String>) {
-    executeBatch(initScripts, timeoutSeconds = 60)
-}
-```
-
-### Code Style
+## Code Style
 
 **Kotlin:**
 - Use `actual`/`expect` for multi-platform APIs
 - Prefer extension functions over static methods
 - Use sealed classes for type-safe error handling
-- Document with KDoc
 
 **C:**
-- Use consistent naming: `ruby_vm_*`, `ruby_script_*`
-- Document with Doxygen-style comments
+- Naming: `ruby_vm_*`, `ruby_script_*`
+- Doxygen-style comments
 - Keep platform-specific code isolated
 - Error handling via `RubyVMError`
 
----
-
-### Cross-Platform Time APIs
-
-**JVM:**
-```kotlin
-val time = System.currentTimeMillis()
-```
-
-**Native:**
-```kotlin
-import platform.posix.*
-
-fun getTimeMillis(): Long {
-    val ts = timespec()
-    clock_gettime(CLOCK_MONOTONIC, ts.ptr)
-    return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L
-}
-```
-
-### Cross-Platform File APIs
-
-**JVM:**
-```kotlin
-import java.io.File
-val content = File(path).readText()
-```
-
-**Native:**
-```kotlin
-import kotlin.io.path.*
-val content = Path(path).readText()
-```
-
----
-
-## Testing Strategy
-
-### Test Organization
+## Project Layout
 
 ```
-tests/
-├── native/
-│   ├── core/          # Core C library tests
-│   ├── jni/           # JNI bridge tests
-│   └── jni-android/   # Android-specific tests
-└── kmp/
-    └── desktopTest/   # Kotlin Multiplatform tests
+core/           C library (ruby-vm/, assets/, logging/, external/)
+jni/            JNI bindings for Android/JVM
+kmp/            Kotlin Multiplatform module
+  src/commonMain/   Shared API definitions
+  src/androidMain/  Android (JNI)
+  src/desktopMain/  JVM Desktop (JNI)
+  src/nativeMain/   Linux/iOS/macOS (cinterop)
+  src/desktopTest/  KMP unit tests
+tests/          Native C tests (core/, jni/, jni-android/)
+examples/       Usage examples (java/, kotlin-jvm/, kotlin-native/)
 ```
 
-### Testing Layers
-
-**Layer 1 (C Core):**
-- Unit tests in `tests/native/core/`
-- Use CMocka or similar C testing framework
-- Test Ruby VM lifecycle, script execution, error handling
-
-**Layer 2 (Low-Level Kotlin):**
-- KMP tests in `kmp/src/desktopTest/`
-- Test basic enqueue/execute functionality
-- Test resource cleanup
-
-**Layer 3 (High-Level Kotlin):**
-- Integration tests in examples
-- Test batch execution, timeouts, error handling
-- Test metrics calculation
-
-### Running Tests
+## Platform Builds
 
 ```bash
-# Build and run all tests
-./gradlew build
+# Android
+./gradlew :ruby-vm-kmp:assembleDebug -PtargetArch=arm64
+./gradlew :ruby-vm-kmp:assembleRelease -PtargetArch=all
 
-# C tests
-cd build
-./bin/test_core
-./bin/test_jni
+# Desktop JVM
+./gradlew :ruby-vm-kmp:desktopJar
 
-# Kotlin tests
-./gradlew :ruby-vm-kmp:desktopTest
+# Linux Native (no JVM)
+./gradlew :ruby-vm-kmp:linuxX64MainBinaries
+
+# All native libs
+./gradlew buildAllNativeLibs
 ```
-
----
-
-## Build System
-
-### CMake Integration
-
-The project uses **CMake for native code** and **Gradle for Kotlin/Java**:
-
-```
-Root build.gradle.kts
-    ↓ configures
-kmp/build.gradle.kts
-    ↓ invokes CMake via tasks
-CMakeLists.txt
-    ↓ builds
-Native libraries (.so, .dylib, .a)
-```
-
-### CMake Tasks
-
-```bash
-# Build native libraries for specific platform
-./gradlew buildNativeLibsDesktop
-./gradlew buildNativeLibsAndroid
-./gradlew buildNativeLibsIOS
-./gradlew buildNativeLibsMacOS
-./gradlew buildNativeLibsLinux
-
-# Architecture selection
-./gradlew build -PtargetArch=x86_64
-./gradlew build -PtargetArch=arm64
-./gradlew build -PtargetArch=all
-
-# Debug/Release
-./gradlew build -PbuildType=Debug
-./gradlew build -PbuildType=Release
-
-# With AddressSanitizer
-./gradlew build -PenableASAN=true
-```
-
-### Gradle Configuration
-
-Key files:
-- `build.gradle.kts` - Root configuration
-- `kmp/build.gradle.kts` - KMP module with CMake integration
-- `settings.gradle.kts` - Project structure
-
-### Automatic Build Flow
-
-```
-gradle build
-    ↓
-Detect platform & arch
-    ↓
-Run CMake to compile C code
-    ↓
-Generate libembedded-ruby.deps (dependency list)
-    ↓
-Compile Kotlin code
-    ↓
-Link native libraries (JNI/cinterop)
-    ↓
-Package JAR/AAR/Framework
-```
-
----
-
-## Key Design Decisions
-
-### 1. Why Keep Low-Level API?
-
-**Decision:** Keep both Layer 2 and Layer 3 APIs
-
-**Reasoning:**
-- Layer 3 handles 80% of use cases (batch execution, simple workflows)
-- Layer 2 enables 20% edge cases (custom synchronization with external systems)
-- Maintenance cost is negligible (15 lines of stable code)
-- Removing it would force users into ugly workarounds
-
-**Example Edge Case:**
-```kotlin
-// User needs to coordinate Ruby scripts with external systems
-val latch = CountDownLatch(3)  // 2 Ruby + 1 external
-
-interpreter.execute(script1, latch) { ... }
-interpreter.execute(script2, latch) { ... }
-externalDatabase.executeAsync { latch.countDown() }
-
-latch.await()  // Wait for ALL operations
-```
-
-This cannot be done with Layer 3 APIs alone.
-
-### 2. Why Kotlin Wrappers Instead of C Extensions?
-
-**Decision:** Add convenience features in Kotlin (Layer 3) rather than C (Layer 1)
-
-**Reasoning:**
-- C API should stay minimal and focused on Ruby VM integration
-- Kotlin is better for high-level patterns (builders, sealed classes, extensions)
-- Easier to maintain and test
-- No cross-platform C synchronization headaches
-- Users can contribute without knowing C
-
-**Result:** Clean separation of concerns.
-
-### 3. Why Multi-Platform Kotlin?
-
-**Decision:** Use Kotlin Multiplatform instead of separate Android/iOS codebases
-
-**Reasoning:**
-- Unified API across platforms
-- Share business logic
-- Single source of truth
-- Platform-specific implementations where needed (JNI vs cinterop)
-
-### 4. Why Hybrid Static/Dynamic Library Loading?
-
-**Decision:** Support both static and dynamic linking through unified API in `ruby-api-loader.h`
-
-**Reasoning:**
-- **Runtime deployment requirement**: Ruby runtime must be extracted at runtime (can't be hardcoded at build time)
-- **Platform flexibility**: Different platforms have different linking requirements
-  - JVM/Android: Uses JNI with dynamic loading
-  - Kotlin/Native: Uses cinterop with dlopen()
-  - Pure C apps: Can optionally use static linking with `-DRUBY_STATIC`
-- **Transparent API**: Same `ruby_api_load()` function works for both approaches
-- **Clean architecture**: Separates build-time dependencies from runtime dependencies
-
-**Implementation details:**
-- `--whole-archive` linker flag exports symbols from `libruby-vm.a` into `libembedded-ruby.so`
-- Dependency preloading via `load_dependencies_from_file()` (in `ruby-api-loader.h`) ensures Ruby runtime is available before loading main library
-- `libembedded-ruby.deps` file (generated by CMake) lists all dependencies to preload
-- Static mode (`#ifdef RUBY_STATIC`) directly assigns function pointers at compile time
-
-**Trade-offs:**
-- Dynamic loading adds small runtime overhead (dlopen/dlsym)
-- But enables runtime asset extraction and deployment
-- Static mode available for performance-critical pure C applications
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Native library not found:**
-```bash
-# Build native libraries first
-./gradlew :ruby-vm-kmp:desktopJar -PbuildType=Debug
-```
-
-**Memory errors:**
-```bash
-# Use AddressSanitizer
-./gradlew build -PenableASAN=true -PforceRebuild=true
-cd examples/kotlin-jvm
-../../gradlew runExampleWithASAN
-```
-
-**CMake errors:**
-```bash
-# Clean and rebuild
-./gradlew clean
-./gradlew build -PforceRebuild=true
-```
-
-**Library loading errors (Kotlin/Native):**
-```bash
-# Error: "undefined symbol: ruby_interpreter_create"
-# Solution: Ensure libembedded-ruby.so is built with --whole-archive
-./gradlew :ruby-vm-kmp:buildNativeLibsLinux -PforceRebuild=true
-
-# Verify symbols are exported
-nm -D kmp/build/cmake/linux-x86_64/lib/libembedded-ruby.so | grep ruby_interpreter
-
-# Error: "libruby.so.3.1: cannot open shared object file"
-# Solution: Ensure dependencies are preloaded
-# Check that libembedded-ruby.deps exists and is copied to output
-ls kmp/libs/linux_x64/libembedded-ruby.deps
-
-# Clear cache and rebuild
-rm -rf ~/.cache/embedded-ruby-vm
-./gradlew :ruby-vm-kmp:buildNativeLibsLinux -PforceRebuild=true
-```
-
----
-
-## Future Enhancements
-
-Potential areas for future improvement:
-
-### Coroutine Support (Advanced)
-
-Add Kotlin coroutines support for async/await style:
-
-```kotlin
-suspend fun RubyInterpreter.executeAsync(script: String): Int {
-    return suspendCancellableCoroutine { continuation ->
-        execute(script) { exitCode ->
-            continuation.resume(exitCode)
-        }
-    }
-}
-
-// Usage
-val results = coroutineScope {
-    scripts.map { async { interpreter.executeAsync(it) } }.awaitAll()
-}
-```
-
-### Script Cancellation
-
-Add ability to cancel running scripts:
-
-```kotlin
-val handle = interpreter.executeAsync(longRunningScript)
-// Later...
-handle.cancel()
-```
-
-### Ruby-to-Kotlin Communication
-
-Enable Ruby scripts to call back into Kotlin:
-
-```ruby
-# In Ruby
-Kotlin.call_method("MyClass", "myMethod", arg1, arg2)
-```
-
----
-
-## Resources
-
-- **Main Documentation:** [README.md](README.md)
-- **API Improvements:** [API_IMPROVEMENTS.md](API_IMPROVEMENTS.md)
-- **Examples:** [examples/kotlin-jvm/README.md](examples/kotlin-jvm/README.md)
-- **Tests:** [tests/README.md](tests/README.md)
-
----
-
-## Contributing
-
-When contributing, follow these guidelines:
-
-1. **Maintain backward compatibility** - Layer 2 APIs are stable
-2. **Add tests** for new functionality
-3. **Update documentation** (README.md, API_IMPROVEMENTS.md, this file)
-4. **Follow existing patterns** (expect/actual for multi-platform)
-5. **Consider all platforms** (JVM, Native) when adding features
-
-For questions or discussions, open an issue on GitHub.
-
----
-
-**Last Updated:** December 2024
-**Project Version:** 1.0.0-SNAPSHOT
