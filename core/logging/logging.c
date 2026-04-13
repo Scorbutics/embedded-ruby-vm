@@ -1088,11 +1088,36 @@ int logging_remove_custom_output(logging_custom_output_func_t func, void* contex
             g_logging_state.custom_output_count--;
 
             // Do NOT stop the logging thread when the last callback is removed.
-            // The Ruby VM thread and the host process may still be writing to
-            // stdout/stderr/vmlogger pipes. Tearing down the pipes here would
-            // cause SIGPIPE on any subsequent write (including the test framework
-            // reporting results). The logging thread keeps draining data harmlessly.
+            // The Ruby VM thread may still be writing to ruby_stdout/stderr/vmlogger
+            // pipes. The logging thread keeps draining those streams harmlessly.
             // Actual pipe teardown happens in logging_shutdown() during ruby_vm_destroy().
+            //
+            // However, we MUST restore native stdout/stderr to the original terminal
+            // FDs. Otherwise the logging thread reads the host process's output from
+            // the pipe and silently discards it (no callbacks to dispatch to), which
+            // swallows test framework output, Gradle protocol messages, etc.
+            if (g_logging_state.custom_output_count == 0) {
+                // Restore native stdout/stderr so host process output bypasses
+                // the logging pipe and goes directly to the terminal.
+                if (g_logging_state.original_stdout_fd != -1) {
+                    dup2(g_logging_state.original_stdout_fd, STDOUT_FILENO);
+                }
+                if (g_logging_state.original_stderr_fd != -1) {
+                    dup2(g_logging_state.original_stderr_fd, STDERR_FILENO);
+                }
+
+                // Close the pipe write-ends so the logging thread sees EOF on
+                // native stdout/stderr streams. It continues draining Ruby-specific
+                // pipes (ruby_stdout, ruby_stderr, vmlogger) which use separate FDs.
+                if (g_logging_state.pipe_stdout_write_fd != -1) {
+                    close(g_logging_state.pipe_stdout_write_fd);
+                    g_logging_state.pipe_stdout_write_fd = -1;
+                }
+                if (g_logging_state.pipe_stderr_write_fd != -1) {
+                    close(g_logging_state.pipe_stderr_write_fd);
+                    g_logging_state.pipe_stderr_write_fd = -1;
+                }
+            }
 
             pthread_mutex_unlock(&g_logging_state.lock);
             return 0;
