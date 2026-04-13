@@ -810,6 +810,16 @@ static int internal_stop_logging_thread(void) {
     g_logging_state.logging_thread = 0;
     g_logging_state.is_running = 0;
 
+    // Restore stdout/stderr to the original terminal FDs before closing anything.
+    // Without this, STDOUT_FILENO/STDERR_FILENO still point to the (now dead) pipe
+    // write-ends, and any subsequent printf/println would hit a bad FD or SIGPIPE.
+    if (g_logging_state.original_stdout_fd != -1) {
+        dup2(g_logging_state.original_stdout_fd, STDOUT_FILENO);
+    }
+    if (g_logging_state.original_stderr_fd != -1) {
+        dup2(g_logging_state.original_stderr_fd, STDERR_FILENO);
+    }
+
     // Close saved FDs
     if (g_logging_state.original_stdout_fd != -1) {
         close(g_logging_state.original_stdout_fd);
@@ -1077,10 +1087,12 @@ int logging_remove_custom_output(logging_custom_output_func_t func, void* contex
             free(current);
             g_logging_state.custom_output_count--;
 
-            // Stop logging thread if this was the last custom output
-            if (g_logging_state.custom_output_count == 0) {
-                internal_stop_logging_thread();
-            }
+            // Do NOT stop the logging thread when the last callback is removed.
+            // The Ruby VM thread and the host process may still be writing to
+            // stdout/stderr/vmlogger pipes. Tearing down the pipes here would
+            // cause SIGPIPE on any subsequent write (including the test framework
+            // reporting results). The logging thread keeps draining data harmlessly.
+            // Actual pipe teardown happens in logging_shutdown() during ruby_vm_destroy().
 
             pthread_mutex_unlock(&g_logging_state.lock);
             return 0;

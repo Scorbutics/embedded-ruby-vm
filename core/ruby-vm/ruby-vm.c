@@ -356,6 +356,11 @@ void ruby_vm_destroy(RubyVM* vm) {
     DEBUG_LOG("ruby_vm_destroy: Disabling logging for VM");
     ruby_vm_disable_logging(vm);
 
+    DEBUG_LOG("ruby_vm_destroy: Shutting down logging system");
+    // Full logging teardown: stop the drain thread, close pipes, restore stdout/stderr.
+    // This is safe because the Ruby VM thread is no longer running (joined above).
+    logging_shutdown();
+
     // Destroy synchronization primitives
     pthread_mutex_destroy(&vm->socket_lock);
     pthread_cond_destroy(&vm->drain_cond);
