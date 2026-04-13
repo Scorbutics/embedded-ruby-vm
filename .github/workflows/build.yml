@@ -390,9 +390,8 @@ jobs:
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            BASE_TAG="$(git describe --tags --abbrev=0 --exclude '*-snapshot' 2>/dev/null || echo "v0.0.0")"
-            SHORT_SHA="${GITHUB_SHA::7}"
-            TAG="${BASE_TAG}-${SHORT_SHA}-snapshot"
+            VERSION="$(cat NEXT_VERSION | tr -d '[:space:]')"
+            TAG="v${VERSION}-snapshot"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
@@ -401,6 +400,16 @@ jobs:
           else
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Delete existing snapshot release
+        if: steps.tag.outputs.prerelease == 'true'
+        run: gh release delete "${{ steps.tag.outputs.tag }}" --yes 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete existing snapshot tag
+        if: steps.tag.outputs.prerelease == 'true'
+        run: git push origin ":refs/tags/${{ steps.tag.outputs.tag }}" 2>/dev/null || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
