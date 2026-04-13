@@ -148,17 +148,18 @@ begin
     socket.flush
   end
 
-  # Clean shutdown
-  socket.close
-  VMLogger.info "[Ruby VM] Shutdown complete"
+  # Clean shutdown — pipes may already be closed by the host,
+  # so ignore broken-pipe errors during teardown.
+  socket.close rescue nil
+  VMLogger.info "[Ruby VM] Shutdown complete" rescue nil
 
 rescue ArgumentError => error
-  VMLogger.error "[Ruby VM Fatal] #{error.message}"
+  VMLogger.error "[Ruby VM Fatal] #{error.message}" rescue nil
   exit(1)
 
 rescue => error
-  # Catch any other unexpected errors
-  VMLogger.error "[Ruby VM Fatal] #{error.class}: #{error.message}"
-  error.backtrace.each { |line| VMLogger.error "  #{line}" }
+  # Catch any other unexpected errors (including Errno::EPIPE from broken pipes)
+  VMLogger.error "[Ruby VM Fatal] #{error.class}: #{error.message}" rescue nil
+  error.backtrace&.each { |line| VMLogger.error "  #{line}" rescue nil }
   exit(1)
 end

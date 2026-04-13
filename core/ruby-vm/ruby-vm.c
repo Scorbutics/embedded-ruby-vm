@@ -313,8 +313,11 @@ void ruby_vm_destroy(RubyVM* vm) {
     if (!vm) return;
 
     // Transition to SHUTTING_DOWN — reject new enqueues from this point
+    int was_running = 0;
     int expected = RUBY_VM_STATE_RUNNING;
-    if (!atomic_compare_exchange_strong(&vm->state, &expected, RUBY_VM_STATE_SHUTTING_DOWN)) {
+    if (atomic_compare_exchange_strong(&vm->state, &expected, RUBY_VM_STATE_SHUTTING_DOWN)) {
+        was_running = 1;
+    } else {
         // If not RUNNING, it may be CREATED (never started) — try that too
         expected = RUBY_VM_STATE_CREATED;
         if (!atomic_compare_exchange_strong(&vm->state, &expected, RUBY_VM_STATE_SHUTTING_DOWN)) {
@@ -333,12 +336,25 @@ void ruby_vm_destroy(RubyVM* vm) {
     pthread_mutex_unlock(&vm->drain_mutex);
     DEBUG_LOG("ruby_vm_destroy: All scripts drained");
 
-    DEBUG_LOG("ruby_vm_destroy: Disabling logging for VM before destruction");
-    ruby_vm_disable_logging(vm);
+    if (was_running) {
+        DEBUG_LOG("ruby_vm_destroy: Closing command channel to signal FIFO interpreter exit");
+        // Close the command channel FIRST — this causes the Ruby FIFO interpreter
+        // to see EOF on socket.gets and break out of its loop cleanly.
+        // Logging must stay alive during this phase so the Ruby VM thread can
+        // still write to stdout/stderr/vmlogger without hitting broken pipes.
+        close_comm_channel(&vm->commands_channel);
 
-    DEBUG_LOG("ruby_vm_destroy: Stopping VM if running");
-    // Now it's safe to free VM resources
-    close_comm_channel(&vm->commands_channel);
+        DEBUG_LOG("ruby_vm_destroy: Joining main VM thread");
+        // Wait for the Ruby VM thread to fully exit (including Ruby cleanup).
+        // Without this join, ruby_run_node() may still be running when we tear
+        // down logging pipes and free the VM struct, causing SIGPIPE storms
+        // and potentially exit_group() killing the entire process.
+        pthread_join(vm->main_thread, NULL);
+        DEBUG_LOG("ruby_vm_destroy: Main VM thread joined");
+    }
+
+    DEBUG_LOG("ruby_vm_destroy: Disabling logging for VM");
+    ruby_vm_disable_logging(vm);
 
     // Destroy synchronization primitives
     pthread_mutex_destroy(&vm->socket_lock);
