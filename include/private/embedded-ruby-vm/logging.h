@@ -162,6 +162,26 @@ void logging_clear_last_error(void);
  */
 int logging_get_stream_fd(log_stream_t stream);
 
+/**
+ * Get the original stdout file descriptor (before logging redirected it).
+ *
+ * Use this to write output that should NOT feed back into the logging system.
+ * For example, log listener callbacks should write to this FD instead of
+ * using printf/puts which would go to the redirected stdout and create a
+ * feedback loop.
+ *
+ * @return Original stdout FD (>= 0), or -1 if logging has not redirected stdout
+ */
+int logging_get_original_stdout_fd(void);
+
+/**
+ * Get the original stderr file descriptor (before logging redirected it).
+ *
+ * @return Original stderr FD (>= 0), or -1 if logging has not redirected stderr
+ * @see logging_get_original_stdout_fd
+ */
+int logging_get_original_stderr_fd(void);
+
 #ifdef __cplusplus
 }
 #endif

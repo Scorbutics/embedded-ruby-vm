@@ -62,6 +62,26 @@ static inline void log_listener_init(LogListener* listener) {
     listener->on_log_message = NULL;
 }
 
+/**
+ * Get the original stdout file descriptor (before logging redirected it).
+ *
+ * The logging system redirects process-wide stdout/stderr to capture native
+ * C library output. Log listener callbacks MUST use this FD for their own
+ * output to avoid a feedback loop (callback writes to stdout -> logging
+ * thread reads it -> calls callback again -> infinite loop -> crash).
+ *
+ * @return Original stdout FD (>= 0), or -1 if logging has not redirected stdout
+ */
+int logging_get_original_stdout_fd(void);
+
+/**
+ * Get the original stderr file descriptor (before logging redirected it).
+ *
+ * @return Original stderr FD (>= 0), or -1 if logging has not redirected stderr
+ * @see logging_get_original_stdout_fd
+ */
+int logging_get_original_stderr_fd(void);
+
 #ifdef __cplusplus
 }
 #endif

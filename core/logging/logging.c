@@ -79,6 +79,11 @@ typedef struct {
     custom_output_node_t* custom_outputs;
     int custom_output_count;
 
+    int original_stdout_fd;  // Terminal FD saved before dup2 redirect
+    int original_stderr_fd;  // Terminal FD saved before dup2 redirect
+    int pipe_stdout_write_fd;  // Pipe write-end FD saved after redirect (for restoring)
+    int pipe_stderr_write_fd;  // Pipe write-end FD saved after redirect (for restoring)
+
     pthread_mutex_t lock;
     int is_initialized;
     int is_running;
@@ -93,6 +98,10 @@ static logging_state_t g_logging_state = {
     .native_loggers = NULL,
     .custom_outputs = NULL,
     .custom_output_count = 0,
+    .original_stdout_fd = -1,
+    .original_stderr_fd = -1,
+    .pipe_stdout_write_fd = -1,
+    .pipe_stderr_write_fd = -1,
     .lock = PTHREAD_MUTEX_INITIALIZER,
     .is_initialized = 0,
     .is_running = 0
@@ -230,11 +239,28 @@ static int call_native_logging_function(int prio, const char* tag, const char* t
 }
 
 /**
- * Write log message to all custom output callbacks
- * Returns 0 on success, negative error code if any callback fails
- * Sets thread-local last error to the first failure encountered
+ * Write log message to all custom output callbacks.
+ *
+ * While callbacks execute, stdout/stderr are temporarily restored to the
+ * original (pre-redirect) file descriptors. This prevents a feedback loop:
+ * if a callback writes to stdout (e.g. println), that output goes to the
+ * real terminal instead of back into the logging pipe.
+ *
+ * Returns 0 on success, negative error code if any callback fails.
+ * Sets thread-local last error to the first failure encountered.
  */
 static int call_custom_logging_function(log_stream_t stream, const char* line) {
+    // Temporarily swap stdout/stderr to the original (pre-redirect) FDs.
+    // Any output produced by callbacks (e.g. println) will go directly to
+    // the terminal, breaking the feedback loop that would otherwise occur
+    // when the callback's output re-enters the logging pipe.
+    int have_redirect = (g_logging_state.original_stdout_fd != -1 &&
+                         g_logging_state.pipe_stdout_write_fd != -1);
+    if (have_redirect) {
+        dup2(g_logging_state.original_stdout_fd, STDOUT_FILENO);
+        dup2(g_logging_state.original_stderr_fd, STDERR_FILENO);
+    }
+
     pthread_mutex_lock(&g_logging_state.lock);
 
     custom_output_node_t* current = g_logging_state.custom_outputs;
@@ -258,6 +284,13 @@ static int call_custom_logging_function(log_stream_t stream, const char* line) {
     }
 
     pthread_mutex_unlock(&g_logging_state.lock);
+
+    // Restore stdout/stderr to point back to the logging pipe.
+    if (have_redirect) {
+        dup2(g_logging_state.pipe_stdout_write_fd, STDOUT_FILENO);
+        dup2(g_logging_state.pipe_stderr_write_fd, STDERR_FILENO);
+    }
+
     return error;
 }
 
@@ -599,9 +632,27 @@ static int internal_start_logging_thread(void) {
         return LOGGING_ERROR_SOCKETPAIR_FAILED;
     }
 
+    // Save original stdout/stderr before redirecting.
+    // Callbacks use these to write output without feeding back into the logging pipe.
+    g_logging_state.original_stdout_fd = dup(STDOUT_FILENO);
+    g_logging_state.original_stderr_fd = dup(STDERR_FILENO);
+    if (g_logging_state.original_stdout_fd == -1 || g_logging_state.original_stderr_fd == -1) {
+        set_last_error(LOGGING_ERROR_DUP2_FAILED);
+        if (g_logging_state.original_stdout_fd != -1) close(g_logging_state.original_stdout_fd);
+        if (g_logging_state.original_stderr_fd != -1) close(g_logging_state.original_stderr_fd);
+        g_logging_state.original_stdout_fd = -1;
+        g_logging_state.original_stderr_fd = -1;
+        cleanup_streams();
+        return LOGGING_ERROR_DUP2_FAILED;
+    }
+
     // Native stdout - redirect actual stdout
     if (create_and_redirect_stream(NATIVE_STDOUT_INDEX, STDOUT_FILENO) != 0) {
         set_last_error(LOGGING_ERROR_STDOUT_REDIRECT_FAILED);
+        close(g_logging_state.original_stdout_fd);
+        close(g_logging_state.original_stderr_fd);
+        g_logging_state.original_stdout_fd = -1;
+        g_logging_state.original_stderr_fd = -1;
         cleanup_streams();
         return LOGGING_ERROR_STDOUT_REDIRECT_FAILED;
     }
@@ -609,8 +660,30 @@ static int internal_start_logging_thread(void) {
     // Native stderr - redirect actual stderr
     if (create_and_redirect_stream(NATIVE_STDERR_INDEX, STDERR_FILENO) != 0) {
         set_last_error(LOGGING_ERROR_STDERR_REDIRECT_FAILED);
+        close(g_logging_state.original_stdout_fd);
+        close(g_logging_state.original_stderr_fd);
+        g_logging_state.original_stdout_fd = -1;
+        g_logging_state.original_stderr_fd = -1;
         cleanup_streams();
         return LOGGING_ERROR_STDERR_REDIRECT_FAILED;
+    }
+
+    // Save pipe write-end FDs so we can restore the redirect after callbacks.
+    // After dup2, STDOUT_FILENO/STDERR_FILENO point to the pipe write ends.
+    g_logging_state.pipe_stdout_write_fd = dup(STDOUT_FILENO);
+    g_logging_state.pipe_stderr_write_fd = dup(STDERR_FILENO);
+    if (g_logging_state.pipe_stdout_write_fd == -1 || g_logging_state.pipe_stderr_write_fd == -1) {
+        set_last_error(LOGGING_ERROR_DUP2_FAILED);
+        if (g_logging_state.pipe_stdout_write_fd != -1) close(g_logging_state.pipe_stdout_write_fd);
+        if (g_logging_state.pipe_stderr_write_fd != -1) close(g_logging_state.pipe_stderr_write_fd);
+        g_logging_state.pipe_stdout_write_fd = -1;
+        g_logging_state.pipe_stderr_write_fd = -1;
+        close(g_logging_state.original_stdout_fd);
+        close(g_logging_state.original_stderr_fd);
+        g_logging_state.original_stdout_fd = -1;
+        g_logging_state.original_stderr_fd = -1;
+        cleanup_streams();
+        return LOGGING_ERROR_DUP2_FAILED;
     }
 
     // Start logging thread
@@ -618,6 +691,14 @@ static int internal_start_logging_thread(void) {
     if (pthread_create(&g_logging_state.logging_thread, NULL, logging_function_thread, NULL) != 0) {
         set_last_error(LOGGING_ERROR_THREAD_CREATE_FAILED);
         // Note: Cannot call call_native_logging_function here - called with mutex held
+        close(g_logging_state.original_stdout_fd);
+        close(g_logging_state.original_stderr_fd);
+        close(g_logging_state.pipe_stdout_write_fd);
+        close(g_logging_state.pipe_stderr_write_fd);
+        g_logging_state.original_stdout_fd = -1;
+        g_logging_state.original_stderr_fd = -1;
+        g_logging_state.pipe_stdout_write_fd = -1;
+        g_logging_state.pipe_stderr_write_fd = -1;
         cleanup_streams();
         return LOGGING_ERROR_THREAD_CREATE_FAILED;
     }
@@ -660,6 +741,24 @@ static int internal_stop_logging_thread(void) {
 
     g_logging_state.logging_thread = 0;
     g_logging_state.is_running = 0;
+
+    // Close saved FDs
+    if (g_logging_state.original_stdout_fd != -1) {
+        close(g_logging_state.original_stdout_fd);
+        g_logging_state.original_stdout_fd = -1;
+    }
+    if (g_logging_state.original_stderr_fd != -1) {
+        close(g_logging_state.original_stderr_fd);
+        g_logging_state.original_stderr_fd = -1;
+    }
+    if (g_logging_state.pipe_stdout_write_fd != -1) {
+        close(g_logging_state.pipe_stdout_write_fd);
+        g_logging_state.pipe_stdout_write_fd = -1;
+    }
+    if (g_logging_state.pipe_stderr_write_fd != -1) {
+        close(g_logging_state.pipe_stderr_write_fd);
+        g_logging_state.pipe_stderr_write_fd = -1;
+    }
 
     return 0;
 }
@@ -980,4 +1079,12 @@ int logging_get_stream_fd(log_stream_t stream) {
     }
 
     return fd;
+}
+
+int logging_get_original_stdout_fd(void) {
+    return g_logging_state.original_stdout_fd;
+}
+
+int logging_get_original_stderr_fd(void) {
+    return g_logging_state.original_stderr_fd;
 }
