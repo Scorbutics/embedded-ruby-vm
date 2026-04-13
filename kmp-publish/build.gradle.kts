@@ -7,7 +7,8 @@ plugins {
 }
 
 group = "com.scorbutics.rubyvm"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "1.0.0-SNAPSHOT"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" }
+    ?: (file("../NEXT_VERSION").readText().trim() + "-SNAPSHOT")
 
 val nativeLibraryName: String = findProperty("nativeLibraryName")?.toString() ?: "rgss_runtime"
 println("Native library name: $nativeLibraryName")
