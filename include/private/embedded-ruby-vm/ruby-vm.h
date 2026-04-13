@@ -72,6 +72,24 @@ void ruby_vm_destroy(RubyVM* vm);
 int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* native_libs_location);
 
 /**
+ * Start the Ruby VM on the current thread (blocks until VM shuts down).
+ *
+ * Unlike ruby_vm_start() which spawns a dedicated pthread, this runs the
+ * FIFO interpreter inline on the calling thread. Use this when the VM must
+ * run on a specific thread (e.g., an EGL/ALooper thread).
+ *
+ * Scripts can be enqueued from other threads via ruby_vm_enqueue() while
+ * this function is blocking.
+ *
+ * @param vm Pointer to the Ruby VM instance
+ * @param ruby_base_directory Path to the Ruby base directory
+ * @param native_libs_location Path to the native libraries location
+ * @return Ruby exit code (0 on success)
+ */
+int ruby_vm_start_on_current_thread(RubyVM* vm, const char* ruby_base_directory,
+                                     const char* native_libs_location);
+
+/**
  * Enable logging with stdout/stderr redirection
  *
  * Call this if you want Ruby's stdout/stderr to be captured through the logging system. 

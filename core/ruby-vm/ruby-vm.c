@@ -353,7 +353,14 @@ void ruby_vm_destroy(RubyVM* vm) {
     free(vm);
 }
 
-int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* native_libs_location) {
+/**
+ * Shared setup for ruby_vm_start() and ruby_vm_start_on_current_thread().
+ * Validates state, enables logging, and creates the communication channel.
+ *
+ * @param vm Pointer to the Ruby VM instance
+ * @return RUBY_VM_OK on success, negative error code on failure
+ */
+static int ruby_vm_start_setup(RubyVM* vm) {
     if (!vm) {
         return RUBY_VM_ERROR_INVALID_PARAM;
     }
@@ -373,23 +380,30 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     // Auto-enable logging if a listener was provided
     // This ensures log streams are available before Ruby VM needs them
     if (vm->log_listener.accept != NULL || vm->log_listener.on_log_error != NULL || vm->log_listener.on_log_message != NULL) {
-        DEBUG_LOG("ruby_vm_start: Auto-enabling logging (listener provided)");
+        DEBUG_LOG("ruby_vm_start_setup: Auto-enabling logging (listener provided)");
         int logging_result = ruby_vm_enable_logging(vm);
         if (logging_result != 0) {
-            DEBUG_LOG("ruby_vm_start: Warning - failed to enable logging (error %d)", logging_result);
+            DEBUG_LOG("ruby_vm_start_setup: Warning - failed to enable logging (error %d)", logging_result);
             // Continue anyway - VM can still work without logging
         }
     }
 
-    DEBUG_LOG("ruby_vm_start: Creating socket pair");
+    DEBUG_LOG("ruby_vm_start_setup: Creating socket pair");
     // Create socket pair for communication
     if (create_comm_channel(&vm->commands_channel) != 0) {
-        DEBUG_LOG("ruby_vm_start: Failed to create comm channel");
+        DEBUG_LOG("ruby_vm_start_setup: Failed to create comm channel");
         ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_COMM_CHANNEL,
                           "Failed to create communication channel (socketpair failed)");
         return RUBY_VM_ERROR_COMM_CHANNEL;
     }
-    DEBUG_LOG("ruby_vm_start: Socket pair created");
+    DEBUG_LOG("ruby_vm_start_setup: Socket pair created");
+
+    return RUBY_VM_OK;
+}
+
+int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* native_libs_location) {
+    int setup_result = ruby_vm_start_setup(vm);
+    if (setup_result != RUBY_VM_OK) return setup_result;
 
     // Create thread arguments
     DEBUG_LOG("ruby_vm_start: Preparing thread args");
@@ -430,6 +444,25 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     atomic_store(&vm->state, RUBY_VM_STATE_RUNNING);
     DEBUG_LOG("ruby_vm_start: VM started successfully, returning");
     return RUBY_VM_OK;
+}
+
+int ruby_vm_start_on_current_thread(RubyVM* vm, const char* ruby_base_directory,
+                                     const char* native_libs_location) {
+    int setup_result = ruby_vm_start_setup(vm);
+    if (setup_result != RUBY_VM_OK) return setup_result;
+
+    atomic_store(&vm->state, RUBY_VM_STATE_RUNNING);
+    DEBUG_LOG("ruby_vm_start_on_current_thread: VM running, executing FIFO interpreter inline");
+
+    // Run the FIFO interpreter inline — this BLOCKS until the socket is closed
+    const int exitCode = ExecMainRubyVM(vm, ruby_base_directory, native_libs_location);
+
+    if (exitCode != 0) {
+        fprintf(stderr, "Error during inline VM execution: %d", exitCode);
+    }
+
+    DEBUG_LOG("ruby_vm_start_on_current_thread: FIFO interpreter exited with code %d", exitCode);
+    return exitCode;
 }
 
 int ruby_vm_enable_logging(RubyVM* vm) {

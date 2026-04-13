@@ -1,6 +1,8 @@
 #ifndef LOG_LISTENER_PUBLIC_H
 #define LOG_LISTENER_PUBLIC_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
