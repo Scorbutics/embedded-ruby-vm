@@ -53,55 +53,8 @@ typedef struct {
     jmethodID invoke_method_id;
 } CompletionCallbackContext;
 
-// ============================================================================
-// Script Completion Synchronization
-// ============================================================================
-
-// Sentinel message that Ruby sends after flushing all logs
-#define SCRIPT_COMPLETE_SENTINEL "<<<LOGS_FLUSHED>>>"
-
-// Global state for waiting on script completion.
-// LIMITATION: This uses a single global flag, so if multiple scripts complete
-// nearly simultaneously, one script's sentinel may signal another script's wait.
-// This is acceptable because the socket_lock serializes script execution anyway —
-// only one script can be in-flight through the IPC channel at a time.
-static pthread_mutex_t g_completion_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t g_completion_cond = PTHREAD_COND_INITIALIZER;
-static volatile int g_logs_flushed = 0;
-
-static void signal_logs_flushed(void) {
-    pthread_mutex_lock(&g_completion_mutex);
-    g_logs_flushed = 1;
-    pthread_cond_signal(&g_completion_cond);
-    pthread_mutex_unlock(&g_completion_mutex);
-}
-
-static void reset_logs_flushed(void) {
-    pthread_mutex_lock(&g_completion_mutex);
-    g_logs_flushed = 0;
-    pthread_mutex_unlock(&g_completion_mutex);
-}
-
-static int wait_for_logs_flushed(int timeout_ms) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    ts.tv_sec += timeout_ms / 1000;
-    ts.tv_nsec += (timeout_ms % 1000) * 1000000;
-    if (ts.tv_nsec >= 1000000000) {
-        ts.tv_sec += 1;
-        ts.tv_nsec -= 1000000000;
-    }
-    
-    pthread_mutex_lock(&g_completion_mutex);
-    int result = 0;
-    while (!g_logs_flushed && result == 0) {
-        result = pthread_cond_timedwait(&g_completion_cond, &g_completion_mutex, &ts);
-    }
-    int flushed = g_logs_flushed;
-    pthread_mutex_unlock(&g_completion_mutex);
-    
-    return flushed ? 0 : -1;  // 0 = success, -1 = timeout
-}
+// Script completion sentinel synchronization is now handled centrally
+// by the logging system. See logging_reset_sentinel() / logging_wait_for_sentinel().
 
 // ============================================================================
 // JNI Environment Helpers
@@ -273,14 +226,7 @@ static void jni_log_accept_callback(LogListener* listener, const char* message) 
     // Debug: Log all incoming messages to understand what we're receiving
     jni_log_printf(JNI_LOG_DEBUG, "RubyVM", "jni_log_accept_callback: Received message (len=%zu): '%s'", strlen(message), message);
     
-    // Check for sentinel message indicating all logs have been flushed
-    // Use strstr to handle potential trailing whitespace
-    if (strstr(message, SCRIPT_COMPLETE_SENTINEL) != NULL) {
-        jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Sentinel message detected - signaling log completion");
-        signal_logs_flushed();
-        return;  // Don't forward sentinel to user
-    }
-        // Validate context pointer
+    // Validate context pointer
     JNICallbackContext* context = (JNICallbackContext*) listener->context;
     if (!context) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL context");
@@ -388,13 +334,6 @@ static void jni_log_message_callback(LogListener* listener, const char* message,
     if (!message) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_message_callback: NULL message");
         return;
-    }
-
-    // Check for sentinel message indicating all logs have been flushed
-    if (strstr(message, SCRIPT_COMPLETE_SENTINEL) != NULL) {
-        jni_log_write(JNI_LOG_DEBUG, "RubyVM", "Sentinel message detected in new callback - signaling log completion");
-        signal_logs_flushed();
-        return;  // Don't forward sentinel to user
     }
 
     // Validate context pointer
@@ -833,9 +772,9 @@ Java_com_scorbutics_rubyvm_RubyVMNative_executeScriptSync(JNIEnv *env, jclass cl
 
     DEBUG_LOG("executeScriptSync: Executing script synchronously on JVM thread");
 
-    // Reset the log flush flag before execution
-    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: Resetting log flush flag");
-    reset_logs_flushed();
+    // Reset the sentinel before execution
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: Resetting log flush sentinel");
+    logging_reset_sentinel();
 
     // Execute the script synchronously on the calling (JVM) thread
     // This BLOCKS until the script completes and returns the result directly
@@ -845,12 +784,12 @@ Java_com_scorbutics_rubyvm_RubyVMNative_executeScriptSync(JNIEnv *env, jclass cl
 
     DEBUG_LOG("executeScriptSync: Script execution completed with result: %d", result);
 
-    // CRITICAL: Wait for all logs to be flushed
-    // The Ruby VM sends a sentinel message after flushing stdout/stderr.
-    // We wait for this sentinel to ensure all logs are processed before returning.
-    // This prevents race conditions where logs are lost or appear out of order.
-    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: Waiting for log flush signal...");
-    int wait_result = wait_for_logs_flushed(5000);  // 5 second timeout
+    // Wait for all logs to be flushed.
+    // The logging system intercepts the sentinel on LOG_STREAM_VMLOGGER
+    // (processed after RUBY_STDOUT and RUBY_STDERR), ensuring all
+    // user-visible output has been dispatched to callbacks.
+    jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: Waiting for log flush sentinel...");
+    int wait_result = logging_wait_for_sentinel(5000);
     if (wait_result == 0) {
         jni_log_write(JNI_LOG_DEBUG, "RubyVM", "executeScriptSync: All logs flushed successfully");
     } else {

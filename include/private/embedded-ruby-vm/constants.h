@@ -8,3 +8,9 @@
 #define ENV_RUBY_VM_ADDITIONAL_PARAM "RUBY_VM_ADDITIONAL_PARAM"
 
 #define FIFO_INTERPRETER_SCRIPT "fifo_interpreter.rb"
+
+// Internal protocol sentinel sent by fifo_interpreter.rb via VMLogger
+// after a script finishes and all output has been flushed.
+// The logging system intercepts this on LOG_STREAM_VMLOGGER and signals
+// completion — it never reaches user callbacks.
+#define SCRIPT_COMPLETE_SENTINEL "<<<LOGS_FLUSHED>>>"

@@ -111,7 +111,7 @@ begin
 
       # Send sentinel to VM log to signal all logs have been flushed
       # This allows synchronous script execution to wait for log completion
-      $stdout.puts "<<<LOGS_FLUSHED>>>"
+      VMLogger.info "<<<LOGS_FLUSHED>>>"
 
       # Flush stdout and stderr to ensure all output is visible
       # Ruby buffers stdout when not connected to a TTY, so we flush explicitly
@@ -133,7 +133,7 @@ begin
       error.backtrace.each { |line| VMLogger.error "  #{line}" }
 
       # Send sentinel to VM log to signal all logs have been flushed
-      $stdout.puts "<<<LOGS_FLUSHED>>>"
+      VMLogger.info "<<<LOGS_FLUSHED>>>"
 
       # Flush stdout and stderr to ensure all error output is visible
       $stdout.flush

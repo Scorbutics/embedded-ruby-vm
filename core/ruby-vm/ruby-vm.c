@@ -244,18 +244,9 @@ static void* script_execution_thread_func(void* arg) {
     return NULL;
 }
 
-// Sentinel message that Ruby sends after flushing all script logs.
-// Must be filtered out before reaching user callbacks.
-#define SCRIPT_COMPLETE_SENTINEL "<<<LOGS_FLUSHED>>>"
-
 static int native_log_callbacks(const char* line, log_stream_t stream, void* context) {
     if (context == NULL) {
         return -1;
-    }
-
-    // Filter out the internal sentinel — it's a protocol message, not user output
-    if (strstr(line, SCRIPT_COMPLETE_SENTINEL) != NULL) {
-        return 0;
     }
 
     RubyVM* vm = (RubyVM*)context;
@@ -586,6 +577,9 @@ int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
 
     DEBUG_LOG("ruby_vm_execute_sync: Executing script synchronously on calling thread");
 
+    // Reset the sentinel before execution so we can wait for a fresh one
+    logging_reset_sentinel();
+
     // Block all signals before entering Ruby execution context
     // This prevents Ruby's GC signals (SIGPROF/SIGALRM) from hitting JVM threads
     // which can cause segmentation faults when Ruby's signal handler tries to
@@ -607,6 +601,14 @@ int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
 
     // Restore original signal mask before returning to JVM context
     pthread_sigmask(SIG_SETMASK, &old_set, NULL);
+
+    // Wait for all logs to be flushed before returning.
+    // The logging thread intercepts the sentinel on LOG_STREAM_VMLOGGER
+    // (processed after RUBY_STDOUT and RUBY_STDERR), ensuring all
+    // user-visible output has been dispatched to callbacks.
+    if (logging_wait_for_sentinel(5000) != 0) {
+        DEBUG_LOG("ruby_vm_execute_sync: Timeout waiting for log flush sentinel");
+    }
 
     // Decrement in-flight count and signal drain if this was the last script
     if (atomic_fetch_sub(&vm->in_flight_scripts, 1) == 1) {

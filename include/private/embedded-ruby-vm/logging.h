@@ -182,6 +182,31 @@ int logging_get_original_stdout_fd(void);
  */
 int logging_get_original_stderr_fd(void);
 
+/**
+ * Reset the script completion sentinel state.
+ * Must be called before each script execution to prepare for a fresh wait.
+ */
+void logging_reset_sentinel(void);
+
+/**
+ * Wait for the script completion sentinel to be detected in the log stream.
+ *
+ * The sentinel is sent by fifo_interpreter.rb via VMLogger after a script
+ * finishes and all output has been flushed. The logging thread intercepts it
+ * on LOG_STREAM_VMLOGGER (processed after RUBY_STDOUT and RUBY_STDERR),
+ * guaranteeing all user-visible output has been dispatched to callbacks.
+ *
+ * @param timeout_ms Maximum time to wait in milliseconds
+ * @return 0 if sentinel received, -1 on timeout
+ */
+int logging_wait_for_sentinel(int timeout_ms);
+
+/**
+ * Check if the script completion sentinel has been received (non-blocking).
+ * @return 1 if received, 0 if not
+ */
+int logging_sentinel_received(void);
+
 #ifdef __cplusplus
 }
 #endif

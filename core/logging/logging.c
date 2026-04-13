@@ -13,6 +13,7 @@
 
 #include "embedded-ruby-vm/logging.h"
 #include "embedded-ruby-vm/jni_logging.h"
+#include "embedded-ruby-vm/constants.h"
 
 // Configuration
 #define LOG_BUFFER_SIZE 128
@@ -87,6 +88,11 @@ typedef struct {
     pthread_mutex_t lock;
     int is_initialized;
     int is_running;
+
+    // Script completion sentinel synchronization
+    pthread_mutex_t sentinel_mutex;
+    pthread_cond_t sentinel_cond;
+    volatile int sentinel_received;
 } logging_state_t;
 
 // Global logging state
@@ -104,11 +110,64 @@ static logging_state_t g_logging_state = {
     .pipe_stderr_write_fd = -1,
     .lock = PTHREAD_MUTEX_INITIALIZER,
     .is_initialized = 0,
-    .is_running = 0
+    .is_running = 0,
+    .sentinel_mutex = PTHREAD_MUTEX_INITIALIZER,
+    .sentinel_cond = PTHREAD_COND_INITIALIZER,
+    .sentinel_received = 0
 };
 
 // Thread-local error state
 static __thread logging_error_t g_last_error = LOGGING_ERROR_NONE;
+
+// ============================================================================
+// Script completion sentinel synchronization
+// ============================================================================
+
+/**
+ * Internal: Signal that the script completion sentinel has been received.
+ * Called from the logging thread when the sentinel is detected in write_full_log_line.
+ */
+static void logging_signal_sentinel(void) {
+    pthread_mutex_lock(&g_logging_state.sentinel_mutex);
+    g_logging_state.sentinel_received = 1;
+    pthread_cond_signal(&g_logging_state.sentinel_cond);
+    pthread_mutex_unlock(&g_logging_state.sentinel_mutex);
+}
+
+void logging_reset_sentinel(void) {
+    pthread_mutex_lock(&g_logging_state.sentinel_mutex);
+    g_logging_state.sentinel_received = 0;
+    pthread_mutex_unlock(&g_logging_state.sentinel_mutex);
+}
+
+int logging_wait_for_sentinel(int timeout_ms) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += timeout_ms / 1000;
+    ts.tv_nsec += (timeout_ms % 1000) * 1000000L;
+    if (ts.tv_nsec >= 1000000000L) {
+        ts.tv_sec += 1;
+        ts.tv_nsec -= 1000000000L;
+    }
+
+    pthread_mutex_lock(&g_logging_state.sentinel_mutex);
+    int result = 0;
+    while (!g_logging_state.sentinel_received && result == 0) {
+        result = pthread_cond_timedwait(&g_logging_state.sentinel_cond,
+                                         &g_logging_state.sentinel_mutex, &ts);
+    }
+    int received = g_logging_state.sentinel_received;
+    pthread_mutex_unlock(&g_logging_state.sentinel_mutex);
+
+    return received ? 0 : -1;
+}
+
+int logging_sentinel_received(void) {
+    pthread_mutex_lock(&g_logging_state.sentinel_mutex);
+    int received = g_logging_state.sentinel_received;
+    pthread_mutex_unlock(&g_logging_state.sentinel_mutex);
+    return received;
+}
 
 /**
  * Internal: Set the last error for the current thread
@@ -299,6 +358,15 @@ static int call_custom_logging_function(log_stream_t stream, const char* line) {
  * Returns 0 on success, negative if any output fails
  */
 static int write_full_log_line(const char* line, log_stream_t stream) {
+    // Intercept the script completion sentinel before it reaches any callbacks.
+    // The sentinel arrives on VMLOGGER (index 2), which is processed AFTER
+    // RUBY_STDOUT (index 0) and RUBY_STDERR (index 1) in the select loop,
+    // guaranteeing all user-visible output has been dispatched first.
+    if (stream == LOG_STREAM_VMLOGGER && strstr(line, SCRIPT_COMPLETE_SENTINEL) != NULL) {
+        logging_signal_sentinel();
+        return 0;
+    }
+
     const char* tag = (g_logging_state.log_tag != NULL) ? g_logging_state.log_tag : "UNKNOWN";
     int priority = (stream == LOG_STREAM_RUBY_STDERR) ? LOG_ERROR : LOG_INFO;
 
