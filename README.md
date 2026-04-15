@@ -69,13 +69,11 @@ The project supports both **static** and **dynamic** linking approaches through 
 
 | Platform | Architecture | Bridge | Status |
 |----------|-------------|--------|--------|
-| **Android** | arm64-v8a, armeabi-v7a, x86, x86_64 | JNI | ✅ Supported |
-| **JVM Desktop** | x86_64, arm64 | JNI | ✅ Supported |
+| **Android** | arm64-v8a, x86_64 | JNI | ✅ Supported |
+| **JVM Desktop** | x86_64 | JNI | ✅ Supported |
 | **Linux Native** | x86_64 | cinterop | ✅ Supported |
-| **iOS** | arm64, simulator | cinterop | ⚠️ Disabled* |
-| **macOS** | arm64, x86_64 | cinterop | ⚠️ Disabled* |
-
-*iOS and macOS targets are currently disabled due to Kotlin/Native platform limitations but can be re-enabled on supported build hosts.
+| **iOS** | arm64, simulator | cinterop | ✅ Supported |
+| **macOS** | arm64, x86_64 | cinterop | ✅ Supported |
 
 ## 🚀 Quick Start
 
