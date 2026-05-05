@@ -71,9 +71,18 @@ target_include_directories(ruby-vm
 if(BUILD_SHARED_LIBS)
     # Shared build: Link against shared libraries
     # Note: Removed 'curses' (it's just an alias/linker script for ncurses)
+    # Shared build: libphysfs-ruby is C++ → pull in the right C++ runtime.
+    # Android NDK uses libc++ (no libstdc++); Apple uses libc++; everything
+    # else (glibc/musl Linux) defaults to libstdc++.
     set(_RUBY_VM_PHYSFS_SHARED_LIBS "")
     if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
-        set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs)
+        if(ANDROID)
+            set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs c++_shared)
+        elseif(APPLE)
+            set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs c++)
+        else()
+            set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs stdc++)
+        endif()
     endif()
     target_link_libraries(ruby-vm
         ruby
@@ -185,10 +194,30 @@ else()
         # Optionally fold ruby-physfs.a (and its libphysfs.a dep) into the
         # whole-archive group so Init_physfs survives unused-symbol stripping.
         # The host application calls it via ruby_set_custom_ext_init().
+        #
+        # libphysfs-ruby.a is a C++ archive (std::string, std::filesystem,
+        # exception runtime). When the consumer links its final binary with a
+        # plain C driver (gcc/clang), the C++ runtime is NOT pulled in
+        # automatically — append it explicitly here. The right lib differs
+        # by platform: Android NDK ships libc++ (no libstdc++ at all);
+        # plain Linux (glibc/musl) typically uses libstdc++.
         set(_RUBY_VM_WHOLE_ARCHIVE_LIBS ruby-ext)
         if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
             list(APPEND _RUBY_VM_WHOLE_ARCHIVE_LIBS physfs-ruby)
             list(APPEND RUBY_VM_PUBLIC_LIBS physfs)
+            if(ANDROID)
+                # NDK's clang++ links libc++_static.a by default for static
+                # builds; for shared we'd take libc++_shared.so. Pick by
+                # BUILD_SHARED_LIBS.
+                if(BUILD_SHARED_LIBS)
+                    list(APPEND RUBY_VM_PUBLIC_LIBS c++_shared)
+                else()
+                    list(APPEND RUBY_VM_PUBLIC_LIBS c++_static)
+                endif()
+            else()
+                # glibc/musl Linux — libstdc++ is the GCC/Clang default.
+                list(APPEND RUBY_VM_PUBLIC_LIBS stdc++)
+            endif()
         endif()
 
         target_link_libraries(ruby-vm
@@ -227,12 +256,16 @@ else()
         endif()
 
         # Optional ruby-physfs (force_load like ruby-ext for symbol retention).
+        # Append libc++ so the C++ runtime symbols (std::string, std::filesystem,
+        # __cxa_*, etc.) resolve when the embedder links its final binary with
+        # a plain C driver. macOS / iOS use libc++; on Apple platforms it's the
+        # default for clang regardless of -stdlib, so the bare name resolves.
         set(_RUBY_VM_PHYSFS_FORCE_LOAD "")
         set(_RUBY_VM_PHYSFS_LINK_LIBS "")
         if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
             get_target_property(_physfs_ruby_lib physfs-ruby IMPORTED_LOCATION)
             set(_RUBY_VM_PHYSFS_FORCE_LOAD "-Wl,-force_load,${_physfs_ruby_lib}")
-            set(_RUBY_VM_PHYSFS_LINK_LIBS physfs)
+            set(_RUBY_VM_PHYSFS_LINK_LIBS physfs c++)
         endif()
 
         target_link_libraries(ruby-vm
@@ -257,10 +290,13 @@ else()
             # Note: macOS doesn't need libcrypt (functionality is in libc)
         )
     else()
-        # Other platforms: fallback (may not work correctly)
+        # Other platforms: fallback (may not work correctly).
+        # libphysfs-ruby.a is C++; pull in the C++ runtime explicitly. Bare
+        # `stdc++` works on most non-NDK Unixes; embedders on exotic targets
+        # may need to override.
         set(_RUBY_VM_PHYSFS_FALLBACK_LIBS "")
         if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
-            set(_RUBY_VM_PHYSFS_FALLBACK_LIBS physfs-ruby physfs)
+            set(_RUBY_VM_PHYSFS_FALLBACK_LIBS physfs-ruby physfs stdc++)
         endif()
         target_link_libraries(ruby-vm
             ruby
