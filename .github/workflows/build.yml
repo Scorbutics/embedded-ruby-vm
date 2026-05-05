@@ -64,7 +64,8 @@ jobs:
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_JNI=OFF \
             -DBUILD_TESTS=ON \
-            -DSKIP_RUBY_DOWNLOAD=ON
+            -DSKIP_RUBY_DOWNLOAD=ON \
+            -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
         run: cmake --build build --config Release
@@ -213,7 +214,8 @@ jobs:
             -DBUILD_JNI=ON \
             -DBUILD_JNI_ANDROID_LOG=ON \
             -DBUILD_TESTS=OFF \
-            -DSKIP_RUBY_DOWNLOAD=ON
+            -DSKIP_RUBY_DOWNLOAD=ON \
+            -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
         run: cmake --build build --config Release
@@ -282,7 +284,8 @@ jobs:
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_JNI=OFF \
             -DBUILD_TESTS=OFF \
-            -DSKIP_RUBY_DOWNLOAD=ON
+            -DSKIP_RUBY_DOWNLOAD=ON \
+            -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
         run: cmake --build build --config Release
@@ -341,7 +344,8 @@ jobs:
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_JNI=OFF \
             -DBUILD_TESTS=ON \
-            -DSKIP_RUBY_DOWNLOAD=ON
+            -DSKIP_RUBY_DOWNLOAD=ON \
+            -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
         run: cmake --build build --config Release
