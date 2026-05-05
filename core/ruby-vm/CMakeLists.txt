@@ -71,8 +71,13 @@ target_include_directories(ruby-vm
 if(BUILD_SHARED_LIBS)
     # Shared build: Link against shared libraries
     # Note: Removed 'curses' (it's just an alias/linker script for ncurses)
+    set(_RUBY_VM_PHYSFS_SHARED_LIBS "")
+    if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
+        set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs)
+    endif()
     target_link_libraries(ruby-vm
         ruby
+        ${_RUBY_VM_PHYSFS_SHARED_LIBS}
         crypto
         form
         gdbm_compat
@@ -177,10 +182,19 @@ else()
 
         list(APPEND RUBY_VM_PUBLIC_LIBS z)  # libz.a (used by many libraries)
         
+        # Optionally fold ruby-physfs.a (and its libphysfs.a dep) into the
+        # whole-archive group so Init_physfs survives unused-symbol stripping.
+        # The host application calls it via ruby_set_custom_ext_init().
+        set(_RUBY_VM_WHOLE_ARCHIVE_LIBS ruby-ext)
+        if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
+            list(APPEND _RUBY_VM_WHOLE_ARCHIVE_LIBS physfs-ruby)
+            list(APPEND RUBY_VM_PUBLIC_LIBS physfs)
+        endif()
+
         target_link_libraries(ruby-vm
             PRIVATE
             -Wl,--whole-archive
-            ruby-ext       # libruby-ext.a contains all statically-linked extensions (Init_monitor, etc.)
+            ${_RUBY_VM_WHOLE_ARCHIVE_LIBS}  # libruby-ext.a + optionally libphysfs-ruby.a
             -Wl,--no-whole-archive
             PUBLIC
             ${RUBY_VM_PUBLIC_LIBS}
@@ -212,8 +226,18 @@ else()
             set(FFI_LIBRARY ffi)
         endif()
 
+        # Optional ruby-physfs (force_load like ruby-ext for symbol retention).
+        set(_RUBY_VM_PHYSFS_FORCE_LOAD "")
+        set(_RUBY_VM_PHYSFS_LINK_LIBS "")
+        if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
+            get_target_property(_physfs_ruby_lib physfs-ruby IMPORTED_LOCATION)
+            set(_RUBY_VM_PHYSFS_FORCE_LOAD "-Wl,-force_load,${_physfs_ruby_lib}")
+            set(_RUBY_VM_PHYSFS_LINK_LIBS physfs)
+        endif()
+
         target_link_libraries(ruby-vm
             -Wl,-force_load,${_ruby_ext_lib}
+            ${_RUBY_VM_PHYSFS_FORCE_LOAD}
             ruby
             readline       # libreadline.a (contains history functions)
             ncurses
@@ -227,15 +251,21 @@ else()
             crypto
             gmp            # libgmp.a (used by Ruby for bignum operations)
             z
+            ${_RUBY_VM_PHYSFS_LINK_LIBS}   # libphysfs.a (when WITH_PHYSFS)
             ${FFI_LIBRARY}                 # libffi (used by Ruby's fiddle extension)
             "-framework CoreFoundation"    # Used by Ruby's file.o for path normalization
             # Note: macOS doesn't need libcrypt (functionality is in libc)
         )
     else()
         # Other platforms: fallback (may not work correctly)
+        set(_RUBY_VM_PHYSFS_FALLBACK_LIBS "")
+        if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
+            set(_RUBY_VM_PHYSFS_FALLBACK_LIBS physfs-ruby physfs)
+        endif()
         target_link_libraries(ruby-vm
             ruby
             ruby-ext
+            ${_RUBY_VM_PHYSFS_FALLBACK_LIBS}
             readline       # libreadline.a (contains history functions)
             ncurses
             ncurses++

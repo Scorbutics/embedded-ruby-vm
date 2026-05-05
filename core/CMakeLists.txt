@@ -108,10 +108,10 @@ else()
 endif()
 
 list(APPEND libs_dependencies
-    crypto 
-    form 
-    gdbm_compat 
-    gdbm 
+    crypto
+    form
+    gdbm_compat
+    gdbm
     history
     menu
     ncurses
@@ -121,6 +121,23 @@ list(APPEND libs_dependencies
     ssl
     z
 )
+
+# Optionally include the ruby-physfs gem, statically built by ruby-for-android
+# alongside libphysfs. When ON, embedded-ruby-vm exposes Init_physfs as a
+# reachable symbol; the host application is responsible for calling
+# Init_physfs() and rb_provide("physfs") via ruby_set_custom_ext_init() at
+# VM bootstrap time. The .a files must already exist in EXTERNAL_LIBS_DIR
+# (i.e., ruby-for-android was built with physfs + ruby-physfs in its
+# APP_DEPENDENCIES list). Defaults OFF so legacy builds without these libs
+# keep working.
+option(EMBEDDED_RUBY_VM_WITH_PHYSFS
+    "Include the ruby-physfs gem statically in libembedded-ruby-vm" OFF)
+if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
+    # Order matters for link resolution: the gem references libphysfs,
+    # so physfs-ruby must come before physfs in the link line.
+    list(APPEND libs_dependencies physfs-ruby physfs)
+    message(STATUS "Including ruby-physfs gem (static)")
+endif()
 
 # Determine library extension based on BUILD_SHARED_LIBS and platform
 if(BUILD_SHARED_LIBS)
