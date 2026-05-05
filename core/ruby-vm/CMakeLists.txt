@@ -73,13 +73,18 @@ if(BUILD_SHARED_LIBS)
     # Note: Removed 'curses' (it's just an alias/linker script for ncurses)
     # Shared build: libphysfs-ruby is C++ → pull in the right C++ runtime.
     # Android NDK uses libc++ (no libstdc++); Apple uses libc++; everything
-    # else (glibc/musl Linux) defaults to libstdc++.
+    # else (glibc/musl Linux) defaults to libstdc++. Apple also needs the
+    # IOKit + Foundation frameworks for libphysfs.a's Objective-C source.
     set(_RUBY_VM_PHYSFS_SHARED_LIBS "")
     if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
         if(ANDROID)
             set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs c++_shared)
         elseif(APPLE)
-            set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs c++)
+            set(_RUBY_VM_PHYSFS_SHARED_LIBS
+                physfs-ruby physfs c++
+                "-framework IOKit"
+                "-framework Foundation"
+            )
         else()
             set(_RUBY_VM_PHYSFS_SHARED_LIBS physfs-ruby physfs stdc++)
         endif()
@@ -260,12 +265,22 @@ else()
         # __cxa_*, etc.) resolve when the embedder links its final binary with
         # a plain C driver. macOS / iOS use libc++; on Apple platforms it's the
         # default for clang regardless of -stdlib, so the bare name resolves.
+        #
+        # PhysFS's Apple platform source (physfs_platform_apple.m) calls into
+        # IOKit (CD detection) and Foundation (NSBundle / NSSearchPath); link
+        # those frameworks here so consumers of libphysfs.a don't have to
+        # know about its Objective-C internals.
         set(_RUBY_VM_PHYSFS_FORCE_LOAD "")
         set(_RUBY_VM_PHYSFS_LINK_LIBS "")
         if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
             get_target_property(_physfs_ruby_lib physfs-ruby IMPORTED_LOCATION)
             set(_RUBY_VM_PHYSFS_FORCE_LOAD "-Wl,-force_load,${_physfs_ruby_lib}")
-            set(_RUBY_VM_PHYSFS_LINK_LIBS physfs c++)
+            set(_RUBY_VM_PHYSFS_LINK_LIBS
+                physfs
+                c++
+                "-framework IOKit"
+                "-framework Foundation"
+            )
         endif()
 
         target_link_libraries(ruby-vm
