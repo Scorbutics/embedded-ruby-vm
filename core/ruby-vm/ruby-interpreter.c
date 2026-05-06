@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdarg.h>
+#include <unistd.h>
 
 #include "embedded-ruby-vm/constants.h"
 #include "embedded-ruby-vm/embedded_scripts.h"
@@ -9,7 +11,25 @@
 #include "embedded-ruby-vm/ruby-vm.h"
 #include "embedded-ruby-vm/ruby-script.h"
 #include "embedded-ruby-vm/ruby-interpreter.h"
+#include "embedded-ruby-vm/log-listener.h"  /* logging_get_original_stderr_fd */
+#include "embedded-ruby-vm/logging.h"       /* logging_swap_listener */
 #include "embedded-ruby-vm/debug.h"
+
+/* Diagnostic log helper that bypasses the logging pipe — see ruby_vm_jni.c. */
+static void diag_log(const char* fmt, ...) {
+    char buf[1024];
+    va_list args;
+    va_start(args, fmt);
+    int n = vsnprintf(buf, sizeof(buf) - 1, fmt, args);
+    va_end(args);
+    if (n <= 0) return;
+    if (n > (int)sizeof(buf) - 1) n = (int)sizeof(buf) - 1;
+    buf[n++] = '\n';
+    int fd = logging_get_original_stderr_fd();
+    if (fd < 0) fd = 2;
+    ssize_t ignored = write(fd, buf, (size_t)n);
+    (void)ignored;
+}
 
 // Static global VM instance, protected by g_vm_mutex
 static RubyVM* g_global_vm = NULL;
@@ -42,6 +62,21 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
 
 void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
     if (!interpreter) return;
+
+    /* If this interpreter's listener is still bound to the global VM, swap
+     * it out under the logging system's lock before the caller frees any
+     * context referenced by the listener. Without this, the logging thread
+     * keeps draining buffered Ruby output and dispatching through the
+     * dangling listener — a UAF that crashes once the freed chunk is reused. */
+    pthread_mutex_lock(&g_vm_mutex);
+    if (g_global_vm != NULL &&
+        interpreter->vm == g_global_vm &&
+        g_global_vm->log_listener.context == interpreter->log_listener.context) {
+        LogListener empty;
+        log_listener_init(&empty);
+        logging_swap_listener(&g_global_vm->log_listener, empty);
+    }
+    pthread_mutex_unlock(&g_vm_mutex);
 
     free(interpreter->application_path);
     free(interpreter->ruby_base_directory);
@@ -96,9 +131,18 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
         }
         DEBUG_LOG("VM started successfully");
     } else {
-        // Update log listener under the lock to prevent concurrent reads
-        // from the logging thread seeing a partially-written struct
-        g_global_vm->log_listener = interpreter->log_listener;
+        /* Only swap if the listener actually differs — this is called on every
+         * execute_sync, so an unconditional struct copy would be pure overhead. */
+        if (memcmp(&g_global_vm->log_listener, &interpreter->log_listener,
+                   sizeof(LogListener)) != 0) {
+            diag_log("[JNI-DIAG] ensure_vm_initialized: swapping listener on g_global_vm=%p old_ctx=%p new_ctx=%p",
+                     (void*)g_global_vm,
+                     (void*)g_global_vm->log_listener.context,
+                     (void*)interpreter->log_listener.context);
+            /* Take the logging lock so any in-flight callback dispatch finishes
+             * before we overwrite the listener — see logging_swap_listener. */
+            logging_swap_listener(&g_global_vm->log_listener, interpreter->log_listener);
+        }
         interpreter->vm = g_global_vm;
 
         // Re-enable logging if the new interpreter has listener callbacks.

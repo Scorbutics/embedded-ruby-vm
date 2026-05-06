@@ -1,20 +1,19 @@
 # Extended Dockerfile with Android NDK support
-FROM eclipse-temurin:17-jdk
 
-# Build argument to control custom certificate installation
+# Build argument to control custom certificate installation.
+# Declared globally so it can drive stage selection in the FROM below.
 ARG INSTALL_CUSTOM_CERTS=false
 
-# Optional: Install custom CA certificates for corporate environments
-RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ]; then \
-        apt-get update && apt-get install -y openssl ca-certificates && \
-        mkdir -p /tmp/certs; \
-    fi
+FROM eclipse-temurin:17-jdk AS base
 
-# Copy certificates from local docker-certs/ directory
+# Stage used when INSTALL_CUSTOM_CERTS=false: no-op, no docker-certs/ needed.
+FROM base AS certs-false
+
+# Stage used when INSTALL_CUSTOM_CERTS=true: copy and install certs from docker-certs/.
+FROM base AS certs-true
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY docker-certs /tmp/certs-source/
-
-# Install certificates if custom certs were provided
-RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ "$(ls -A /tmp/certs-source 2>/dev/null | grep -v README)" ]; then \
+RUN if [ "$(ls -A /tmp/certs-source 2>/dev/null | grep -v README)" ]; then \
         echo "Installing custom CA certificates..." && \
         openssl version && \
         chmod +x /tmp/certs-source/*.sh 2>/dev/null || true && \
@@ -24,11 +23,14 @@ RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ "$(ls -A /tmp/certs-source 2>/d
         update-ca-certificates && \
         echo "Custom certificates installed successfully"; \
     else \
-        echo "Skipping custom certificate installation (no certificates found or not enabled)"; \
-    fi
+        echo "Skipping custom certificate installation (no certificates found)"; \
+    fi && \
+    rm -rf /tmp/certs-source
 
-# Clean up temporary cert files
-RUN rm -rf /tmp/certs-source
+# Final image starts from whichever cert stage matches the build arg.
+# BuildKit only builds the stage actually selected, so the unused branch's
+# COPY (which would fail without a local docker-certs/ dir) is never executed.
+FROM certs-${INSTALL_CUSTOM_CERTS} AS final
 
 # Install build tools
 RUN apt-get update && apt-get install -y \

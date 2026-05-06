@@ -10,6 +10,13 @@ add_executable(test_core
     test_core.c
 )
 
+# Regression: sentinel must reach the C side even when VMLogger log level is
+# raised to ERROR (NDEBUG=1 / RUBY_VM_LOG_LEVEL=2). Otherwise every script
+# burns the full logging_wait_for_sentinel timeout.
+add_executable(test_sentinel_log_level
+    test_sentinel_log_level.c
+)
+
 # Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
 # Link against embedded-ruby which combines logging, ruby-vm, and jni OBJECT libraries
@@ -17,6 +24,12 @@ target_link_libraries(test_core
     assets          # For assets_bootstrap() - handles extraction and library loading
     embedded-ruby   # For ruby-api-loader.h and all Ruby VM functionality
     dl              # For dlopen/dlsym in ruby-api-loader
+)
+
+target_link_libraries(test_sentinel_log_level
+    assets
+    embedded-ruby
+    dl
 )
 
 # For static builds, ensure libcrypt's dependency on libbsd is satisfied
@@ -44,11 +57,19 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_sentinel_log_level PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
     endif()
 endif()
 
 # Include directories for headers
 target_include_directories(test_core PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_sentinel_log_level PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -59,6 +80,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_sentinel_log_level PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
 endif()
 
 # Note: No RPATH needed since we're using static linking for libassets.a
@@ -66,3 +91,4 @@ endif()
 
 # Register with CTest
 add_test(NAME test_core COMMAND test_core WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_sentinel_log_level COMMAND test_sentinel_log_level WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

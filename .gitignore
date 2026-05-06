@@ -40,3 +40,4 @@ ruby_vm_test.log
 docker-compose.override.yml
 /docker-output/
 /docker-certs/*
+!/docker-certs/README.md

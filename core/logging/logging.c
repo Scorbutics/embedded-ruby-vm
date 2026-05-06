@@ -120,6 +120,49 @@ static logging_state_t g_logging_state = {
 static __thread logging_error_t g_last_error = LOGGING_ERROR_NONE;
 
 // ============================================================================
+// Drain barrier queue
+// ============================================================================
+//
+// FIFO queue of one-shot callbacks fired when LOGGING_DRAIN_BARRIER lines are
+// observed on the VMLOGGER pipe. logging_drain_async() must atomically append
+// to this queue AND write the barrier marker so pipe order matches queue
+// order across concurrent callers — g_drain_mutex provides that atomicity.
+
+typedef struct drain_node {
+    logging_drain_cb_t cb;
+    void* user_data;
+    struct drain_node* next;
+} drain_node_t;
+
+static drain_node_t* g_drain_queue_head = NULL;
+static drain_node_t* g_drain_queue_tail = NULL;
+static pthread_mutex_t g_drain_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Pop the head node. Caller must hold g_drain_mutex. Returns NULL when empty.
+static drain_node_t* drain_queue_pop_head_locked(void) {
+    drain_node_t* node = g_drain_queue_head;
+    if (node == NULL) return NULL;
+    g_drain_queue_head = node->next;
+    if (g_drain_queue_head == NULL) g_drain_queue_tail = NULL;
+    return node;
+}
+
+// write() wrapper that retries on partial writes and EINTR. Returns 0 on
+// success, -1 on error (errno preserved).
+static int write_all_bytes(int fd, const void* buf, size_t count) {
+    size_t total = 0;
+    while (total < count) {
+        ssize_t n = write(fd, (const char*)buf + total, count - total);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            return -1;
+        }
+        total += (size_t)n;
+    }
+    return 0;
+}
+
+// ============================================================================
 // Script completion sentinel synchronization
 // ============================================================================
 
@@ -167,6 +210,123 @@ int logging_sentinel_received(void) {
     int received = g_logging_state.sentinel_received;
     pthread_mutex_unlock(&g_logging_state.sentinel_mutex);
     return received;
+}
+
+void logging_swap_listener(LogListener* dest, LogListener src) {
+    if (!dest) return;
+    /* Acquire the same lock that call_custom_logging_function holds for the
+     * full callback dispatch — this serializes the swap with any in-flight
+     * callback that's reading *dest, preventing UAF when the caller is about
+     * to free a context referenced by the old listener. */
+    pthread_mutex_lock(&g_logging_state.lock);
+    *dest = src;
+    pthread_mutex_unlock(&g_logging_state.lock);
+}
+
+int logging_drain_async(logging_drain_cb_t cb, void* user_data) {
+    if (cb == NULL) return -1;
+
+    drain_node_t* node = malloc(sizeof(drain_node_t));
+    if (node == NULL) return -1;
+    node->cb = cb;
+    node->user_data = user_data;
+    node->next = NULL;
+
+    /* Snapshot the VMLOGGER write end without holding g_drain_mutex (a write()
+     * under that lock would serialize all drains and could starve callers
+     * if the pipe buffer fills). */
+    pthread_mutex_lock(&g_logging_state.lock);
+    int running = g_logging_state.is_running;
+    int write_fd = running ? g_logging_state.stream_pfd[VMLOGGER_INDEX][1] : -1;
+    pthread_mutex_unlock(&g_logging_state.lock);
+
+    if (!running || write_fd < 0) {
+        free(node);
+        return -1;
+    }
+
+    /* g_drain_mutex provides FIFO ordering: enqueue and pipe-write must be
+     * atomic relative to other concurrent drain_async callers, so the head
+     * of the queue always matches the next barrier marker the logging
+     * thread will read out of the pipe. */
+    pthread_mutex_lock(&g_drain_mutex);
+    if (g_drain_queue_tail == NULL) {
+        g_drain_queue_head = g_drain_queue_tail = node;
+    } else {
+        g_drain_queue_tail->next = node;
+        g_drain_queue_tail = node;
+    }
+
+    static const char marker[] = LOGGING_DRAIN_BARRIER "\n";
+    int rc = write_all_bytes(write_fd, marker, sizeof(marker) - 1);
+    pthread_mutex_unlock(&g_drain_mutex);
+
+    if (rc != 0) {
+        /* Pipe write failed — best-effort attempt to remove the node we just
+         * enqueued so a future barrier doesn't dispatch a stale callback. */
+        pthread_mutex_lock(&g_drain_mutex);
+        drain_node_t** link = &g_drain_queue_head;
+        while (*link != NULL && *link != node) link = &(*link)->next;
+        if (*link == node) {
+            *link = node->next;
+            if (g_drain_queue_tail == node) g_drain_queue_tail = (*link == NULL) ? NULL : g_drain_queue_tail;
+        }
+        pthread_mutex_unlock(&g_drain_mutex);
+        free(node);
+        return -2;
+    }
+    return 0;
+}
+
+/* Sync wrapper helper state — stack-allocated by logging_drain(). */
+typedef struct {
+    pthread_mutex_t mutex;
+    pthread_cond_t  cond;
+    int             done;
+} drain_sync_t;
+
+static void drain_sync_signal(void* user_data) {
+    drain_sync_t* s = (drain_sync_t*)user_data;
+    pthread_mutex_lock(&s->mutex);
+    s->done = 1;
+    pthread_cond_broadcast(&s->cond);
+    pthread_mutex_unlock(&s->mutex);
+}
+
+int logging_drain(int timeout_ms) {
+    drain_sync_t sync;
+    pthread_mutex_init(&sync.mutex, NULL);
+    pthread_cond_init(&sync.cond, NULL);
+    sync.done = 0;
+
+    int rc = logging_drain_async(drain_sync_signal, &sync);
+    if (rc != 0) {
+        pthread_cond_destroy(&sync.cond);
+        pthread_mutex_destroy(&sync.mutex);
+        return -2;  /* logging not running — also "nothing to drain" */
+    }
+
+    int result = 0;
+    pthread_mutex_lock(&sync.mutex);
+    if (timeout_ms <= 0) {
+        while (!sync.done) pthread_cond_wait(&sync.cond, &sync.mutex);
+    } else {
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec  += timeout_ms / 1000;
+        ts.tv_nsec += (timeout_ms % 1000) * 1000000L;
+        if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+        int wrc = 0;
+        while (!sync.done && wrc == 0) {
+            wrc = pthread_cond_timedwait(&sync.cond, &sync.mutex, &ts);
+        }
+        if (!sync.done) result = -1;
+    }
+    pthread_mutex_unlock(&sync.mutex);
+
+    pthread_cond_destroy(&sync.cond);
+    pthread_mutex_destroy(&sync.mutex);
+    return result;
 }
 
 /**
@@ -364,6 +524,35 @@ static int write_full_log_line(const char* line, log_stream_t stream) {
     // guaranteeing all user-visible output has been dispatched first.
     if (stream == LOG_STREAM_VMLOGGER && strstr(line, SCRIPT_COMPLETE_SENTINEL) != NULL) {
         logging_signal_sentinel();
+        return 0;
+    }
+
+    // Drain barrier: pop the head of the FIFO drain queue and fire its
+    // callback. We restore stdout/stderr to the original terminal FDs
+    // around the call (same protection call_custom_logging_function uses)
+    // so callbacks may safely write to those FDs without feedback-looping
+    // back into the logging pipe.
+    if (stream == LOG_STREAM_VMLOGGER && strstr(line, LOGGING_DRAIN_BARRIER) != NULL) {
+        pthread_mutex_lock(&g_drain_mutex);
+        drain_node_t* node = drain_queue_pop_head_locked();
+        pthread_mutex_unlock(&g_drain_mutex);
+
+        if (node != NULL) {
+            int have_redirect = (g_logging_state.original_stdout_fd != -1 &&
+                                 g_logging_state.pipe_stdout_write_fd != -1);
+            if (have_redirect) {
+                dup2(g_logging_state.original_stdout_fd, STDOUT_FILENO);
+                dup2(g_logging_state.original_stderr_fd, STDERR_FILENO);
+            }
+
+            if (node->cb != NULL) node->cb(node->user_data);
+
+            if (have_redirect) {
+                dup2(g_logging_state.pipe_stdout_write_fd, STDOUT_FILENO);
+                dup2(g_logging_state.pipe_stderr_write_fd, STDERR_FILENO);
+            }
+            free(node);
+        }
         return 0;
     }
 
@@ -930,6 +1119,21 @@ int logging_shutdown(void) {
     g_logging_state.is_initialized = 0;
 
     pthread_mutex_unlock(&g_logging_state.lock);
+
+    /* Fire any still-pending drain callbacks so synchronous waiters unblock
+     * — at shutdown the system is, by definition, drained. Done outside the
+     * logging lock since callbacks may be arbitrary code. */
+    pthread_mutex_lock(&g_drain_mutex);
+    drain_node_t* drain_current = g_drain_queue_head;
+    g_drain_queue_head = g_drain_queue_tail = NULL;
+    pthread_mutex_unlock(&g_drain_mutex);
+    while (drain_current != NULL) {
+        drain_node_t* next = drain_current->next;
+        if (drain_current->cb != NULL) drain_current->cb(drain_current->user_data);
+        free(drain_current);
+        drain_current = next;
+    }
+
     return 0;
 }
 

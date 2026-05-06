@@ -14,3 +14,9 @@
 // The logging system intercepts this on LOG_STREAM_VMLOGGER and signals
 // completion — it never reaches user callbacks.
 #define SCRIPT_COMPLETE_SENTINEL "<<<LOGS_FLUSHED>>>"
+
+// Drain barrier marker written by logging_drain_async() (via the C side, not
+// Ruby). Independent of SCRIPT_COMPLETE_SENTINEL so a test calling
+// logging_drain() never collides with an in-flight ruby_vm_execute_sync()
+// also waiting on the script sentinel.
+#define LOGGING_DRAIN_BARRIER "<<<DRAIN_BARRIER>>>"

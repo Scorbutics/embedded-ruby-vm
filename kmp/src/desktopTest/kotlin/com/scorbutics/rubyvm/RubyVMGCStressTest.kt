@@ -1,5 +1,7 @@
 package com.scorbutics.rubyvm
 
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -10,17 +12,53 @@ import kotlin.concurrent.thread
 
 /**
  * Stress test for Ruby VM GC and signal handling.
- * 
+ *
  * This test verifies that the Ruby VM can handle:
  * 1. Rapid script execution from multiple JVM threads
  * 2. Concurrent Ruby GC and JVM GC without crashes
  * 3. Signal masking preventing Ruby GC signals from crashing JVM threads
- * 
+ *
  * Context: Ruby's GC uses signals (SIGPROF/SIGALRM) to pause threads during
  * marking phase. When these signals hit JVM threads, they can cause segfaults.
  * This test ensures the signal masking in ruby_vm_execute_sync prevents this.
+ *
+ * Each test method is also wrapped in a UAF regression check: the
+ * JNICallbackContext magic canary increments a process-global counter
+ * whenever a logging callback observes a freed listener. We capture the
+ * counter at @BeforeTest, drain the logging system at @AfterTest so any
+ * still-buffered callbacks fire before we read, then assert the delta is 0.
+ * Any future regression of the listener-lifetime race fixed by
+ * logging_swap_listener will fail here loudly instead of silently corrupting
+ * memory.
  */
 class RubyVMGCStressTest {
+
+    private var badMagicBaseline = 0L
+
+    @BeforeTest
+    fun captureBadMagicBaseline() {
+        badMagicBaseline = RubyVMNative.getBadMagicCount()
+    }
+
+    @AfterTest
+    fun assertNoBadMagic() {
+        // Deterministic drain — pushes a barrier through the VMLOGGER pipe
+        // and blocks until the logging thread has dispatched every callback
+        // for data buffered up to this point. Replaces a Thread.sleep heuristic.
+        val drainResult = RubyVMNative.drainLogging(2000)
+        // -2 means "logging not running" which is also a valid drained state.
+        assertTrue(
+            drainResult == 0 || drainResult == -2,
+            "logging drain failed (rc=$drainResult); test cannot reliably assert UAF status"
+        )
+        val delta = RubyVMNative.getBadMagicCount() - badMagicBaseline
+        assertEquals(
+            0L,
+            delta,
+            "JNICallbackContext UAF detected: $delta BAD magic event(s) fired during test " +
+                "— see [JNI-DIAG] message_callback lines on stderr."
+        )
+    }
 
     @Test
     fun testRapidScriptExecutionWithGC() {

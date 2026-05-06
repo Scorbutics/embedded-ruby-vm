@@ -20,6 +20,10 @@ services:
     environment:
       - GRADLE_USER_HOME=/gradle-cache
       - GRADLE_OPTS=-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
+      # Disables the Kotlin/Native linuxX64 target in dev (its bundled glibc 2.18 sysroot
+      # can't link a libembedded-ruby.so produced from this container's modern glibc).
+      # CI keeps the target enabled and patches ld.gold instead.
+      - EMBEDDED_RUBY_VM_DEV=true
     working_dir: /workspace
     stdin_open: true
     tty: true

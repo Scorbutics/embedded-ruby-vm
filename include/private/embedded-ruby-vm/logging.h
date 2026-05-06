@@ -183,6 +183,26 @@ int logging_get_original_stdout_fd(void);
 int logging_get_original_stderr_fd(void);
 
 /**
+ * Atomically replace a LogListener under the logging system's internal lock.
+ *
+ * The custom-output callback dispatch path holds this same lock for the entire
+ * duration of every callback invocation. By taking it here, we guarantee that
+ * after this function returns, no callback will ever be dispatched through
+ * the OLD listener — any in-flight callback that was reading the old listener
+ * has already completed.
+ *
+ * Use this whenever the listener bound to a RubyVM (or any structure read by
+ * the logging thread) is being replaced or torn down. Without this protection,
+ * the logging thread can race with the swap and dispatch through a freed
+ * context, producing a use-after-free crash.
+ *
+ * @param dest Destination LogListener to overwrite (must remain valid for the
+ *             entire lifetime of any callback that reads it).
+ * @param src  New LogListener value to install (copied by value).
+ */
+void logging_swap_listener(LogListener* dest, LogListener src);
+
+/**
  * Reset the script completion sentinel state.
  * Must be called before each script execution to prepare for a fresh wait.
  */
@@ -206,6 +226,50 @@ int logging_wait_for_sentinel(int timeout_ms);
  * @return 1 if received, 0 if not
  */
 int logging_sentinel_received(void);
+
+/**
+ * Callback type for drain barriers. Fired from the logging thread once all
+ * data buffered in the pipes BEFORE the corresponding logging_drain_async()
+ * call has been read and dispatched.
+ *
+ * Execution context:
+ *   - Runs on the logging thread. Keep the work brief — the thread is
+ *     blocked on this callback and cannot drain further log data until it
+ *     returns.
+ *   - stdout/stderr are temporarily restored to the pre-redirect terminal
+ *     FDs while the callback runs (same protection as custom log
+ *     callbacks), so printf/fprintf are safe and won't feed back into the
+ *     logging pipes.
+ */
+typedef void (*logging_drain_cb_t)(void* user_data);
+
+/**
+ * Asynchronously install a one-shot drain barrier.
+ *
+ * Atomically (a) appends the (cb, user_data) pair to the FIFO drain queue
+ * and (b) writes a barrier marker to the VMLOGGER pipe. When the logging
+ * thread eventually reads that marker, it pops the head of the queue and
+ * invokes the callback. Atomicity ensures pipe order matches queue order
+ * even when multiple threads call this concurrently.
+ *
+ * @param cb        Callback to invoke once the barrier has been observed.
+ * @param user_data Opaque pointer passed through to cb.
+ * @return 0 on success; -1 if logging is not running; -2 on pipe write failure.
+ */
+int logging_drain_async(logging_drain_cb_t cb, void* user_data);
+
+/**
+ * Synchronous drain: blocks the calling thread until the logging system has
+ * finished dispatching every callback for data buffered before this call.
+ *
+ * Built on top of logging_drain_async() — the implementation registers an
+ * internal callback that signals a condition variable, then waits on it.
+ *
+ * @param timeout_ms Maximum wait in milliseconds. Pass 0 to block forever.
+ * @return 0 on successful drain; -1 on timeout; -2 if logging isn't running
+ *         (which is also a "drain successful" state — nothing to drain).
+ */
+int logging_drain(int timeout_ms);
 
 #ifdef __cplusplus
 }

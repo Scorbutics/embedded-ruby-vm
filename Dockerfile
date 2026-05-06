@@ -1,26 +1,22 @@
 # Multi-stage Dockerfile for embedded-ruby-vm development
 # Using Debian Linux with glibc for better compatibility with Kotlin/Native
-FROM eclipse-temurin:17-jdk-jammy AS builder
 
-# Build argument to control custom certificate installation
+# Build argument to control custom certificate installation.
+# Declared globally so it can drive stage selection in the FROM below.
 ARG INSTALL_CUSTOM_CERTS=false
 
-# Update package lists
-RUN apt-get update
+FROM eclipse-temurin:17-jdk-jammy AS base
 
-# Optional: Install custom CA certificates for corporate environments
-# This runs conditionally based on the build argument
-RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ]; then \
-        apt-get install -y --no-install-recommends openssl ca-certificates && \
-        mkdir -p /tmp/certs; \
-    fi
+# Stage used when INSTALL_CUSTOM_CERTS=false: no-op, no docker-certs/ needed.
+FROM base AS certs-false
 
-# Copy certificates from local docker-certs/ directory
-# This directory exists as a placeholder - populate it with your certs if needed
+# Stage used when INSTALL_CUSTOM_CERTS=true: copy and install certs from docker-certs/.
+FROM base AS certs-true
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 COPY docker-certs /tmp/certs-source/
-
-# Install certificates if custom certs were provided
-RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ "$(ls -A /tmp/certs-source 2>/dev/null | grep -v README)" ]; then \
+RUN if [ "$(ls -A /tmp/certs-source 2>/dev/null | grep -v README)" ]; then \
         echo "Installing custom CA certificates..." && \
         openssl version && \
         chmod +x /tmp/certs-source/*.sh 2>/dev/null || true && \
@@ -30,20 +26,25 @@ RUN if [ "$INSTALL_CUSTOM_CERTS" = "true" ] && [ "$(ls -A /tmp/certs-source 2>/d
         update-ca-certificates && \
         echo "Custom certificates installed successfully"; \
     else \
-        echo "Skipping custom certificate installation (no certificates found or not enabled)"; \
-    fi
+        echo "Skipping custom certificate installation (no certificates found)"; \
+    fi && \
+    rm -rf /tmp/certs-source
 
-# Clean up temporary cert files
-RUN rm -rf /tmp/certs-source
+# Builder starts from whichever cert stage matches the build arg.
+# BuildKit only builds the stage actually selected, so the unused branch's
+# COPY (which would fail without a local docker-certs/ dir) is never executed.
+FROM certs-${INSTALL_CUSTOM_CERTS} AS builder
 
 # Install build tools and dependencies for Debian/glibc
 # Install CMake, build tools, and Ruby dependencies
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     make \
     g++ \
     git \
     bash \
+    curl \
+    unzip \
     libgmp-dev \
     zlib1g-dev \
     pkg-config \

@@ -39,6 +39,23 @@ internal object RubyVMNative {
 
     external fun disableLogging(interpreterPtr: Long)
 
+    /**
+     * Test-only: cumulative count of use-after-free events caught by the
+     * JNICallbackContext magic canary in the JNI logging callbacks. A
+     * monotonically non-decreasing counter; tests bracket their bodies and
+     * assert delta == 0 to detect regressions of the listener-lifetime race
+     * fixed by logging_swap_listener.
+     */
+    external fun getBadMagicCount(): Long
+
+    /**
+     * Test-only: synchronously drain the logging system. Blocks until every
+     * callback dispatch for data buffered before this call has completed.
+     * @param timeoutMs Maximum wait in milliseconds. 0 blocks indefinitely.
+     * @return 0 on successful drain, -1 on timeout, -2 if logging not running.
+     */
+    external fun drainLogging(timeoutMs: Long): Int
+
     init {
         // Load native library using platform-specific loader
         NativeLibraryLoader.loadLibrary()

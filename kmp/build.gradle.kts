@@ -23,6 +23,15 @@ version = "1.0.0-SNAPSHOT"
 // trying to download missing kotlin-native-prebuilt packages.
 val isMacOs = System.getProperty("os.name").startsWith("Mac")
 
+// Kotlin/Native 1.9.22 ships a hermetic toolchain pinned to glibc 2.18; libembedded-ruby.so
+// built against the dev container's modern glibc references newer versioned symbols that the
+// bundled konan ld.gold cannot resolve. CI works around this by patching ld.gold with
+// --allow-shlib-undefined (see .github/workflows/build.yml). The dev container opts out via
+// EMBEDDED_RUBY_VM_DEV=true. Force one way or the other with -PenableLinuxX64Native=true|false.
+val isLinuxX64NativeEnabled: Boolean =
+    findProperty("enableLinuxX64Native")?.toString()?.toBoolean()
+        ?: (System.getenv("EMBEDDED_RUBY_VM_DEV") != "true")
+
 // Configuration for the native library name
 // This can be overridden via gradle.properties: nativeLibraryName=rgss_runtime
 val nativeLibraryName: String = findProperty("nativeLibraryName")?.toString() ?: "embedded-ruby"
@@ -86,18 +95,20 @@ kotlin {
 
     // Linux targets (uses cinterop)
     // Uses shared wrapper libraries (buildNativeLibsLinux forces this)
-    linuxX64 {
-        // No special configuration needed for the library itself - shared libraries
-        // work out of the box. Individual examples configure their own linker options.
-        // However, test binaries need linker opts to resolve C symbols.
-        binaries.all {
-            val libDir = project.file("libs/linux_x64").absoluteFile
-            linkerOpts(
-                "-L${libDir.absolutePath}",
-                "-lembedded-ruby",
-                "-lassets",
-                "-ldl", "-lpthread", "-lm"
-            )
+    if (isLinuxX64NativeEnabled) {
+        linuxX64 {
+            // No special configuration needed for the library itself - shared libraries
+            // work out of the box. Individual examples configure their own linker options.
+            // However, test binaries need linker opts to resolve C symbols.
+            binaries.all {
+                val libDir = project.file("libs/linux_x64").absoluteFile
+                linkerOpts(
+                    "-L${libDir.absolutePath}",
+                    "-lembedded-ruby",
+                    "-lassets",
+                    "-ldl", "-lpthread", "-lm"
+                )
+            }
         }
     }
 
@@ -170,12 +181,14 @@ kotlin {
         //     dependsOn(nativeMain)
         // }
 
-        val linuxX64Main by getting {
-            dependsOn(nativeMain)
-        }
+        if (isLinuxX64NativeEnabled) {
+            val linuxX64Main by getting {
+                dependsOn(nativeMain)
+            }
 
-        val linuxX64Test by getting {
-            dependsOn(nativeTest)
+            val linuxX64Test by getting {
+                dependsOn(nativeTest)
+            }
         }
 
         // val linuxArm64Main by getting {
@@ -438,12 +451,18 @@ if (enableASAN) {
     println("  AddressSanitizer: ENABLED (memory error detection)")
 }
 
-// Helper function to run CMake
+// Helper function to run CMake.
+//
+// Set runNativeTests = true for host-runnable builds (desktop) so the C-level
+// CTest suite (test_core, test_jni, test_sentinel_log_level, …) runs as part
+// of `gradle build`. Cross-compile targets (iOS, Android) leave it false —
+// their binaries can't execute on the build host.
 fun Project.runCMake(
     targetPlatform: String,
     architecture: String,
     cmakeArgs: List<String>,
-    outputDir: File
+    outputDir: File,
+    runNativeTests: Boolean = false
 ) {
     val cmakeBuildDir = file("${layout.buildDirectory.get()}/cmake/$targetPlatform-$architecture")
     cmakeBuildDir.mkdirs()
@@ -516,6 +535,21 @@ fun Project.runCMake(
         buildCommand.add(buildType)
 
         commandLine(*buildCommand.toTypedArray())
+    }
+
+    // Run the C-level CTest suite for host-runnable builds. Test binaries
+    // depend on libembedded-ruby.so via the bin/../lib RPATH; we set
+    // LD_LIBRARY_PATH explicitly to be safe across configurations where the
+    // RPATH may not be honored (e.g. some sandboxes / build farms).
+    if (runNativeTests) {
+        println("  Running native test suite (ctest)...")
+        exec {
+            workingDir = cmakeBuildDir
+            environment("LD_LIBRARY_PATH",
+                "${cmakeBuildDir.absolutePath}/lib:" +
+                (System.getenv("LD_LIBRARY_PATH") ?: ""))
+            commandLine("ctest", "--output-on-failure", "--build-config", buildType)
+        }
     }
 
     // Copy built libraries to output directory
@@ -726,7 +760,8 @@ tasks.register("buildNativeLibsDesktop") {
                 "desktop-$platformName",
                 arch,
                 cmakeArgs,
-                file("libs/$outputName")
+                file("libs/$outputName"),
+                runNativeTests = true
             )
         }
     }

@@ -90,6 +90,20 @@ module VMLogger
     end
   end
 
+  # Emit a protocol message that MUST reach the host regardless of @log_level.
+  # Used for control-channel payloads (e.g. the script-completion sentinel
+  # consumed by the C side's logging_wait_for_sentinel). Filtering these would
+  # break host/VM synchronization, not just suppress logs.
+  def self.protocol(message)
+    if @output_io
+      @output_io.puts(message)
+      @output_io.flush
+    else
+      STDOUT.puts(message)
+      STDOUT.flush
+    end
+  end
+
   private
 
   def self.write_out(message)

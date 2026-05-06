@@ -1,6 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdarg.h>
+#include <stdatomic.h>
+#include <stdint.h>
+#include <unistd.h>
 
 #include "embedded-ruby-vm/env.h"
 #include "embedded-ruby-vm/logging.h"
@@ -12,6 +16,39 @@
 #include "embedded-ruby-vm/ruby-interpreter.h"
 #include "embedded-ruby-vm/completion-task.h"
 #include "embedded-ruby-vm/debug.h"
+
+/*
+ * Diagnostic log helper that bypasses the logging pipe.
+ *
+ * Regular DEBUG_LOG / fprintf(stderr) is captured by the logging system's
+ * stderr redirect and dispatched back through jni_log_*_callback. After we
+ * stamp a context as DEAD inside destroy_jni_callback_context, those queued
+ * messages get rejected by the magic check — so any DESTROY log written
+ * during destruction is silently dropped. Routing diagnostic output to the
+ * pre-redirect terminal FD avoids that loop entirely.
+ */
+static void diag_log(const char* fmt, ...) {
+    char buf[1024];
+    va_list args;
+    va_start(args, fmt);
+    int n = vsnprintf(buf, sizeof(buf) - 1, fmt, args);
+    va_end(args);
+    if (n <= 0) return;
+    if (n > (int)sizeof(buf) - 1) n = (int)sizeof(buf) - 1;
+    buf[n++] = '\n';
+
+    int fd = logging_get_original_stderr_fd();
+    if (fd < 0) fd = 2; /* logging not yet redirected — plain stderr is fine */
+    ssize_t ignored = write(fd, buf, (size_t)n);
+    (void)ignored;
+}
+
+/* Process-global counter incremented every time a JNI log callback observes
+ * a non-LIVE magic on its JNICallbackContext — i.e. a use-after-free that
+ * was caught by the canary. Tests assert this counter does not advance
+ * during their execution to detect any regression of the listener-lifetime
+ * race fixed by logging_swap_listener. */
+static atomic_uint_fast64_t g_bad_magic_count = 0;
 
 /*
  * Cross-platform JNI thread attachment helpers.
@@ -125,6 +162,8 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
         return NULL;
     }
 
+    context->magic = JNI_CALLBACK_CONTEXT_MAGIC_LIVE;
+
     // Get JavaVM for later use in callbacks from native threads
     if ((*env)->GetJavaVM(env, &context->jvm) != JNI_OK) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JavaVM");
@@ -172,6 +211,10 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
         jni_log_write(JNI_LOG_WARN, "RubyVM", "onLogMessage method not found, using legacy callbacks only");
     }
 
+    diag_log("[JNI-DIAG] CREATE ctx=%p magic=0x%08x jvm=%p listener=%p",
+              (void*)context, context->magic, (void*)context->jvm,
+              (void*)context->kotlin_listener);
+
     return context;
 }
 
@@ -181,6 +224,15 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
  */
 static void destroy_jni_callback_context(JNICallbackContext* context) {
     if (!context) return;
+
+    diag_log("[JNI-DIAG] DESTROY entry ctx=%p magic=0x%08x jvm=%p listener=%p",
+              (void*)context, context->magic, (void*)context->jvm,
+              (void*)context->kotlin_listener);
+
+    if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
+        diag_log("[JNI-DIAG] DESTROY ctx=%p magic mismatch (got 0x%08x, expected 0x%08x) — double free or corruption!",
+                  (void*)context, context->magic, JNI_CALLBACK_CONTEXT_MAGIC_LIVE);
+    }
 
     JNIEnv* env = NULL;
     jint result = (*context->jvm)->GetEnv(context->jvm, (void**)&env, JNI_VERSION_1_6);
@@ -196,6 +248,13 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
         (*env)->DeleteGlobalRef(env, context->kotlin_listener);
     }
 
+    // Stamp dead magic and clear pointers so a UAF from the logging thread
+    // is detected (magic check) rather than crashing on the freed jvm pointer.
+    context->magic = JNI_CALLBACK_CONTEXT_MAGIC_DEAD;
+    context->jvm = NULL;
+    context->kotlin_listener = NULL;
+
+    diag_log("[JNI-DIAG] DESTROY freeing ctx=%p", (void*)context);
     free(context);
 }
 
@@ -230,6 +289,13 @@ static void jni_log_accept_callback(LogListener* listener, const char* message) 
     JNICallbackContext* context = (JNICallbackContext*) listener->context;
     if (!context) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL context");
+        return;
+    }
+
+    if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
+        atomic_fetch_add(&g_bad_magic_count, 1);
+        diag_log("[JNI-DIAG] accept_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p — UAF detected, dropping",
+                  (void*)listener, (void*)context, context->magic, (void*)context->jvm);
         return;
     }
 
@@ -288,6 +354,13 @@ static void jni_log_error_callback(LogListener* listener, const char* error_mess
         return;
     }
 
+    if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
+        atomic_fetch_add(&g_bad_magic_count, 1);
+        diag_log("[JNI-DIAG] error_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p — UAF detected, dropping",
+                  (void*)listener, (void*)context, context->magic, (void*)context->jvm);
+        return;
+    }
+
     // Get JNI environment for this thread (attaches as daemon if needed)
     JNIEnv* env = get_jni_env(context->jvm);
     if (!env) {
@@ -340,6 +413,13 @@ static void jni_log_message_callback(LogListener* listener, const char* message,
     JNICallbackContext* context = (JNICallbackContext*) listener->context;
     if (!context) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_message_callback: NULL context");
+        return;
+    }
+
+    if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
+        atomic_fetch_add(&g_bad_magic_count, 1);
+        diag_log("[JNI-DIAG] message_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p source=%d — UAF detected, dropping",
+                  (void*)listener, (void*)context, context->magic, (void*)context->jvm, (int)source);
         return;
     }
 
@@ -603,6 +683,9 @@ Java_com_scorbutics_rubyvm_RubyVMNative_destroyInterpreter(JNIEnv *env, jclass c
         callback_context = (JNICallbackContext*)listener->context;
     }
 
+    diag_log("[JNI-DIAG] destroyInterpreter entry: interpreter=%p listener=%p ctx=%p",
+              (void*)interpreter, (void*)listener, (void*)callback_context);
+
     // Destroy the interpreter first
     ruby_interpreter_destroy(interpreter);
     DEBUG_LOG("Interpreter destroyed");
@@ -861,4 +944,28 @@ Java_com_scorbutics_rubyvm_RubyVMNative_disableLogging(JNIEnv *env, jclass clazz
     }
 
     return 0;
+}
+
+/**
+ * Test-only: read the cumulative count of UAF events caught by the
+ * JNICallbackContext magic canary. Tests bracket their bodies with
+ * a baseline read and a delta == 0 assertion to detect any regression
+ * of the listener-lifetime race.
+ */
+JNIEXPORT jlong JNICALL
+Java_com_scorbutics_rubyvm_RubyVMNative_getBadMagicCount(JNIEnv* env, jclass clazz) {
+    (void)env; (void)clazz;
+    return (jlong)atomic_load(&g_bad_magic_count);
+}
+
+/**
+ * Test-only: synchronously drain the logging system. Returns 0 once every
+ * callback dispatch for data buffered before the call has completed; -1 on
+ * timeout; -2 if logging is not running. See logging_drain().
+ */
+JNIEXPORT jint JNICALL
+Java_com_scorbutics_rubyvm_RubyVMNative_drainLogging(JNIEnv* env, jclass clazz,
+                                                     jlong timeout_ms) {
+    (void)env; (void)clazz;
+    return (jint)logging_drain((int)timeout_ms);
 }
