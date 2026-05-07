@@ -28,8 +28,22 @@ class RubyVMGCStressTest {
     private fun createListener(): LogListener {
         return object : LogListener {
             override fun onLogMessage(logMessage: LogMessage) {
-                val prefix = if (logMessage.isError()) "ERROR" else "LOG"
-                println("  [$prefix][${logMessage.source}] ${logMessage.message}")
+                /* IMPORTANT: callbacks MUST NOT write to fd 1 / fd 2 (println,
+                 * System.out, printf...). That feedback-loops into the logging
+                 * system's redirected stdout/stderr pipes, the dispatch worker
+                 * keeps re-invoking us with growing strings, and the test
+                 * eventually starves out under bounded-queue drops or stalls
+                 * on a full pipe. See the contract in
+                 * include/private/embedded-ruby-vm/logging.h.
+                 *
+                 * For this stress test we only care that scripts complete —
+                 * we don't need to display per-script log lines. Print only
+                 * actual errors, and even then keep volume low so the
+                 * potentially-recursive output stays bounded by RECURSIVE-
+                 * cap-of-one-line-per-error rather than per-script. */
+                if (logMessage.isError()) {
+                    println("  [ERROR][${logMessage.source}] ${logMessage.message}")
+                }
             }
         }
     }

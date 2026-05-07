@@ -22,8 +22,15 @@ class RubyVMSmokeTest {
     private fun createListener(): LogListener {
         return object : LogListener {
             override fun onLogMessage(logMessage: LogMessage) {
-                val prefix = if (logMessage.isError()) "ERROR" else "LOG"
-                println("  [$prefix][${logMessage.source}] ${logMessage.message}")
+                /* Print only errors to avoid feedback-looping into the
+                 * logging system's redirected stdout pipe. See the contract
+                 * in include/private/embedded-ruby-vm/logging.h: callbacks
+                 * must not write to fd 1 / fd 2. The smoke test produces
+                 * little output anyway, so dropping non-error println keeps
+                 * the test functional without the recursion risk. */
+                if (logMessage.isError()) {
+                    println("  [ERROR][${logMessage.source}] ${logMessage.message}")
+                }
             }
         }
     }
