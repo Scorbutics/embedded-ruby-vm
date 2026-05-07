@@ -72,12 +72,13 @@ val generateBuildInfo = tasks.register("generateBuildInfo") {
     }
 }
 
-// Make every Kotlin compile task depend on the generator so the file exists
-// before any target tries to compile commonMain. configureEach handles all
-// existing and future-registered tasks (Android, JVM, native targets).
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompileTool<*>>().configureEach {
-    dependsOn(generateBuildInfo)
-}
+// Note: we intentionally do NOT wire generateBuildInfo via
+// tasks.withType<AbstractKotlinCompileTool>().configureEach { dependsOn(...) }.
+// That only covers compile tasks — but `androidReleaseSourcesJar` (and other
+// sources-jar tasks) also reads commonMain srcDirs and would still fail
+// Gradle 8's strict input/output validation. Instead, we pass the TaskProvider
+// directly to kotlin.srcDirs(...) below, which makes Gradle auto-wire the
+// dependency for every consumer of commonMain sources.
 
 // Detect available platforms based on what native libs have been pre-staged
 val stagedJniLibs = file("src/main/jniLibs")
@@ -194,7 +195,9 @@ kotlin {
         val commonMain by getting {
             // Reference shared Kotlin code from kmp project (no duplication)
             // plus the generated BuildInfo.kt (version + build timestamp).
-            kotlin.srcDirs("../kmp/src/commonMain/kotlin", generatedBuildInfoDir)
+            // Passing the TaskProvider (not just a path) lets Gradle auto-wire
+            // the dependency to every consumer of commonMain sources.
+            kotlin.srcDirs("../kmp/src/commonMain/kotlin", generateBuildInfo)
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             }
