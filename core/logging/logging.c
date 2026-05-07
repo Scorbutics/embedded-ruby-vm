@@ -329,6 +329,258 @@ int logging_drain(int timeout_ms) {
     return result;
 }
 
+// ============================================================================
+// Async dispatch queue
+// ============================================================================
+//
+// Custom-output callbacks, drain-barrier callbacks, and the script-completion
+// sentinel run on a dedicated worker thread (g_dispatch_thread), NOT on the
+// logger thread that drains the pipes. This decouples callback execution
+// from pipe drainage so a slow or stdout-writing callback can never stall
+// the pipe reader and deadlock the runtime.
+//
+// CALLBACK CONTRACT (see logging.h / log-listener.h): callbacks must NOT
+// write to fd 1 / fd 2 (the redirected stdout/stderr). Use the platform's
+// async log channel — __android_log_print / android.util.Log on Android,
+// os_log on Apple, sd_journal_print on Linux/journald — those bypass the
+// pipe. If a callback genuinely needs a "raw terminal" channel, write()
+// directly to logging_get_original_stdout_fd() / _stderr_fd().
+//
+// A callback that violates the contract by printing to fd 1/2 will produce
+// more pipe data, which the logger thread will read, which will enqueue
+// another LOG_LINE, which the worker will dispatch — recursion bounded only
+// by the queue cap. The bounded queue (DISPATCH_QUEUE_MAX_LOG_LINES) prevents
+// runaway memory growth in that pathological case; LOG_LINE items are
+// dropped on overflow with a periodic logcat warning. Control items
+// (DRAIN_BARRIER, SENTINEL) bypass the bound — dropping them would break
+// host/VM synchronization.
+
+#define DISPATCH_QUEUE_MAX_LOG_LINES 1024
+
+typedef enum {
+    DISPATCH_LOG_LINE = 0,
+    DISPATCH_DRAIN_BARRIER = 1,
+    DISPATCH_SENTINEL = 2
+} dispatch_item_type_t;
+
+typedef struct dispatch_item {
+    dispatch_item_type_t type;
+    union {
+        struct {
+            char* line;        /* heap copy, freed after dispatch */
+            log_stream_t stream;
+        } log_line;
+        struct {
+            logging_drain_cb_t cb;
+            void* user_data;
+        } drain;
+        /* SENTINEL has no payload */
+    } data;
+    struct dispatch_item* next;
+} dispatch_item_t;
+
+static dispatch_item_t* g_dispatch_head = NULL;
+static dispatch_item_t* g_dispatch_tail = NULL;
+static int g_dispatch_log_line_count = 0;
+static unsigned long g_dispatch_dropped_total = 0;
+static int g_dispatch_thread_continue = 0;
+static int g_dispatch_thread_started = 0;
+static pthread_t g_dispatch_thread;
+static pthread_mutex_t g_dispatch_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_dispatch_cond = PTHREAD_COND_INITIALIZER;
+
+/* Caller MUST hold g_dispatch_mutex. Inserts at tail and signals one waiter. */
+static void dispatch_enqueue_locked(dispatch_item_t* item) {
+    item->next = NULL;
+    if (g_dispatch_tail == NULL) {
+        g_dispatch_head = g_dispatch_tail = item;
+    } else {
+        g_dispatch_tail->next = item;
+        g_dispatch_tail = item;
+    }
+    if (item->type == DISPATCH_LOG_LINE) g_dispatch_log_line_count++;
+    pthread_cond_signal(&g_dispatch_cond);
+}
+
+/* Try to enqueue a log line. Drops on backpressure. Bytes are copied. */
+static void dispatch_try_enqueue_log_line(const char* line, log_stream_t stream) {
+    pthread_mutex_lock(&g_dispatch_mutex);
+    if (g_dispatch_log_line_count >= DISPATCH_QUEUE_MAX_LOG_LINES) {
+        unsigned long dropped = ++g_dispatch_dropped_total;
+        pthread_mutex_unlock(&g_dispatch_mutex);
+        /* Surface drops periodically (every 256th drop) so prolonged
+         * backpressure is visible without flooding logcat. */
+        if ((dropped & 0xFFu) == 1u) {
+            jni_log_printf(JNI_LOG_WARN, g_logging_state.log_tag,
+                           "Logging dispatch queue full; dropped %lu lines so far",
+                           dropped);
+        }
+        return;
+    }
+    pthread_mutex_unlock(&g_dispatch_mutex);
+
+    dispatch_item_t* item = malloc(sizeof(*item));
+    if (item == NULL) return;
+    item->type = DISPATCH_LOG_LINE;
+    item->data.log_line.line = strdup(line);
+    if (item->data.log_line.line == NULL) { free(item); return; }
+    item->data.log_line.stream = stream;
+
+    pthread_mutex_lock(&g_dispatch_mutex);
+    dispatch_enqueue_locked(item);
+    pthread_mutex_unlock(&g_dispatch_mutex);
+}
+
+/* Force-enqueue a drain barrier. On OOM, fire the cb inline (on the logger
+ * thread) so synchronization doesn't hang — the cost is minor since OOM
+ * here is a degenerate case. */
+static void dispatch_enqueue_drain_barrier(logging_drain_cb_t cb, void* user_data) {
+    dispatch_item_t* item = malloc(sizeof(*item));
+    if (item == NULL) {
+        if (cb != NULL) cb(user_data);
+        return;
+    }
+    item->type = DISPATCH_DRAIN_BARRIER;
+    item->data.drain.cb = cb;
+    item->data.drain.user_data = user_data;
+
+    pthread_mutex_lock(&g_dispatch_mutex);
+    dispatch_enqueue_locked(item);
+    pthread_mutex_unlock(&g_dispatch_mutex);
+}
+
+/* Force-enqueue a script-completion sentinel. On OOM, signal directly. */
+static void dispatch_enqueue_sentinel(void) {
+    dispatch_item_t* item = malloc(sizeof(*item));
+    if (item == NULL) {
+        logging_signal_sentinel();
+        return;
+    }
+    item->type = DISPATCH_SENTINEL;
+
+    pthread_mutex_lock(&g_dispatch_mutex);
+    dispatch_enqueue_locked(item);
+    pthread_mutex_unlock(&g_dispatch_mutex);
+}
+
+/* Invoke all registered custom-output callbacks for one log line. Runs on
+ * the dispatch worker thread; holds g_logging_state.lock for the duration
+ * of the iteration to serialize against logging_add_custom_output /
+ * logging_remove_custom_output / logging_swap_listener. */
+static void dispatch_invoke_custom_callbacks(log_stream_t stream, const char* line) {
+    pthread_mutex_lock(&g_logging_state.lock);
+    custom_output_node_t* node = g_logging_state.custom_outputs;
+    while (node != NULL) {
+        if (node->func != NULL && node->context != NULL) {
+            int err = node->func(line, stream, node->context);
+            if (err != 0) {
+                /* Surface the failure via thread-local error state.
+                 * set_last_error() is defined later in the file, so assign
+                 * directly here to avoid a forward-declaration. */
+                g_last_error = LOGGING_ERROR_CUSTOM_CALLBACK_FAILED;
+            }
+        }
+        node = node->next;
+    }
+    pthread_mutex_unlock(&g_logging_state.lock);
+}
+
+/* Worker thread: pure callback dispatcher. Reads the queue, invokes the
+ * appropriate callback per item, never touches any pipe FD. */
+static void* dispatch_thread_function(void* arg) {
+    (void)arg;
+
+    for (;;) {
+        pthread_mutex_lock(&g_dispatch_mutex);
+        while (g_dispatch_head == NULL && g_dispatch_thread_continue) {
+            pthread_cond_wait(&g_dispatch_cond, &g_dispatch_mutex);
+        }
+        if (g_dispatch_head == NULL) {
+            /* Empty + shutdown requested */
+            pthread_mutex_unlock(&g_dispatch_mutex);
+            break;
+        }
+        dispatch_item_t* item = g_dispatch_head;
+        g_dispatch_head = item->next;
+        if (g_dispatch_head == NULL) g_dispatch_tail = NULL;
+        if (item->type == DISPATCH_LOG_LINE) g_dispatch_log_line_count--;
+        pthread_mutex_unlock(&g_dispatch_mutex);
+
+        switch (item->type) {
+            case DISPATCH_LOG_LINE:
+                dispatch_invoke_custom_callbacks(item->data.log_line.stream,
+                                                 item->data.log_line.line);
+                free(item->data.log_line.line);
+                break;
+            case DISPATCH_DRAIN_BARRIER:
+                if (item->data.drain.cb != NULL) {
+                    item->data.drain.cb(item->data.drain.user_data);
+                }
+                break;
+            case DISPATCH_SENTINEL:
+                logging_signal_sentinel();
+                break;
+        }
+        free(item);
+    }
+
+    return NULL;
+}
+
+/* Start the dispatch worker. Idempotent. */
+static int dispatch_thread_start(void) {
+    pthread_mutex_lock(&g_dispatch_mutex);
+    if (g_dispatch_thread_started) {
+        pthread_mutex_unlock(&g_dispatch_mutex);
+        return 0;
+    }
+    g_dispatch_thread_continue = 1;
+    pthread_mutex_unlock(&g_dispatch_mutex);
+
+    if (pthread_create(&g_dispatch_thread, NULL, dispatch_thread_function, NULL) != 0) {
+        pthread_mutex_lock(&g_dispatch_mutex);
+        g_dispatch_thread_continue = 0;
+        pthread_mutex_unlock(&g_dispatch_mutex);
+        return -1;
+    }
+
+    pthread_mutex_lock(&g_dispatch_mutex);
+    g_dispatch_thread_started = 1;
+    pthread_mutex_unlock(&g_dispatch_mutex);
+    return 0;
+}
+
+/* Stop the dispatch worker. The worker drains all currently-queued items
+ * before exiting (the wait loop only blocks when the queue is empty). Must
+ * be called AFTER the logger thread has joined so no new items can be
+ * enqueued while/after we shut down. */
+static void dispatch_thread_stop(void) {
+    pthread_mutex_lock(&g_dispatch_mutex);
+    if (!g_dispatch_thread_started) {
+        pthread_mutex_unlock(&g_dispatch_mutex);
+        return;
+    }
+    g_dispatch_thread_continue = 0;
+    pthread_cond_broadcast(&g_dispatch_cond);
+    pthread_mutex_unlock(&g_dispatch_mutex);
+
+    pthread_join(g_dispatch_thread, NULL);
+
+    pthread_mutex_lock(&g_dispatch_mutex);
+    g_dispatch_thread_started = 0;
+    /* Defensive cleanup: free any items still queued. Should be empty since
+     * the worker drains before exiting and the logger has joined. */
+    while (g_dispatch_head != NULL) {
+        dispatch_item_t* it = g_dispatch_head;
+        g_dispatch_head = it->next;
+        if (it->type == DISPATCH_LOG_LINE) free(it->data.log_line.line);
+        free(it);
+    }
+    g_dispatch_tail = NULL;
+    g_dispatch_log_line_count = 0;
+    pthread_mutex_unlock(&g_dispatch_mutex);
+}
+
 /**
  * Internal: Set the last error for the current thread
  */
@@ -457,100 +709,41 @@ static int call_native_logging_function(int prio, const char* tag, const char* t
     return error;
 }
 
-/**
- * Write log message to all custom output callbacks.
- *
- * While callbacks execute, stdout/stderr are temporarily restored to the
- * original (pre-redirect) file descriptors. This prevents a feedback loop:
- * if a callback writes to stdout (e.g. println), that output goes to the
- * real terminal instead of back into the logging pipe.
- *
- * Returns 0 on success, negative error code if any callback fails.
- * Sets thread-local last error to the first failure encountered.
- */
-static int call_custom_logging_function(log_stream_t stream, const char* line) {
-    // Temporarily swap stdout/stderr to the original (pre-redirect) FDs.
-    // Any output produced by callbacks (e.g. println) will go directly to
-    // the terminal, breaking the feedback loop that would otherwise occur
-    // when the callback's output re-enters the logging pipe.
-    int have_redirect = (g_logging_state.original_stdout_fd != -1 &&
-                         g_logging_state.pipe_stdout_write_fd != -1);
-    if (have_redirect) {
-        dup2(g_logging_state.original_stdout_fd, STDOUT_FILENO);
-        dup2(g_logging_state.original_stderr_fd, STDERR_FILENO);
-    }
-
-    pthread_mutex_lock(&g_logging_state.lock);
-
-    custom_output_node_t* current = g_logging_state.custom_outputs;
-    int error = 0;
-    int first_error_code = 0;
-
-    while (current != NULL) {
-        if (current->func != NULL && current->context != NULL) {
-            int callback_error = current->func(line, stream, current->context);
-            if (callback_error != 0) {
-                // Store first error for detailed reporting
-                if (first_error_code == 0) {
-                    first_error_code = callback_error;
-                    set_last_error(LOGGING_ERROR_CUSTOM_CALLBACK_FAILED);
-                }
-                // Accumulate all errors (preserves existing OR behavior)
-                error |= callback_error;
-            }
-        }
-        current = current->next;
-    }
-
-    pthread_mutex_unlock(&g_logging_state.lock);
-
-    // Restore stdout/stderr to point back to the logging pipe.
-    if (have_redirect) {
-        dup2(g_logging_state.pipe_stdout_write_fd, STDOUT_FILENO);
-        dup2(g_logging_state.pipe_stderr_write_fd, STDERR_FILENO);
-    }
-
-    return error;
-}
+/* Custom-output callback dispatch lives on the worker thread now — see
+ * dispatch_invoke_custom_callbacks() above. The previous synchronous
+ * implementation here used a process-global dup2 swap on STDOUT_FILENO /
+ * STDERR_FILENO around each callback to prevent feedback loops; that swap
+ * raced with concurrent writes from the script thread (the script's
+ * write(2) could land between the swap-out and swap-back, sending bytes to
+ * /dev/null). The async-dispatch design eliminates the race entirely:
+ * callbacks run off the logger thread, and the contract requires they not
+ * write to fd 1/2 — so no swap is needed. */
 
 /**
  * Output a complete log line to all configured outputs
  * Returns 0 on success, negative if any output fails
  */
 static int write_full_log_line(const char* line, log_stream_t stream) {
-    // Intercept the script completion sentinel before it reaches any callbacks.
-    // The sentinel arrives on VMLOGGER (index 2), which is processed AFTER
-    // RUBY_STDOUT (index 0) and RUBY_STDERR (index 1) in the select loop,
-    // guaranteeing all user-visible output has been dispatched first.
+    /* Intercept the script-completion sentinel. Forwarded to the dispatch
+     * worker as a control item so it fires AFTER all preceding LOG_LINE
+     * items have been delivered to callbacks (FIFO ordering preserved). */
     if (stream == LOG_STREAM_VMLOGGER && strstr(line, SCRIPT_COMPLETE_SENTINEL) != NULL) {
-        logging_signal_sentinel();
+        dispatch_enqueue_sentinel();
         return 0;
     }
 
-    // Drain barrier: pop the head of the FIFO drain queue and fire its
-    // callback. We restore stdout/stderr to the original terminal FDs
-    // around the call (same protection call_custom_logging_function uses)
-    // so callbacks may safely write to those FDs without feedback-looping
-    // back into the logging pipe.
+    /* Drain barrier: pop the head of the FIFO drain queue and forward its
+     * callback to the dispatch worker, where it fires AFTER all preceding
+     * LOG_LINE items. No FD swap — drain callbacks run on the worker, not
+     * the logger thread, and callbacks must follow the no-stdout/stderr
+     * contract documented in logging.h. */
     if (stream == LOG_STREAM_VMLOGGER && strstr(line, LOGGING_DRAIN_BARRIER) != NULL) {
         pthread_mutex_lock(&g_drain_mutex);
         drain_node_t* node = drain_queue_pop_head_locked();
         pthread_mutex_unlock(&g_drain_mutex);
 
         if (node != NULL) {
-            int have_redirect = (g_logging_state.original_stdout_fd != -1 &&
-                                 g_logging_state.pipe_stdout_write_fd != -1);
-            if (have_redirect) {
-                dup2(g_logging_state.original_stdout_fd, STDOUT_FILENO);
-                dup2(g_logging_state.original_stderr_fd, STDERR_FILENO);
-            }
-
-            if (node->cb != NULL) node->cb(node->user_data);
-
-            if (have_redirect) {
-                dup2(g_logging_state.pipe_stdout_write_fd, STDOUT_FILENO);
-                dup2(g_logging_state.pipe_stderr_write_fd, STDERR_FILENO);
-            }
+            dispatch_enqueue_drain_barrier(node->cb, node->user_data);
             free(node);
         }
         return 0;
@@ -559,19 +752,21 @@ static int write_full_log_line(const char* line, log_stream_t stream) {
     const char* tag = (g_logging_state.log_tag != NULL) ? g_logging_state.log_tag : "UNKNOWN";
     int priority = (stream == LOG_STREAM_RUBY_STDERR) ? LOG_ERROR : LOG_INFO;
 
+    /* Native logging (logcat / __android_log_print etc.) is fast and writes
+     * to a dedicated platform channel that does not feed back into our
+     * pipes, so we keep it inline on the logger thread. Custom callbacks
+     * may be slow and may be implemented in JNI/Kotlin/JVM, so they're
+     * dispatched asynchronously. */
     int native_logging_error = call_native_logging_function(priority, tag, line);
-    int custom_logging_error = call_custom_logging_function(stream, line);
-
     if (native_logging_error != 0) {
-        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "write_full_log_line: Native logging callback failed (error %d)", native_logging_error);
+        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag,
+                       "write_full_log_line: Native logging callback failed (error %d)",
+                       native_logging_error);
     }
 
-    if (custom_logging_error != 0) {
-        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "write_full_log_line: Custom logging callback failed (error %d)", custom_logging_error);
-    }
+    dispatch_try_enqueue_log_line(line, stream);
 
-    // Return combined error status (OR of both errors)
-    return native_logging_error | custom_logging_error;
+    return native_logging_error;
 }
 
 /**
@@ -943,11 +1138,28 @@ static int internal_start_logging_thread(void) {
         return LOGGING_ERROR_DUP2_FAILED;
     }
 
+    // Start the dispatch worker first so it's ready to receive items the
+    // moment the logger thread starts producing them.
+    if (dispatch_thread_start() != 0) {
+        set_last_error(LOGGING_ERROR_THREAD_CREATE_FAILED);
+        close(g_logging_state.original_stdout_fd);
+        close(g_logging_state.original_stderr_fd);
+        close(g_logging_state.pipe_stdout_write_fd);
+        close(g_logging_state.pipe_stderr_write_fd);
+        g_logging_state.original_stdout_fd = -1;
+        g_logging_state.original_stderr_fd = -1;
+        g_logging_state.pipe_stdout_write_fd = -1;
+        g_logging_state.pipe_stderr_write_fd = -1;
+        cleanup_streams();
+        return LOGGING_ERROR_THREAD_CREATE_FAILED;
+    }
+
     // Start logging thread
     g_logging_state.thread_continue = 1;
     if (pthread_create(&g_logging_state.logging_thread, NULL, logging_function_thread, NULL) != 0) {
         set_last_error(LOGGING_ERROR_THREAD_CREATE_FAILED);
         // Note: Cannot call call_native_logging_function here - called with mutex held
+        dispatch_thread_stop();
         close(g_logging_state.original_stdout_fd);
         close(g_logging_state.original_stderr_fd);
         close(g_logging_state.pipe_stdout_write_fd);
@@ -988,6 +1200,16 @@ static int internal_stop_logging_thread(void) {
     // Unlock before joining to allow thread to complete
     pthread_mutex_unlock(&g_logging_state.lock);
     int result = pthread_join(g_logging_state.logging_thread, NULL);
+
+    /* Stop the dispatch worker AFTER the logger thread has joined so no
+     * new items can be enqueued during shutdown. The worker drains all
+     * already-queued items before exiting. Done outside g_logging_state.lock
+     * because the worker takes that lock during callback iteration — holding
+     * it here would deadlock. */
+    if (result == 0) {
+        dispatch_thread_stop();
+    }
+
     pthread_mutex_lock(&g_logging_state.lock);
 
     if (result != 0) {

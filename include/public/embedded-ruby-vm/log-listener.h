@@ -65,10 +65,24 @@ static inline void log_listener_init(LogListener* listener) {
 /**
  * Get the original stdout file descriptor (before logging redirected it).
  *
- * The logging system redirects process-wide stdout/stderr to capture native
- * C library output. Log listener callbacks MUST use this FD for their own
- * output to avoid a feedback loop (callback writes to stdout -> logging
- * thread reads it -> calls callback again -> infinite loop -> crash).
+ * The logging system redirects process-wide stdout/stderr (fd 1 / fd 2) to
+ * pipes so the logger thread can capture native C library output (printf,
+ * std::cerr, SFML errors, etc.) and forward it to registered listeners.
+ *
+ * CALLBACK CONTRACT — log listener callbacks MUST NOT write to fd 1 / fd 2.
+ * Doing so feeds the bytes back into the pipes the logger is reading,
+ * triggering another callback invocation; the resulting recursion is
+ * bounded only by the dispatch queue cap (lines beyond it are dropped with
+ * periodic warnings). Prefer the platform's async log channel for callback
+ * output:
+ *   - Android (C):    __android_log_print / __android_log_write
+ *   - Android (JVM):  android.util.Log.d / .i / .w / .e
+ *   - Apple:          os_log
+ *   - Linux/systemd:  sd_journal_print
+ *
+ * If the callback genuinely needs a "raw terminal" channel for diagnostics,
+ * write() directly to the FD returned by this function — those are the
+ * pre-redirect FDs and bypass the pipes entirely.
  *
  * @return Original stdout FD (>= 0), or -1 if logging has not redirected stdout
  */
@@ -76,6 +90,8 @@ int logging_get_original_stdout_fd(void);
 
 /**
  * Get the original stderr file descriptor (before logging redirected it).
+ *
+ * Same callback contract and usage notes as logging_get_original_stdout_fd.
  *
  * @return Original stderr FD (>= 0), or -1 if logging has not redirected stderr
  * @see logging_get_original_stdout_fd

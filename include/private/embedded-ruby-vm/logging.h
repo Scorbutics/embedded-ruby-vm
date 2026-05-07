@@ -57,10 +57,48 @@ typedef enum {
 typedef int (*logging_native_logging_func_t)(int priority, const char* tag, const char* text);
 
 /**
- * Custom output callback type
- * @param line Complete log line (null-terminated, without newline)
- * @param stream Which stream this came from (stdout or stderr)
+ * Custom output callback type.
+ *
+ * @param line    Complete log line (null-terminated, without newline)
+ * @param stream  Which stream this came from (one of LOG_STREAM_RUBY_STDOUT,
+ *                LOG_STREAM_RUBY_STDERR, LOG_STREAM_VMLOGGER,
+ *                LOG_STREAM_NATIVE_STDOUT, LOG_STREAM_NATIVE_STDERR)
  * @param context User-defined context pointer
+ *
+ * EXECUTION CONTEXT
+ * -----------------
+ * Callbacks run on the logging system's dedicated dispatch worker thread —
+ * NOT the thread that runs the script and NOT the thread that drains the
+ * pipes. Callback latency therefore does not stall pipe drainage.
+ *
+ * CONTRACT — DO NOT WRITE TO fd 1 / fd 2 FROM A CALLBACK
+ * -------------------------------------------------------
+ * Callbacks MUST NOT write to the redirected stdout/stderr file descriptors
+ * (fd 1, fd 2). Bytes written there go into the same pipes the logger
+ * thread is reading, which would cause every callback's output to trigger
+ * another callback invocation — bounded only by the dispatch queue cap
+ * (DISPATCH_QUEUE_MAX_LOG_LINES; lines beyond it are dropped, with periodic
+ * warnings surfaced via logcat).
+ *
+ * Use the platform's async log channel instead — it bypasses the pipes:
+ *   - Android (C):    __android_log_print / __android_log_write
+ *   - Android (JVM):  android.util.Log.d / .i / .w / .e
+ *   - Apple:          os_log
+ *   - Linux/systemd:  sd_journal_print
+ *
+ * If a callback genuinely needs a "raw terminal" channel for diagnostics,
+ * write() directly to logging_get_original_stdout_fd() /
+ * logging_get_original_stderr_fd() — those are the pre-redirect FDs and do
+ * not feed back into the pipes.
+ *
+ * THREAD SAFETY
+ * -------------
+ * The dispatch worker holds an internal lock for the duration of the
+ * callback iteration (the same lock taken by logging_swap_listener,
+ * logging_add_custom_output, logging_remove_custom_output). Do NOT call
+ * those functions from inside the callback — that would deadlock.
+ *
+ * @return 0 on success; non-zero is logged but does not stop dispatch.
  */
 typedef int (*logging_custom_output_func_t)(const char* line, log_stream_t stream, void* context);
 
@@ -185,19 +223,19 @@ int logging_get_original_stderr_fd(void);
 /**
  * Atomically replace a LogListener under the logging system's internal lock.
  *
- * The custom-output callback dispatch path holds this same lock for the entire
- * duration of every callback invocation. By taking it here, we guarantee that
- * after this function returns, no callback will ever be dispatched through
- * the OLD listener — any in-flight callback that was reading the old listener
- * has already completed.
+ * The dispatch worker holds this same lock for the entire duration of every
+ * callback invocation (see dispatch_invoke_custom_callbacks in logging.c).
+ * By taking it here, we guarantee that after this function returns, no
+ * callback will ever be dispatched through the OLD listener — any in-flight
+ * callback that was reading the old listener has already completed.
  *
- * Use this whenever the listener bound to a RubyVM (or any structure read by
- * the logging thread) is being replaced or torn down. Without this protection,
- * the logging thread can race with the swap and dispatch through a freed
+ * Use this whenever the listener bound to a RubyVM (or any structure read
+ * by callbacks) is being replaced or torn down. Without this protection,
+ * the dispatch worker can race with the swap and dispatch through a freed
  * context, producing a use-after-free crash.
  *
- * @param dest Destination LogListener to overwrite (must remain valid for the
- *             entire lifetime of any callback that reads it).
+ * @param dest Destination LogListener to overwrite (must remain valid for
+ *             the entire lifetime of any callback that reads it).
  * @param src  New LogListener value to install (copied by value).
  */
 void logging_swap_listener(LogListener* dest, LogListener src);
@@ -228,18 +266,20 @@ int logging_wait_for_sentinel(int timeout_ms);
 int logging_sentinel_received(void);
 
 /**
- * Callback type for drain barriers. Fired from the logging thread once all
- * data buffered in the pipes BEFORE the corresponding logging_drain_async()
- * call has been read and dispatched.
+ * Callback type for drain barriers. Fired by the dispatch worker once every
+ * LOG_LINE item buffered before the corresponding logging_drain_async()
+ * call has been delivered to all custom-output callbacks. (FIFO ordering
+ * is preserved because drain barriers traverse the same dispatch queue as
+ * LOG_LINE items.)
  *
  * Execution context:
- *   - Runs on the logging thread. Keep the work brief — the thread is
- *     blocked on this callback and cannot drain further log data until it
- *     returns.
- *   - stdout/stderr are temporarily restored to the pre-redirect terminal
- *     FDs while the callback runs (same protection as custom log
- *     callbacks), so printf/fprintf are safe and won't feed back into the
- *     logging pipes.
+ *   - Runs on the dispatch worker thread, NOT the logger thread that reads
+ *     the pipes. The logger thread continues draining while this callback
+ *     runs, so a slow drain callback no longer blocks pipe reads.
+ *   - Same NO-stdout/stderr CONTRACT as logging_custom_output_func_t (see
+ *     above): do NOT write to fd 1 / fd 2; use __android_log_print / Log.x
+ *     / os_log / sd_journal_print, or write() to
+ *     logging_get_original_stdout_fd() / _stderr_fd().
  */
 typedef void (*logging_drain_cb_t)(void* user_data);
 

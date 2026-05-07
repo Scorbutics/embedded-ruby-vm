@@ -36,16 +36,31 @@ begin
   socket = IO.for_fd(socket_fd, "r+")
   socket.sync = true  # Disable buffering - critical for real-time communication!
 
-  # Redirect Ruby's stdout and stderr to dedicated log streams
-  # We need to use IO.reopen to actually replace the underlying file descriptors
-  # This ensures both Ruby-level ($stdout) and C-level (STDOUT_FILENO) use the same FD
-  ruby_stdout_io = IO.for_fd(ruby_stdout_fd, "w")
-  ruby_stdout_io.sync = true
-  $stdout.reopen(ruby_stdout_io)
+  # Bind Ruby's $stdout / $stderr to dedicated high-numbered pipe FDs that
+  # are independent of process fd 1 / fd 2. Plain assignment (not IO#reopen):
+  # IO#reopen would dup2 the source FD onto self.fileno (== 1 / 2), which
+  # collapses the Ruby-side and native-side streams onto the same kernel FD
+  # and erases the categorization the C runtime set up — every C-extension
+  # printf / SFML std::cerr would land in RUBY_STDOUT/STDERR alongside Ruby
+  # script output.
+  #
+  # By assigning instead, $stdout / $stderr point at high FDs (RUBY pipes)
+  # while fd 1 / fd 2 keep the C-side dup2 routing to NATIVE pipes, giving
+  # the host four distinct streams to categorize:
+  #   - RUBY_STDOUT/STDERR : `puts`, `warn`, raise backtraces (Kernel methods
+  #                          go through $stdout/$stderr)
+  #   - NATIVE_STDOUT/STDERR : printf / std::cerr from C extensions, SFML,
+  #                            PhysFS, libc, plus any explicit STDOUT.puts /
+  #                            STDERR.puts (the constants stay at fileno 1/2)
+  #
+  # This also sidesteps the dup2 race that the dispatch worker thread would
+  # otherwise expose: the swap-back targets fd 1/2, so anything we keep on
+  # high FDs is structurally immune.
+  $stdout = IO.for_fd(ruby_stdout_fd, "w")
+  $stdout.sync = true
 
-  ruby_stderr_io = IO.for_fd(ruby_stderr_fd, "w")
-  ruby_stderr_io.sync = true
-  $stderr.reopen(ruby_stderr_io)
+  $stderr = IO.for_fd(ruby_stderr_fd, "w")
+  $stderr.sync = true
 
   # Redirect VMLogger output to its dedicated FD
   vmlogger_io = IO.for_fd(vmlogger_fd, "w")
