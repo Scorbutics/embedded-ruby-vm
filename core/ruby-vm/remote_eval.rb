@@ -100,9 +100,20 @@ module RemoteEval
           end
           begin
             accept_loop(host, port, token)
+            # accept_loop is documented as never returning; if it does, the
+            # listener is silently dead. Surface that loudly.
+            VMLogger.error "[RemoteEval] accept_loop returned without raising — listener thread will exit"
           rescue Exception => e
             VMLogger.error "[RemoteEval] listener crashed: #{e.class}: #{e.message}"
             (e.backtrace || []).first(15).each { |l| VMLogger.error "[RemoteEval]   #{l}" }
+          ensure
+            # macOS CI hit a "listener gone between connections" failure that
+            # was completely invisible because the thread exited cleanly and
+            # the `session opened/closed` VMLogger.info logs are filtered
+            # under NDEBUG=LOG_ERROR. This ensure-block fires on any exit
+            # path (return / exception / Thread#kill) so the operator at
+            # least sees the moment the listener went away.
+            VMLogger.error "[RemoteEval] listener thread exiting (host=#{host} port=#{port})"
           end
         end
         # Ruby >= 2.5 prints uncaught exceptions on Thread death by default.
@@ -154,8 +165,13 @@ module RemoteEval
         return
       end
 
+      # NOTE: per-connection lifecycle is logged at ERROR level (not INFO) so
+      # it stays visible under NDEBUG=LOG_ERROR — the macOS CI build runs
+      # this configuration and a silent listener-disappearance bug there
+      # cost us a full diagnostic loop. The volume is low (one pair per
+      # client session) so the noise is acceptable.
       begin
-        VMLogger.info "[RemoteEval] session opened"
+        VMLogger.error "[RemoteEval] session opened (peer=#{addr_for(client_addr)})"
         run_session(sock)
       rescue => e
         VMLogger.error "[RemoteEval] session error: #{e.class}: #{e.message}"
@@ -163,8 +179,20 @@ module RemoteEval
       ensure
         @session_mutex.unlock
         sock.close rescue nil
-        VMLogger.info "[RemoteEval] session closed"
+        VMLogger.error "[RemoteEval] session closed (peer=#{addr_for(client_addr)})"
       end
+    end
+
+    # Best-effort "host:port" string for logging. Returns "?" for things that
+    # don't quack like an Addrinfo so we never raise here.
+    def addr_for(client_addr)
+      if client_addr.respond_to?(:ip_address)
+        "#{client_addr.ip_address}:#{client_addr.ip_port}"
+      else
+        client_addr.to_s
+      end
+    rescue
+      "?"
     end
 
     def run_session(sock)
