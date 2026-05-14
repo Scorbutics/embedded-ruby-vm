@@ -93,6 +93,12 @@ static int wait_for_listener(const char* host, int port, int total_timeout_ms) {
         if (fd >= 0) { close(fd); return 0; }
         usleep(step_ms * 1000);
         elapsed += step_ms;
+        /* Heartbeat every 500 ms so a hang is visible in the log rather
+         * than just a silent ~timeout. */
+        if (elapsed % 500 == 0) {
+            LOGF("  wait_for_listener: %d ms elapsed, still no listener on %s:%d\n",
+                 elapsed, host, port);
+        }
     }
     return -1;
 }
@@ -248,14 +254,19 @@ static int scenario_empty_token_refused(void) {
 
 static int scenario_listener_up_and_eval(void) {
     LOGF("[test_remote_eval] scenario_listener_up_and_eval START\n");
+    LOGF("  step: calling make_interpreter()...\n");
     RubyInterpreter* interp = make_interpreter();
     if (!interp) { LOGF("  interpreter.create failed\n"); return 10; }
+    LOGF("  step: make_interpreter() returned %p\n", (void*)interp);
 
     RubyVMRemoteEvalOptions opts = {
         .host = "127.0.0.1", .port = TEST_EVAL_PORT,
         .token = TEST_TOKEN, .session_name = "test_remote_eval",
     };
+    LOGF("  step: calling enable_remote_eval(host=%s, port=%d, token=%s)...\n",
+         opts.host, opts.port, opts.token);
     int rc = ruby_api.interpreter.enable_remote_eval(interp, &opts);
+    LOGF("  step: enable_remote_eval returned rc=%d\n", rc);
     if (rc != RUBY_VM_OK) {
         LOGF("  enable_remote_eval failed: %d (%s)\n",
              rc, ruby_api.interpreter.get_error_message(interp));
@@ -263,11 +274,13 @@ static int scenario_listener_up_and_eval(void) {
         return 11;
     }
 
+    LOGF("  step: polling wait_for_listener (timeout %d ms)...\n", LISTENER_WAIT_MS);
     if (wait_for_listener("127.0.0.1", TEST_EVAL_PORT, LISTENER_WAIT_MS) != 0) {
         LOGF("  no listener on 127.0.0.1:%d after %d ms\n", TEST_EVAL_PORT, LISTENER_WAIT_MS);
         ruby_api.interpreter.destroy(interp);
         return 12;
     }
+    LOGF("  step: wait_for_listener succeeded\n");
 
     /* Real protocol round-trip. */
     int fd = connect_and_auth(TEST_EVAL_PORT, TEST_TOKEN);

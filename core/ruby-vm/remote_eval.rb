@@ -87,14 +87,28 @@ module RemoteEval
           # Make sure a crash in the accept loop is visible — but do NOT take
           # the whole VM down with us. abort_on_exception=false (the default)
           # is what we want; we just want stack traces in the log.
-          Thread.current.name = session_label
+          #
+          # NOTE: rescue Exception (not StandardError) so LoadError / NameError
+          # / unexpected ScriptError-class issues also get logged. With the
+          # default StandardError rescue, a `require` failure or an Encoding
+          # issue inside the accept loop would silently kill the thread and
+          # leave operators staring at an unbound port. macOS in particular
+          # has bitten us with non-StandardError surprises here.
+          begin
+            Thread.current.name = session_label
+          rescue Exception # ignore — name= is best-effort, e.g. macOS pthread limits
+          end
           begin
             accept_loop(host, port, token)
-          rescue => e
+          rescue Exception => e
             VMLogger.error "[RemoteEval] listener crashed: #{e.class}: #{e.message}"
-            e.backtrace.first(15).each { |l| VMLogger.error "[RemoteEval]   #{l}" }
+            (e.backtrace || []).first(15).each { |l| VMLogger.error "[RemoteEval]   #{l}" }
           end
         end
+        # Ruby >= 2.5 prints uncaught exceptions on Thread death by default.
+        # Belt + braces: make sure that stays on in case any consumer flipped
+        # it off globally.
+        @listener_thread.report_on_exception = true if @listener_thread.respond_to?(:report_on_exception=)
 
         VMLogger.info "[RemoteEval] listening on #{host}:#{port} (session: #{session_label})"
       end
