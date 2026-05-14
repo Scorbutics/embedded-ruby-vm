@@ -32,6 +32,13 @@ add_executable(test_remote_debug
     test_remote_debug.c
 )
 
+# Remote line-eval console: verifies the RemoteEval listener comes up, the
+# cookie handshake works, basic eval round-trips, wrong cookies are dropped,
+# and expose/attach gives access to a script-registered local Binding.
+add_executable(test_remote_eval
+    test_remote_eval.c
+)
+
 # Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
 # Link against embedded-ruby which combines logging, ruby-vm, and jni OBJECT libraries
@@ -54,6 +61,12 @@ target_link_libraries(test_dispatch_queue
 )
 
 target_link_libraries(test_remote_debug
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_remote_eval
     assets
     embedded-ruby
     dl
@@ -96,6 +109,10 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_remote_eval PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
     endif()
 endif()
 
@@ -113,6 +130,10 @@ target_include_directories(test_dispatch_queue PRIVATE
     ${CMAKE_SOURCE_DIR}/include/public
 )
 target_include_directories(test_remote_debug PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_remote_eval PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -135,6 +156,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_remote_eval PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
 endif()
 
 # Note: No RPATH needed since we're using static linking for libassets.a
@@ -145,3 +170,4 @@ add_test(NAME test_core COMMAND test_core WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTP
 add_test(NAME test_sentinel_log_level COMMAND test_sentinel_log_level WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_dispatch_queue COMMAND test_dispatch_queue WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_remote_debug COMMAND test_remote_debug WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_remote_eval COMMAND test_remote_eval WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

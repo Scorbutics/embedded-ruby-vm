@@ -56,20 +56,33 @@ actual class RubyInterpreter private constructor(
 
     actual fun enableRemoteDebug(host: String?, port: Int, token: String, sessionName: String?): Int {
         check(!isDestroyed.get()) { "Interpreter has been destroyed" }
+        return runOnWorker("RubyVM-EnableRemoteDebug") {
+            RubyVMNative.enableRemoteDebug(interpreterPtr, host, port, token, sessionName)
+        }
+    }
 
-        // Must run on a JVM worker thread, not the calling thread. Booting the
-        // VM spawns a native pthread for the FIFO interpreter; if Ruby's GC
-        // signals were to be delivered to the JVM main thread later, it would
-        // crash (same constraint that drives `enqueue`'s thread{} wrapper).
-        // We block here until the eager-boot returns so the caller sees the
-        // listener-up status before continuing.
+    actual fun enableRemoteEval(host: String?, port: Int, token: String, sessionName: String?): Int {
+        check(!isDestroyed.get()) { "Interpreter has been destroyed" }
+        return runOnWorker("RubyVM-EnableRemoteEval") {
+            RubyVMNative.enableRemoteEval(interpreterPtr, host, port, token, sessionName)
+        }
+    }
+
+    /**
+     * Run [block] on a fresh JVM worker thread and block until it returns
+     * its int result. Both enable_remote_* JNI calls eagerly boot the VM,
+     * which spawns a native pthread for the FIFO interpreter; if Ruby's
+     * GC signals reached the JVM main thread later, the JVM would crash.
+     * Same constraint that drives `enqueue`'s thread{} wrapper.
+     */
+    private fun runOnWorker(name: String, block: () -> Int): Int {
         val result = AtomicInteger(0)
         val latch = CountDownLatch(1)
-        thread(name = "RubyVM-EnableRemoteDebug", isDaemon = false) {
+        thread(name = name, isDaemon = false) {
             try {
-                result.set(RubyVMNative.enableRemoteDebug(interpreterPtr, host, port, token, sessionName))
+                result.set(block())
             } catch (e: Exception) {
-                System.err.println("[RubyVM] enableRemoteDebug failed: ${e.message}")
+                System.err.println("[RubyVM] $name failed: ${e.message}")
                 e.printStackTrace()
                 result.set(-1)
             } finally {

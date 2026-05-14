@@ -94,6 +94,57 @@ static void SetupRubyEnv(const char* baseDirectory, const char* extraLoadPath)
 // It calls all the Init_* functions (Init_monitor, Init_readline, etc.)
 extern void Init_ext(void);
 
+// Pull the message out of $! (rb_errinfo) and report it on stderr, then
+// clear the error so subsequent Ruby calls aren't confused. Use this after
+// any rb_eval_string_protect call that came back with a non-zero state.
+// `what` is a short label describing what was being attempted; it's
+// prepended to the message in the "[Ruby VM] Failed to <what>: ..." line.
+static void report_ruby_eval_error(const char* what) {
+    VALUE err = rb_errinfo();
+    const char* msg = "<no message>";
+    if (!NIL_P(err)) {
+        VALUE m = rb_funcall(err, rb_intern("message"), 0);
+        if (RB_TYPE_P(m, T_STRING)) msg = StringValueCStr(m);
+    }
+    fprintf(stderr, "[Ruby VM] Failed to %s: %s\n", what, msg);
+    rb_set_errinfo(Qnil);
+}
+
+// Evaluate an embedded script (looked up by name) safely.
+//
+// The scripts are stored as objcopy-embedded byte spans bracketed by
+// _binary_<name>_rb_{start,end} symbols. They are NOT null-terminated —
+// objcopy emits raw bytes. Calling `rb_eval_string(start)` would read past
+// `_end` into whatever .data section follows, which produced silent
+// duplicate-constant warnings (and worse, double-evaluation of code) once
+// a second embedded script landed adjacent to safe_runner.rb's bytes.
+//
+// We work around it by copying the bytes into a heap buffer with an
+// explicit trailing NUL, evaluating that, then freeing. `state_out` is
+// optional; when non-NULL we use rb_eval_string_protect, otherwise the
+// plain rb_eval_string. Returns -1 if the script name is unknown or
+// allocation failed, 0 otherwise (Ruby errors are surfaced via *state_out).
+static int eval_embedded_script(const char* script_name, int* state_out) {
+    const char* src = embedded_script_get_content(script_name);
+    size_t      len = embedded_script_get_size(script_name);
+    if (!src || len == 0) {
+        return -1;
+    }
+    char* buf = malloc(len + 1);
+    if (!buf) {
+        return -1;
+    }
+    memcpy(buf, src, len);
+    buf[len] = '\0';
+    if (state_out) {
+        rb_eval_string_protect(buf, state_out);
+    } else {
+        rb_eval_string(buf);
+    }
+    free(buf);
+    return 0;
+}
+
 // Build argv with variable number of arguments
 static char** build_ruby_argv_va(int* argc_out,
                                  const char* script_content,
@@ -206,132 +257,181 @@ static void SetupCompromiseSignalHandlers(void) {
 }
 #endif
 
+// Fetch the three Ruby log-stream FDs from the logging subsystem; on any
+// failure fall back to the process's real stdout/stderr so the VM can
+// still produce output even without the logging system initialized.
+static void setup_log_fds(int* ruby_stdout_fd, int* ruby_stderr_fd, int* vmlogger_fd) {
+    *ruby_stdout_fd = logging_get_stream_fd(LOG_STREAM_RUBY_STDOUT);
+    *ruby_stderr_fd = logging_get_stream_fd(LOG_STREAM_RUBY_STDERR);
+    *vmlogger_fd    = logging_get_stream_fd(LOG_STREAM_VMLOGGER);
+
+    if (*ruby_stdout_fd < 0 || *ruby_stderr_fd < 0 || *vmlogger_fd < 0) {
+        fprintf(stderr, "Failed to get log stream file descriptors: stdout=%d, stderr=%d, vmlogger=%d\n",
+                *ruby_stdout_fd, *ruby_stderr_fd, *vmlogger_fd);
+        *ruby_stdout_fd = STDOUT_FILENO;
+        *ruby_stderr_fd = STDERR_FILENO;
+        *vmlogger_fd    = STDERR_FILENO;
+    }
+}
+
+// Set RUBY_DEBUG_* env vars BEFORE ruby_options so the debug gem's config
+// (read inside DEBUGGER__.open) picks them up. The matching
+// `require 'debug/open'` must run AFTER ruby_options so $LOAD_PATH is
+// populated from RUBYLIB; that's what arm_remote_debug_listener does.
+static void setenv_remote_debug(const RubyVMRemoteDebugOptions* opts) {
+    char port_str[16];
+    snprintf(port_str, sizeof(port_str), "%d", opts->port);
+    setenv("RUBY_DEBUG_HOST",    opts->host,  1);
+    setenv("RUBY_DEBUG_PORT",    port_str,    1);
+    setenv("RUBY_DEBUG_COOKIE",  opts->token, 1);
+    setenv("RUBY_DEBUG_NONSTOP", "1",         1);
+    if (opts->session_name) {
+        setenv("RUBY_DEBUG_SESSION_NAME", opts->session_name, 1);
+    }
+}
+
+// Same env-before-options pattern for the eval listener. RemoteEval.start
+// reads these via ENV[...] at runtime.
+static void setenv_remote_eval(const RubyVMRemoteEvalOptions* opts) {
+    char port_str[16];
+    snprintf(port_str, sizeof(port_str), "%d", opts->port);
+    setenv("REMOTE_EVAL_HOST",  opts->host,  1);
+    setenv("REMOTE_EVAL_PORT",  port_str,    1);
+    setenv("REMOTE_EVAL_TOKEN", opts->token, 1);
+    if (opts->session_name) {
+        setenv("REMOTE_EVAL_SESSION_NAME", opts->session_name, 1);
+    }
+}
+
+// Arm the Ruby `debug` gem's TCP listener now that $LOAD_PATH has been
+// built up by ruby_options. Failure is non-fatal — the VM continues even
+// if the debugger can't start.
+static void arm_remote_debug_listener(const RubyVMRemoteDebugOptions* opts) {
+    int state = 0;
+    rb_eval_string_protect("require 'debug/open'", &state);
+    if (state != 0) {
+        report_ruby_eval_error("start remote debugger");
+    } else {
+        fprintf(stderr, "[Ruby VM] Remote debugger listening on %s:%d\n",
+                opts->host, opts->port);
+    }
+}
+
+// Always pre-load the RemoteEval module — defines `module RemoteEval`
+// without starting any listener. This lets a *post-boot* call to
+// ruby_interpreter_enable_remote_eval inject `RemoteEval.start(...)` via
+// a sync script enqueue. Cost: ~7 KB of Ruby always parsed at boot,
+// regardless of whether the eval listener is configured.
+static void preload_remote_eval_module(void) {
+    int state = 0;
+    if (eval_embedded_script("remote_eval.rb", &state) != 0) {
+        fprintf(stderr, "[Ruby VM] remote_eval.rb not embedded — eval listener unavailable\n");
+    } else if (state != 0) {
+        report_ruby_eval_error("define RemoteEval module");
+    }
+}
+
+// Boot-time arming of the eval listener; only called if remote_eval was
+// configured before ruby_vm_start. Post-boot enables go through the
+// inject path in ruby-interpreter.c.
+static void start_remote_eval_listener(const RubyVMRemoteEvalOptions* opts) {
+    int state = 0;
+    rb_eval_string_protect(
+        "RemoteEval.start(host: ENV['REMOTE_EVAL_HOST'],"
+        " port: Integer(ENV['REMOTE_EVAL_PORT']),"
+        " token: ENV['REMOTE_EVAL_TOKEN'],"
+        " session_name: ENV['REMOTE_EVAL_SESSION_NAME'])",
+        &state);
+    if (state != 0) {
+        report_ruby_eval_error("start remote eval listener");
+    } else {
+        fprintf(stderr, "[Ruby VM] Remote eval listening on %s:%d\n",
+                opts->host, opts->port);
+    }
+}
+
+// Bring the Ruby C-API into a usable state: ruby_init, restore signal
+// handlers we saved before (Android), wire static extensions, and load
+// safe_runner. Must run inside the RUBY_INIT_STACK scope opened by the
+// caller.
+static void initialize_ruby_runtime(void) {
+    ruby_init();
+
+#ifdef RUBY_REDIRECT_SIGNALS
+    // ruby_init overwrote signal handlers; restore Android-critical ones
+    // and install our compromise handlers for shared signals.
+    RestoreCriticalSignalHandlers();
+    SetupCompromiseSignalHandlers();
+    // Disable Ruby's SIGPIPE handler so writes to a closed peer fail with
+    // EPIPE rather than killing the VM.
+    rb_eval_string("Signal.trap('PIPE', 'SYSTEM_DEFAULT')\n");
+#endif
+
+    // CRITICAL: static-linked extensions need their Init_<name> called.
+    // With --with-static-linked-ext (and no dynamic dlopen), `require 'X'`
+    // for a built-in C ext only works once Init_X has run.
+    Init_ext();
+    if (g_custom_ext_init != NULL) {
+        g_custom_ext_init();
+    }
+
+    // Load safe_runner.rb from memory and provide it so user scripts that
+    // `require 'safe_runner'` get a no-op (the modules are already loaded).
+    if (eval_embedded_script("safe_runner.rb", NULL) == 0) {
+        rb_provide("safe_runner");
+    }
+}
+
 static int run_main_vm_node(const char* baseDirectory,
                             const char* rubyExtraLoadPath,
                             const char* scriptContent,
                             int fromFilename,
                             int socket_fd,
-                            const RubyVMRemoteDebugOptions* remote_debug)
+                            const RubyVMRemoteDebugOptions* remote_debug,
+                            const RubyVMRemoteEvalOptions* remote_eval)
 {
     SetupRubyEnv(baseDirectory, rubyExtraLoadPath);
 
 #ifdef RUBY_REDIRECT_SIGNALS
-    // Step 1: Save Android's original signal handlers
+    // Save handlers BEFORE ruby_sysinit/ruby_init clobber them, so we can
+    // re-install the ones Android needs (in initialize_ruby_runtime).
     SaveOriginalSignalHandlers();
 #endif
 
-    // Get file descriptors for separate log streams
-    int ruby_stdout_fd = logging_get_stream_fd(LOG_STREAM_RUBY_STDOUT);
-    int ruby_stderr_fd = logging_get_stream_fd(LOG_STREAM_RUBY_STDERR);
-    int vmlogger_fd = logging_get_stream_fd(LOG_STREAM_VMLOGGER);
+    int ruby_stdout_fd, ruby_stderr_fd, vmlogger_fd;
+    setup_log_fds(&ruby_stdout_fd, &ruby_stderr_fd, &vmlogger_fd);
 
-    if (ruby_stdout_fd < 0 || ruby_stderr_fd < 0 || vmlogger_fd < 0) {
-        fprintf(stderr, "Failed to get log stream file descriptors: stdout=%d, stderr=%d, vmlogger=%d\n",
-                ruby_stdout_fd, ruby_stderr_fd, vmlogger_fd);
-        // Fall back to old behavior - will use regular stdout/stderr
-        // This ensures backward compatibility if logging is not initialized
-        ruby_stdout_fd = STDOUT_FILENO;
-        ruby_stderr_fd = STDERR_FILENO;
-        vmlogger_fd = STDERR_FILENO;
-    }
-
-    char socket_fd_str[32];
-    char ruby_stdout_fd_str[32];
-    char ruby_stderr_fd_str[32];
-    char vmlogger_fd_str[32];
-
-    snprintf(socket_fd_str, sizeof(socket_fd_str), "%d", socket_fd);
-    snprintf(ruby_stdout_fd_str, sizeof(ruby_stdout_fd_str), "%d", ruby_stdout_fd);
-    snprintf(ruby_stderr_fd_str, sizeof(ruby_stderr_fd_str), "%d", ruby_stderr_fd);
-    snprintf(vmlogger_fd_str, sizeof(vmlogger_fd_str), "%d", vmlogger_fd);
+    char socket_fd_str[32], ruby_stdout_fd_str[32], ruby_stderr_fd_str[32], vmlogger_fd_str[32];
+    snprintf(socket_fd_str,        sizeof(socket_fd_str),        "%d", socket_fd);
+    snprintf(ruby_stdout_fd_str,   sizeof(ruby_stdout_fd_str),   "%d", ruby_stdout_fd);
+    snprintf(ruby_stderr_fd_str,   sizeof(ruby_stderr_fd_str),   "%d", ruby_stderr_fd);
+    snprintf(vmlogger_fd_str,      sizeof(vmlogger_fd_str),      "%d", vmlogger_fd);
 
     int argc;
-    char **argv = build_ruby_argv_va(&argc, scriptContent, fromFilename,
-                                     4, socket_fd_str, ruby_stdout_fd_str, ruby_stderr_fd_str, vmlogger_fd_str);  // 4 extra args
+    char** argv = build_ruby_argv_va(&argc, scriptContent, fromFilename,
+                                     4, socket_fd_str, ruby_stdout_fd_str, ruby_stderr_fd_str, vmlogger_fd_str);
 
-    // Step 2: Initialize Ruby (this will overwrite signal handlers)
     ruby_sysinit(&argc, &argv);
-
     {
         RUBY_INIT_STACK;
-        ruby_init();
 
-#ifdef RUBY_REDIRECT_SIGNALS
-        // Step 3: Restore critical handlers that Android needs
-        RestoreCriticalSignalHandlers();
+        initialize_ruby_runtime();
 
-        // Step 4: Setup compromise handlers for shared signals
-        SetupCompromiseSignalHandlers();
-
-        // Step 5: Disable Ruby's signal handling for problematic signals
-        // This is done via Ruby's API
-        rb_eval_string(
-                "Signal.trap('PIPE', 'SYSTEM_DEFAULT')\n"  // Let system handle SIGPIPE
-        );
-#endif
-
-        // CRITICAL: Initialize statically-linked extensions (Init_monitor, Init_readline, etc.)
-        // This is required when linking against libruby-static.a with --with-static-linked-ext
-        // Without this, require 'monitor' will fail with "cannot load such file -- monitor.so"
-        Init_ext();
-
-        // Call custom extension initializer if set
-        // This allows external projects to register their own statically-linked extensions
-        // that will be resolvable via require statements
-        if (g_custom_ext_init != NULL) {
-            g_custom_ext_init();
-        }
-
-        // Load embedded safe_runner.rb from memory and mark it as provided,
-        // so that `require 'safe_runner'` in any script is a no-op
-        // (the modules are already defined in the Ruby VM)
-        {
-            const char* safe_runner_content = embedded_script_get_content("safe_runner.rb");
-            if (safe_runner_content != NULL) {
-                rb_eval_string(safe_runner_content);
-                rb_provide("safe_runner");
-            }
-        }
-
-        // Set RUBY_DEBUG_* env vars BEFORE ruby_options so the debug gem's
-        // config (read in DEBUGGER__.open) picks them up. The actual
-        // `require 'debug/open'` must run AFTER ruby_options, since that's
-        // what populates $LOAD_PATH from RUBYLIB. Without that ordering the
-        // require fails with "cannot load such file -- debug/open".
-        if (remote_debug != NULL) {
-            char port_str[16];
-            snprintf(port_str, sizeof(port_str), "%d", remote_debug->port);
-            setenv("RUBY_DEBUG_HOST",    remote_debug->host,  1);
-            setenv("RUBY_DEBUG_PORT",    port_str,            1);
-            setenv("RUBY_DEBUG_COOKIE",  remote_debug->token, 1);
-            setenv("RUBY_DEBUG_NONSTOP", "1",                 1);
-            if (remote_debug->session_name) {
-                setenv("RUBY_DEBUG_SESSION_NAME", remote_debug->session_name, 1);
-            }
-        }
+        // Pre-`ruby_options` env: both listener configs are read from ENV[]
+        // either by the debug gem (via DEBUGGER__.open) or by RemoteEval.start.
+        // ruby_options is what populates $LOAD_PATH from RUBYLIB; we set env
+        // now and arm the listeners AFTER it returns.
+        if (remote_debug != NULL) setenv_remote_debug(remote_debug);
+        if (remote_eval  != NULL) setenv_remote_eval(remote_eval);
 
         void* options = ruby_options(argc, argv);
 
-        // Arm the Ruby `debug` gem's TCP listener now that $LOAD_PATH has been
-        // built up by ruby_options. Failure is non-fatal — the VM continues
-        // even if the debugger can't start.
-        if (remote_debug != NULL) {
-            int state = 0;
-            rb_eval_string_protect("require 'debug/open'", &state);
-            if (state != 0) {
-                VALUE err = rb_errinfo();
-                const char* msg = "<no message>";
-                if (!NIL_P(err)) {
-                    VALUE m = rb_funcall(err, rb_intern("message"), 0);
-                    if (RB_TYPE_P(m, T_STRING)) msg = StringValueCStr(m);
-                }
-                fprintf(stderr, "[Ruby VM] Failed to start remote debugger: %s\n", msg);
-                rb_set_errinfo(Qnil);
-            } else {
-                fprintf(stderr, "[Ruby VM] Remote debugger listening on %s:%d\n",
-                        remote_debug->host, remote_debug->port);
-            }
-        }
+        // Listener arming (post-ruby_options). The eval module is always
+        // pre-loaded so post-boot inject (from ruby-interpreter.c) can call
+        // RemoteEval.start even when remote_eval wasn't configured at boot.
+        if (remote_debug != NULL) arm_remote_debug_listener(remote_debug);
+        preload_remote_eval_module();
+        if (remote_eval  != NULL) start_remote_eval_listener(remote_eval);
 
         const int result = ruby_run_node(options);
 
@@ -345,12 +445,13 @@ int ExecMainRubyVM(RubyVM* vm, const char* rubyDirectoryPath, const char* native
     const char* scriptContent = ruby_script_get_content(vm->main_script);
     const int commandsFd = vm->commands_channel.second_fd;
 
-    return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation, scriptContent, 0, commandsFd, vm->remote_debug);
+    return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation, scriptContent, 0, commandsFd,
+                            vm->remote_debug, vm->remote_eval);
 }
 
 int ExecRubyScriptInline(const char* rubyDirectoryPath,
                          const char* nativeLibsDirLocation,
                          const char* scriptFilePath) {
     return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation,
-                            scriptFilePath, 1, -1, NULL);
+                            scriptFilePath, 1, -1, NULL, NULL);
 }

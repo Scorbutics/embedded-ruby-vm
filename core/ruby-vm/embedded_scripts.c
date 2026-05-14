@@ -12,6 +12,10 @@ extern const char _binary_fifo_interpreter_rb_end[];
 extern const char _binary_safe_runner_rb_start[];
 extern const char _binary_safe_runner_rb_end[];
 
+// For remote_eval.rb
+extern const char _binary_remote_eval_rb_start[];
+extern const char _binary_remote_eval_rb_end[];
+
 // Structure to map script names to their embedded symbols
 typedef struct {
     const char* script_name;
@@ -30,6 +34,11 @@ static const embedded_script_t embedded_scripts[] = {
         .script_name = "safe_runner.rb",
         .start = _binary_safe_runner_rb_start,
         .end = _binary_safe_runner_rb_end
+    },
+    {
+        .script_name = "remote_eval.rb",
+        .start = _binary_remote_eval_rb_start,
+        .end = _binary_remote_eval_rb_end
     },
 
     // Sentinel entry

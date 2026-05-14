@@ -19,6 +19,11 @@ typedef enum {
     RUBY_VM_ERROR_TIMEOUT = -7,
     RUBY_VM_ERROR_ALREADY_STARTED = -8,
     RUBY_VM_ERROR_ASSETS = -9,
+    /* Heap allocation failed (malloc / calloc / strdup returned NULL).
+     * Distinct from INVALID_PARAM — the caller did nothing wrong; the
+     * system refused a memory request. Internal/transient, not a
+     * contract violation. */
+    RUBY_VM_ERROR_OUT_OF_MEMORY = -10,
 } RubyVMErrorCode;
 
 /**

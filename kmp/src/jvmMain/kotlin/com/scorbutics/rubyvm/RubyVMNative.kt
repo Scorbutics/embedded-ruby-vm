@@ -66,6 +66,20 @@ internal object RubyVMNative {
     ): Int
 
     /**
+     * Arm the remote line-eval console listener. Same lifecycle as
+     * [enableRemoteDebug] — must be called before any
+     * [enqueueScript] / [executeScriptSync]. Eager boot; in v1 cannot
+     * coexist with [enableRemoteDebug] in the same VM lifecycle.
+     */
+    external fun enableRemoteEval(
+        interpreterPtr: Long,
+        host: String?,
+        port: Int,
+        token: String,
+        sessionName: String?
+    ): Int
+
+    /**
      * Test-only: cumulative count of use-after-free events caught by the
      * JNICallbackContext magic canary in the JNI logging callbacks. A
      * monotonically non-decreasing counter; tests bracket their bodies and

@@ -42,18 +42,38 @@ int ruby_interpreter_enable_logging(RubyInterpreter* interpreter);
 int ruby_interpreter_disable_logging(RubyInterpreter* interpreter);
 
 /**
- * Enable the remote DAP listener for live debugging. Must be called BEFORE the
- * VM is started (i.e. before the first enqueue/execute_sync). Eagerly boots
- * the VM with the debug listener armed, so a DAP client (VS Code rdbg,
- * `rdbg --attach`, etc.) can connect at any time during the VM's lifetime,
- * including before any user script is enqueued. See RubyVMRemoteDebugOptions
- * in ruby-vm.h for required option semantics.
+ * Enable the remote DAP listener for live debugging.
  *
- * @return RUBY_VM_OK on success, RUBY_VM_ERROR_* on failure (in particular
- *         RUBY_VM_ERROR_ALREADY_STARTED if called after the VM is booted).
+ * May be called at any point during the interpreter's lifetime — both
+ * before and after the VM has started. Both code paths leave you with a
+ * listening DAP socket; they only differ in how the listener gets armed:
+ *
+ *   - VM not started yet: eagerly boots the VM with the listener already
+ *     armed (env vars + `require 'debug/open'` during boot).
+ *   - VM already started: injects the listener via a synchronous script
+ *     enqueued through the FIFO interpreter (`require 'debug/session'` +
+ *     `DEBUGGER__.open`). Slightly later, same end state.
+ *
+ * Calling both this and enable_remote_eval on the same interpreter is
+ * supported; whichever is called second uses the inject path.
+ *
+ * See RubyVMRemoteDebugOptions in ruby-vm.h for required option semantics.
+ *
+ * @return RUBY_VM_OK on success, RUBY_VM_ERROR_INVALID_PARAM for bad opts,
+ *         RUBY_VM_ERROR_RUBY_EXEC if the inject script fails on the Ruby
+ *         side.
  */
 int ruby_interpreter_enable_remote_debug(RubyInterpreter* interpreter,
                                          const RubyVMRemoteDebugOptions* opts);
+
+/**
+ * Enable the remote line-eval console listener. Same lifecycle semantics
+ * as enable_remote_debug: may be called either before or after the VM
+ * starts, and can coexist with the debug listener. See
+ * RubyVMRemoteEvalOptions in ruby-vm.h for option semantics.
+ */
+int ruby_interpreter_enable_remote_eval(RubyInterpreter* interpreter,
+                                        const RubyVMRemoteEvalOptions* opts);
 
 // Error handling - delegates to underlying VM
 const char* ruby_interpreter_get_error_message(const RubyInterpreter* interpreter);

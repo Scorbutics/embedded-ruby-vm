@@ -93,6 +93,24 @@ expect class RubyInterpreter : AutoCloseable {
     fun enableRemoteDebug(host: String?, port: Int, token: String, sessionName: String?): Int
 
     /**
+     * Arm the remote line-eval console (sibling of [enableRemoteDebug]).
+     * Connect with `nc 127.0.0.1 <port>` (or `rlwrap nc` for history). On
+     * connect, send the token, then issue Ruby expressions to evaluate
+     * against TOPLEVEL_BINDING (or a registered scope via
+     * `RemoteEval.expose(:name, binding)` from script-side code).
+     *
+     * Same eager-boot constraint as [enableRemoteDebug]: must be called
+     * before the first [enqueue] / `executeScriptSync`. In v1 the two
+     * remote services are mutually exclusive within a single VM
+     * lifecycle — whichever you call first arms its listener; the second
+     * call returns the `ALREADY_STARTED` error code.
+     *
+     * @return 0 on success, negative RubyVMErrorCode on failure.
+     * @throws IllegalStateException if interpreter has been destroyed
+     */
+    fun enableRemoteEval(host: String?, port: Int, token: String, sessionName: String?): Int
+
+    /**
      * Destroy the interpreter and free all resources.
      * Must be called when the interpreter is no longer needed.
      *

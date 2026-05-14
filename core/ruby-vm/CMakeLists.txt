@@ -11,8 +11,11 @@ embed_script(fifo_interpreter.rb EMBEDDED_FIFO_INTERPRETER)
 # Embed safe_runner.rb into the library
 embed_script(safe_runner.rb EMBEDDED_SAFE_RUNNER)
 
+# Embed remote_eval.rb (line-eval console served alongside the DAP debug listener)
+embed_script(remote_eval.rb EMBEDDED_REMOTE_EVAL)
+
 # Export the embedded script object files to CACHE so embedded-ruby can access them
-set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} ${EMBEDDED_SAFE_RUNNER} CACHE INTERNAL "Embedded script object files from ruby-vm")
+set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} ${EMBEDDED_SAFE_RUNNER} ${EMBEDDED_REMOTE_EVAL} CACHE INTERNAL "Embedded script object files from ruby-vm")
 
 # This will be populated after embedded-ruby is built
 set(DEPENDENCY_LIST "    /* Dependencies will be populated in embedded-ruby library */")
@@ -29,6 +32,7 @@ add_library(ruby-vm OBJECT
     embedded_scripts.c
     ${EMBEDDED_FIFO_INTERPRETER}
     ${EMBEDDED_SAFE_RUNNER}
+    ${EMBEDDED_REMOTE_EVAL}
     ${DEPS_C_OUT}
 )
 

@@ -84,10 +84,14 @@ case "$CMD" in
   - JvmRemoteDebugExample   (arms the rdbg/DAP listener — blocks at binding.break
                              until a debugger attaches; see the example's
                              header for adb forward / VS Code instructions)
+  - JvmRemoteEvalExample    (arms the line-eval console — connect with
+                             \`rlwrap nc 127.0.0.1 7777\` and the cookie shown
+                             at startup; holds scope for 5 min so you can poke)
 
 Usage: $0 example <name>
   $0 example JvmExample
   $0 example JvmRemoteDebugExample
+  $0 example JvmRemoteEvalExample
 
 Outside docker (equivalent shell):
   cd examples/kotlin-jvm && ../../gradlew runExample -PexampleClass=<name>

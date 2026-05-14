@@ -307,6 +307,7 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
     pthread_mutex_init(&vm->socket_lock, NULL);
     ruby_vm_error_init(&vm->last_error);
     vm->remote_debug = NULL;
+    vm->remote_eval = NULL;
     return vm;
 }
 
@@ -350,9 +351,9 @@ int ruby_vm_enable_remote_debug(RubyVM* vm, const RubyVMRemoteDebugOptions* opts
 
     RubyVMRemoteDebugOptions* owned = calloc(1, sizeof(RubyVMRemoteDebugOptions));
     if (!owned) {
-        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_OUT_OF_MEMORY,
                           "Failed to allocate remote debug config");
-        return RUBY_VM_ERROR_INVALID_PARAM;
+        return RUBY_VM_ERROR_OUT_OF_MEMORY;
     }
 
     owned->host = strdup(opts->host ? opts->host : "127.0.0.1");
@@ -362,13 +363,72 @@ int ruby_vm_enable_remote_debug(RubyVM* vm, const RubyVMRemoteDebugOptions* opts
 
     if (!owned->host || !owned->token || (opts->session_name && !owned->session_name)) {
         free_remote_debug(owned);
-        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_OUT_OF_MEMORY,
                           "Failed to copy remote debug strings");
-        return RUBY_VM_ERROR_INVALID_PARAM;
+        return RUBY_VM_ERROR_OUT_OF_MEMORY;
     }
 
     free_remote_debug(vm->remote_debug);
     vm->remote_debug = owned;
+    return RUBY_VM_OK;
+}
+
+/* Free a VM-owned RubyVMRemoteEvalOptions. Sibling of free_remote_debug —
+ * same ownership contract. */
+static void free_remote_eval(RubyVMRemoteEvalOptions* opts) {
+    if (!opts) return;
+    free((char*)opts->host);
+    free((char*)opts->token);
+    free((char*)opts->session_name);
+    free(opts);
+}
+
+int ruby_vm_enable_remote_eval(RubyVM* vm, const RubyVMRemoteEvalOptions* opts) {
+    if (!vm || !opts) {
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    int expected = RUBY_VM_STATE_CREATED;
+    if (atomic_load(&vm->state) != expected) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_ALREADY_STARTED,
+                          "ruby_vm_enable_remote_eval must be called before ruby_vm_start "
+                          "(current state=%d)", atomic_load(&vm->state));
+        return RUBY_VM_ERROR_ALREADY_STARTED;
+    }
+
+    if (opts->port <= 0 || opts->port > 65535) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Invalid port for remote eval: %d (must be 1..65535)", opts->port);
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    if (!opts->token || opts->token[0] == '\0') {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Remote eval token is required (must be a non-empty shared secret)");
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    RubyVMRemoteEvalOptions* owned = calloc(1, sizeof(RubyVMRemoteEvalOptions));
+    if (!owned) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_OUT_OF_MEMORY,
+                          "Failed to allocate remote eval config");
+        return RUBY_VM_ERROR_OUT_OF_MEMORY;
+    }
+
+    owned->host = strdup(opts->host ? opts->host : "127.0.0.1");
+    owned->port = opts->port;
+    owned->token = strdup(opts->token);
+    owned->session_name = opts->session_name ? strdup(opts->session_name) : NULL;
+
+    if (!owned->host || !owned->token || (opts->session_name && !owned->session_name)) {
+        free_remote_eval(owned);
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_OUT_OF_MEMORY,
+                          "Failed to copy remote eval strings");
+        return RUBY_VM_ERROR_OUT_OF_MEMORY;
+    }
+
+    free_remote_eval(vm->remote_eval);
+    vm->remote_eval = owned;
     return RUBY_VM_OK;
 }
 
@@ -434,6 +494,7 @@ void ruby_vm_destroy(RubyVM* vm) {
 
     DEBUG_LOG("ruby_vm_destroy: Freeing VM memory");
     free_remote_debug(vm->remote_debug);
+    free_remote_eval(vm->remote_eval);
     free(vm->application_path);
     free(vm);
 }
@@ -494,21 +555,21 @@ int ruby_vm_start(RubyVM* vm, const char* ruby_base_directory, const char* nativ
     DEBUG_LOG("ruby_vm_start: Preparing thread args");
     RubyVMStartArgs* transferredMemoryArgs = malloc(sizeof(RubyVMStartArgs));
     if (!transferredMemoryArgs) {
-        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_OUT_OF_MEMORY,
                           "Failed to allocate memory for VM start args");
-        return RUBY_VM_ERROR_INVALID_PARAM;
+        return RUBY_VM_ERROR_OUT_OF_MEMORY;
     }
     transferredMemoryArgs->vm = vm;
     transferredMemoryArgs->ruby_base_directory = strdup(ruby_base_directory);
     transferredMemoryArgs->native_libs_location = strdup(native_libs_location);
 
     if (!transferredMemoryArgs->ruby_base_directory || !transferredMemoryArgs->native_libs_location) {
-        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_OUT_OF_MEMORY,
                           "Failed to allocate memory for VM path strings");
         free(transferredMemoryArgs->ruby_base_directory);
         free(transferredMemoryArgs->native_libs_location);
         free(transferredMemoryArgs);
-        return RUBY_VM_ERROR_INVALID_PARAM;
+        return RUBY_VM_ERROR_OUT_OF_MEMORY;
     }
 
     // Start main thread

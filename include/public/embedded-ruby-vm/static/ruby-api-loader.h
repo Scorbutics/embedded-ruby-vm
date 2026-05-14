@@ -52,6 +52,7 @@ typedef struct {
     int (*enable_logging)(RubyInterpreter*);
     int (*disable_logging)(RubyInterpreter*);
     int (*enable_remote_debug)(RubyInterpreter*, const RubyVMRemoteDebugOptions*);
+    int (*enable_remote_eval)(RubyInterpreter*, const RubyVMRemoteEvalOptions*);
     const char* (*get_error_message)(const RubyInterpreter*);
 } RubyInterpreterAPI;
 
@@ -176,6 +177,7 @@ static inline int ruby_api_load(const char* lib_path, RubyAPI* api) {
     api->interpreter.enable_logging = ruby_interpreter_enable_logging;
     api->interpreter.disable_logging = ruby_interpreter_disable_logging;
     api->interpreter.enable_remote_debug = ruby_interpreter_enable_remote_debug;
+    api->interpreter.enable_remote_eval = ruby_interpreter_enable_remote_eval;
     api->interpreter.get_error_message = ruby_interpreter_get_error_message;
 
     /* Assign script functions */

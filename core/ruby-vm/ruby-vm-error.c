@@ -25,6 +25,8 @@ const char* ruby_vm_error_string(RubyVMErrorCode code) {
             return "VM already started";
         case RUBY_VM_ERROR_ASSETS:
             return "Asset installation or verification failed";
+        case RUBY_VM_ERROR_OUT_OF_MEMORY:
+            return "Heap allocation failed";
         default:
             return "Unknown error";
     }

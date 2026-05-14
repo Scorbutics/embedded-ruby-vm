@@ -29,10 +29,11 @@ typedef enum {
     RUBY_VM_STATE_DESTROYED = 3      // Fully destroyed, no further access allowed
 } RubyVMState;
 
-/* Forward decl — full struct is below `ruby_vm_get_error_message`, after the
- * accessor declarations, so the field type is in scope before RubyVM is
- * defined while keeping the doc comment near the API. */
+/* Forward decls — full structs are defined below `ruby_vm_get_error_message`,
+ * after the accessor declarations, so the field types are in scope before
+ * RubyVM is defined while keeping the doc comments near the APIs. */
 typedef struct RubyVMRemoteDebugOptions RubyVMRemoteDebugOptions;
+typedef struct RubyVMRemoteEvalOptions  RubyVMRemoteEvalOptions;
 
 struct RubyVM {
     char* application_path;
@@ -50,6 +51,9 @@ struct RubyVM {
      * the VM has duplicated the caller's strings and owns them — freed in
      * ruby_vm_destroy. */
     RubyVMRemoteDebugOptions* remote_debug;
+    /* NULL unless ruby_vm_enable_remote_eval() was called. Same ownership
+     * contract as remote_debug above. */
+    RubyVMRemoteEvalOptions* remote_eval;
 };
 typedef struct RubyVM RubyVM;
 
@@ -201,6 +205,44 @@ struct RubyVMRemoteDebugOptions {
  *         RUBY_VM_ERROR_ALREADY_STARTED if called after start
  */
 int ruby_vm_enable_remote_debug(RubyVM* vm, const RubyVMRemoteDebugOptions* opts);
+
+/**
+ * Options for enabling the remote line-eval console listener (sibling of
+ * ruby_vm_enable_remote_debug). The listener is implemented in remote_eval.rb
+ * and serves a plain-text, nc-friendly protocol: cookie handshake, then a
+ * REPL-style loop evaluating Ruby expressions against TOPLEVEL_BINDING (or a
+ * registered scope via `RemoteEval.expose(:name, binding)`).
+ *
+ * Eval is more powerful than the debugger's REPL feature — anyone who can
+ * connect runs arbitrary code in the VM. Bind to 127.0.0.1 unless you have
+ * a specific reason; the token is mandatory regardless.
+ *
+ * Ownership: callers fill this struct with their own strings and pass it to
+ * ruby_vm_enable_remote_eval, which duplicates the strings into a private
+ * heap copy stored on the RubyVM. Callers may free their strings immediately
+ * after the call returns.
+ */
+struct RubyVMRemoteEvalOptions {
+    const char* host;          // bind address; NULL means "127.0.0.1"
+    int         port;          // TCP port; must be > 0
+    const char* token;         // shared-secret cookie; MUST be non-NULL/non-empty
+    const char* session_name;  // optional friendly label surfaced in the log
+};
+
+/**
+ * Enable the remote line-eval console on the given VM. Must be called BEFORE
+ * ruby_vm_start() or ruby_vm_start_on_current_thread() (state must be
+ * CREATED). At VM boot, remote_eval.rb is loaded and `RemoteEval.start` is
+ * called, which spawns a Ruby thread accepting on the configured TCP socket.
+ *
+ * Token is REQUIRED. Validated server-side via a one-line handshake before
+ * any eval runs; mismatches drop the connection without echoing what the
+ * client sent.
+ *
+ * @return RUBY_VM_OK, RUBY_VM_ERROR_INVALID_PARAM, or
+ *         RUBY_VM_ERROR_ALREADY_STARTED.
+ */
+int ruby_vm_enable_remote_eval(RubyVM* vm, const RubyVMRemoteEvalOptions* opts);
 
 #ifdef __cplusplus
 }
