@@ -210,7 +210,8 @@ static int run_main_vm_node(const char* baseDirectory,
                             const char* rubyExtraLoadPath,
                             const char* scriptContent,
                             int fromFilename,
-                            int socket_fd)
+                            int socket_fd,
+                            const RubyVMRemoteDebugOptions* remote_debug)
 {
     SetupRubyEnv(baseDirectory, rubyExtraLoadPath);
 
@@ -292,7 +293,46 @@ static int run_main_vm_node(const char* baseDirectory,
             }
         }
 
+        // Set RUBY_DEBUG_* env vars BEFORE ruby_options so the debug gem's
+        // config (read in DEBUGGER__.open) picks them up. The actual
+        // `require 'debug/open'` must run AFTER ruby_options, since that's
+        // what populates $LOAD_PATH from RUBYLIB. Without that ordering the
+        // require fails with "cannot load such file -- debug/open".
+        if (remote_debug != NULL) {
+            char port_str[16];
+            snprintf(port_str, sizeof(port_str), "%d", remote_debug->port);
+            setenv("RUBY_DEBUG_HOST",    remote_debug->host,  1);
+            setenv("RUBY_DEBUG_PORT",    port_str,            1);
+            setenv("RUBY_DEBUG_COOKIE",  remote_debug->token, 1);
+            setenv("RUBY_DEBUG_NONSTOP", "1",                 1);
+            if (remote_debug->session_name) {
+                setenv("RUBY_DEBUG_SESSION_NAME", remote_debug->session_name, 1);
+            }
+        }
+
         void* options = ruby_options(argc, argv);
+
+        // Arm the Ruby `debug` gem's TCP listener now that $LOAD_PATH has been
+        // built up by ruby_options. Failure is non-fatal — the VM continues
+        // even if the debugger can't start.
+        if (remote_debug != NULL) {
+            int state = 0;
+            rb_eval_string_protect("require 'debug/open'", &state);
+            if (state != 0) {
+                VALUE err = rb_errinfo();
+                const char* msg = "<no message>";
+                if (!NIL_P(err)) {
+                    VALUE m = rb_funcall(err, rb_intern("message"), 0);
+                    if (RB_TYPE_P(m, T_STRING)) msg = StringValueCStr(m);
+                }
+                fprintf(stderr, "[Ruby VM] Failed to start remote debugger: %s\n", msg);
+                rb_set_errinfo(Qnil);
+            } else {
+                fprintf(stderr, "[Ruby VM] Remote debugger listening on %s:%d\n",
+                        remote_debug->host, remote_debug->port);
+            }
+        }
+
         const int result = ruby_run_node(options);
 
         free_ruby_argv(argv, argc);
@@ -305,12 +345,12 @@ int ExecMainRubyVM(RubyVM* vm, const char* rubyDirectoryPath, const char* native
     const char* scriptContent = ruby_script_get_content(vm->main_script);
     const int commandsFd = vm->commands_channel.second_fd;
 
-    return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation, scriptContent, 0, commandsFd);
+    return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation, scriptContent, 0, commandsFd, vm->remote_debug);
 }
 
 int ExecRubyScriptInline(const char* rubyDirectoryPath,
                          const char* nativeLibsDirLocation,
                          const char* scriptFilePath) {
     return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation,
-                            scriptFilePath, 1, -1);
+                            scriptFilePath, 1, -1, NULL);
 }

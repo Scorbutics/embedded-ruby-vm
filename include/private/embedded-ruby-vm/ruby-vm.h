@@ -29,6 +29,11 @@ typedef enum {
     RUBY_VM_STATE_DESTROYED = 3      // Fully destroyed, no further access allowed
 } RubyVMState;
 
+/* Forward decl — full struct is below `ruby_vm_get_error_message`, after the
+ * accessor declarations, so the field type is in scope before RubyVM is
+ * defined while keeping the doc comment near the API. */
+typedef struct RubyVMRemoteDebugOptions RubyVMRemoteDebugOptions;
+
 struct RubyVM {
     char* application_path;
     RubyScript* main_script;
@@ -41,6 +46,10 @@ struct RubyVM {
     pthread_cond_t drain_cond;     // signaled when in_flight_scripts reaches 0
     pthread_mutex_t socket_lock;
     RubyVMError last_error;
+    /* NULL unless ruby_vm_enable_remote_debug() was called. When non-NULL,
+     * the VM has duplicated the caller's strings and owns them — freed in
+     * ruby_vm_destroy. */
+    RubyVMRemoteDebugOptions* remote_debug;
 };
 typedef struct RubyVM RubyVM;
 
@@ -150,6 +159,48 @@ void ruby_vm_clear_error(RubyVM* vm);
  * @return Error message, or NULL if no error occurred
  */
 const char* ruby_vm_get_error_message(const RubyVM* vm);
+
+/**
+ * Options for enabling the remote DAP (Debug Adapter Protocol) listener.
+ * The listener is provided by Ruby 3.1's stdlib `debug` gem and accepts
+ * connections from DAP clients (VS Code's rdbg extension, JetBrains,
+ * `rdbg --attach`).
+ *
+ * Connect over the LAN with caution. The recommended deployment is to bind
+ * to 127.0.0.1 and tunnel with `adb forward tcp:<port> tcp:<port>` (Android)
+ * or `ssh -L <port>:127.0.0.1:<port> host` (remote desktop), so the
+ * listener never leaves loopback.
+ *
+ * Ownership: callers fill this struct with their own strings and pass it to
+ * ruby_vm_enable_remote_debug, which duplicates the strings into a private
+ * heap copy stored on the RubyVM. Callers may free their strings immediately
+ * after the call returns.
+ */
+struct RubyVMRemoteDebugOptions {
+    const char* host;          // bind address; NULL means "127.0.0.1"
+    int         port;          // TCP port; must be > 0
+    const char* token;         // shared-secret cookie; MUST be non-NULL/non-empty
+    const char* session_name;  // optional; surfaces in DAP messages, may be NULL
+};
+
+/**
+ * Enable the remote DAP debugger on the given VM. Must be called BEFORE
+ * ruby_vm_start() or ruby_vm_start_on_current_thread() (i.e. while the VM
+ * state is CREATED). The Ruby `debug` gem's TCP listener is armed in
+ * non-stop mode at VM boot, so a DAP client can attach at any time during
+ * the VM's lifetime, including before the first script is enqueued.
+ *
+ * The token argument is REQUIRED — even when binding to loopback — to make
+ * accidental misconfiguration safer. It is propagated to the debug gem via
+ * RUBY_DEBUG_COOKIE; clients must echo it in their handshake.
+ *
+ * @param vm   Pointer to the Ruby VM instance (must be in CREATED state)
+ * @param opts Listener options; copied internally — caller retains ownership
+ *             of the passed strings
+ * @return RUBY_VM_OK on success, RUBY_VM_ERROR_INVALID_PARAM for bad input,
+ *         RUBY_VM_ERROR_ALREADY_STARTED if called after start
+ */
+int ruby_vm_enable_remote_debug(RubyVM* vm, const RubyVMRemoteDebugOptions* opts);
 
 #ifdef __cplusplus
 }

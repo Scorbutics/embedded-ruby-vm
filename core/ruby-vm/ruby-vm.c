@@ -306,7 +306,70 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
     pthread_cond_init(&vm->drain_cond, NULL);
     pthread_mutex_init(&vm->socket_lock, NULL);
     ruby_vm_error_init(&vm->last_error);
+    vm->remote_debug = NULL;
     return vm;
+}
+
+/* Free a VM-owned RubyVMRemoteDebugOptions. The strings are strdup'd copies
+ * (see ruby_vm_enable_remote_debug); we cast away `const` only here, at the
+ * point where we know the VM owns them. Public callers should never free
+ * their own RubyVMRemoteDebugOptions fields — they pass static or stack-
+ * allocated strings. */
+static void free_remote_debug(RubyVMRemoteDebugOptions* opts) {
+    if (!opts) return;
+    free((char*)opts->host);
+    free((char*)opts->token);
+    free((char*)opts->session_name);
+    free(opts);
+}
+
+int ruby_vm_enable_remote_debug(RubyVM* vm, const RubyVMRemoteDebugOptions* opts) {
+    if (!vm || !opts) {
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    int expected = RUBY_VM_STATE_CREATED;
+    if (atomic_load(&vm->state) != expected) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_ALREADY_STARTED,
+                          "ruby_vm_enable_remote_debug must be called before ruby_vm_start "
+                          "(current state=%d)", atomic_load(&vm->state));
+        return RUBY_VM_ERROR_ALREADY_STARTED;
+    }
+
+    if (opts->port <= 0 || opts->port > 65535) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Invalid port for remote debug: %d (must be 1..65535)", opts->port);
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    if (!opts->token || opts->token[0] == '\0') {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Remote debug token is required (must be a non-empty shared secret)");
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    RubyVMRemoteDebugOptions* owned = calloc(1, sizeof(RubyVMRemoteDebugOptions));
+    if (!owned) {
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Failed to allocate remote debug config");
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    owned->host = strdup(opts->host ? opts->host : "127.0.0.1");
+    owned->port = opts->port;
+    owned->token = strdup(opts->token);
+    owned->session_name = opts->session_name ? strdup(opts->session_name) : NULL;
+
+    if (!owned->host || !owned->token || (opts->session_name && !owned->session_name)) {
+        free_remote_debug(owned);
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_INVALID_PARAM,
+                          "Failed to copy remote debug strings");
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    free_remote_debug(vm->remote_debug);
+    vm->remote_debug = owned;
+    return RUBY_VM_OK;
 }
 
 void ruby_vm_destroy(RubyVM* vm) {
@@ -370,6 +433,7 @@ void ruby_vm_destroy(RubyVM* vm) {
     atomic_store(&vm->state, RUBY_VM_STATE_DESTROYED);
 
     DEBUG_LOG("ruby_vm_destroy: Freeing VM memory");
+    free_remote_debug(vm->remote_debug);
     free(vm->application_path);
     free(vm);
 }

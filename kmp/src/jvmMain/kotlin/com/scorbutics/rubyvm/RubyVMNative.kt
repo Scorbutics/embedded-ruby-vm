@@ -40,6 +40,32 @@ internal object RubyVMNative {
     external fun disableLogging(interpreterPtr: Long)
 
     /**
+     * Arm the Ruby `debug` gem's TCP DAP listener so a DAP client (VS Code's
+     * rdbg extension, `rdbg --attach`, JetBrains) can attach for live
+     * debugging. Eagerly boots the VM; must be called before any
+     * `enqueueScript` or `executeScriptSync`.
+     *
+     * For Android, the recommended deployment is to bind to 127.0.0.1 and
+     * use `adb forward tcp:<port> tcp:<port>` on the dev host so the
+     * listener never leaves loopback.
+     *
+     * @param host         Bind address; null means "127.0.0.1"
+     * @param port         TCP port, must be > 0
+     * @param token        Shared-secret cookie; must be non-empty. Clients
+     *                     echo this via the debug gem's RUBY_DEBUG_COOKIE
+     *                     handshake.
+     * @param sessionName  Optional friendly name surfaced to DAP clients.
+     * @return 0 on success; a RubyVMErrorCode (negative) on failure.
+     */
+    external fun enableRemoteDebug(
+        interpreterPtr: Long,
+        host: String?,
+        port: Int,
+        token: String,
+        sessionName: String?
+    ): Int
+
+    /**
      * Test-only: cumulative count of use-after-free events caught by the
      * JNICallbackContext magic canary in the JNI logging callbacks. A
      * monotonically non-decreasing counter; tests bracket their bodies and

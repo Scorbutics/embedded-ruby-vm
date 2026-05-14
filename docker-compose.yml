@@ -24,6 +24,20 @@ services:
       # can't link a libembedded-ruby.so produced from this container's modern glibc).
       # CI keeps the target enabled and patches ld.gold instead.
       - EMBEDDED_RUBY_VM_DEV=true
+    # Use the host's network namespace directly (Linux only). Without this,
+     # docker-proxy mediates TCP between host and container — and while it
+     # passes a bare TCP handshake, it has been observed to drop the early
+     # bytes of the rdbg protocol handshake, causing "Connection reset by
+     # peer" on the client. Sharing the host's network namespace removes the
+     # proxy entirely: the Ruby `debug` gem's listener binds on the host's
+     # 127.0.0.1 directly, and a host-side `rdbg --attach` / VS Code Ruby
+     # LSP attach reaches it byte-for-byte the same way an in-container
+     # client would.
+     #
+     # Tradeoffs: Linux-only (Docker Desktop on Mac/Windows ignores this),
+     # and the container has unrestricted access to the host's network
+     # stack. Both are fine for a dev environment.
+    network_mode: host
     working_dir: /workspace
     stdin_open: true
     tty: true

@@ -927,6 +927,56 @@ Java_com_scorbutics_rubyvm_RubyVMNative_enableLogging(JNIEnv *env, jclass clazz,
 }
 
 JNIEXPORT jint JNICALL
+Java_com_scorbutics_rubyvm_RubyVMNative_enableRemoteDebug(JNIEnv *env, jclass clazz,
+                                                          jlong interpreter_ptr,
+                                                          jstring host,
+                                                          jint port,
+                                                          jstring token,
+                                                          jstring session_name) {
+    (void) clazz;
+
+    if (!interpreter_ptr) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "enableRemoteDebug: NULL interpreter");
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+    RubyInterpreter* interpreter = (RubyInterpreter*)interpreter_ptr;
+
+    char* c_host         = host         ? jstring_to_cstring(env, host)         : NULL;
+    char* c_token        = token        ? jstring_to_cstring(env, token)        : NULL;
+    char* c_session_name = session_name ? jstring_to_cstring(env, session_name) : NULL;
+
+    if (token && !c_token) {
+        // jstring_to_cstring failed for a required arg
+        free(c_host);
+        free(c_session_name);
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    RubyVMRemoteDebugOptions opts = {
+        .host         = c_host,         // NULL is fine — C side defaults to 127.0.0.1
+        .port         = (int)port,
+        .token        = c_token,
+        .session_name = c_session_name,
+    };
+
+    DEBUG_LOG("enableRemoteDebug: host=%s port=%d session=%s",
+              c_host ? c_host : "(default 127.0.0.1)",
+              (int)port,
+              c_session_name ? c_session_name : "(none)");
+
+    int result = ruby_interpreter_enable_remote_debug(interpreter, &opts);
+    if (result != 0) {
+        jni_log_printf(JNI_LOG_ERROR, "RubyVM", "enableRemoteDebug failed (code=%d): %s",
+                       result, ruby_interpreter_get_error_message(interpreter));
+    }
+
+    free(c_host);
+    free(c_token);
+    free(c_session_name);
+    return result;
+}
+
+JNIEXPORT jint JNICALL
 Java_com_scorbutics_rubyvm_RubyVMNative_disableLogging(JNIEnv *env, jclass clazz,
                                                        jlong interpreter_ptr) {
     (void) clazz;

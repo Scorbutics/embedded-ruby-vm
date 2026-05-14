@@ -74,6 +74,41 @@ case "$CMD" in
         docker-compose exec dev bash -c "cd build && ./bin/test_core && ./bin/test_jni"
         ;;
 
+    example)
+        EXAMPLE_NAME=${2:-}
+        if [ -z "$EXAMPLE_NAME" ]; then
+            cat << EOF
+📚 Available Kotlin/JVM examples:
+  - ImprovedApiExample      (default; batch execution, builder pattern)
+  - JvmExample              (manual CountDownLatch flow)
+  - JvmRemoteDebugExample   (arms the rdbg/DAP listener — blocks at binding.break
+                             until a debugger attaches; see the example's
+                             header for adb forward / VS Code instructions)
+
+Usage: $0 example <name>
+  $0 example JvmExample
+  $0 example JvmRemoteDebugExample
+
+Outside docker (equivalent shell):
+  cd examples/kotlin-jvm && ../../gradlew runExample -PexampleClass=<name>
+EOF
+            exit 0
+        fi
+        echo "🎯 Running example: $EXAMPLE_NAME"
+        # --no-daemon keeps the JVM tied to this terminal: Ctrl-C kills the
+        # actual example process, so debug listeners stop binding the host
+        # port the moment you stop the example.
+        docker-compose exec dev bash -c "cd examples/kotlin-jvm && ../../gradlew runExample -PexampleClass=$EXAMPLE_NAME --no-daemon"
+        ;;
+
+    examples)
+        # Runs the non-interactive examples back-to-back. The debug example is
+        # excluded on purpose — it blocks at binding.break waiting for a DAP
+        # client and is not meant for unattended runs.
+        echo "🎯 Running all non-interactive examples (skips JvmRemoteDebugExample)..."
+        docker-compose exec dev bash -c "cd examples/kotlin-jvm && ../../gradlew runAllExamples --no-daemon"
+        ;;
+
     static-test)
         echo "🧪 Building fully static libraries and running tests..."
         docker-compose exec dev bash -c "
@@ -139,6 +174,8 @@ Development Commands:
   desktop-jar       - Build desktop JAR
   test              - Run all tests
   static-test       - Build fully static libraries and run tests
+  example [name]    - Run a Kotlin/JVM example by class name (list with no arg)
+  examples          - Run all non-interactive Kotlin/JVM examples sequentially
   export            - Export build artifacts to ./docker-output/
 
 Maintenance Commands:
@@ -155,7 +192,15 @@ Examples:
   ./docker-dev.sh sync               # Sync code changes
   ./docker-dev.sh shell              # Enter container
   ./docker-dev.sh build x86_64       # Build for x86_64
+  ./docker-dev.sh example            # List available Kotlin/JVM examples
+  ./docker-dev.sh example JvmRemoteDebugExample
+                                     # Run the remote DAP debugger example
+  ./docker-dev.sh examples           # Run all non-interactive examples
   ./docker-dev.sh export             # Export artifacts
+
+Without docker (host-side equivalents):
+  cd examples/kotlin-jvm && ../../gradlew runExample -PexampleClass=<name>
+  cd examples/kotlin-jvm && ../../gradlew runAllExamples
 
 Quick Workflow:
   1. ./docker-dev.sh setup           # One-time setup

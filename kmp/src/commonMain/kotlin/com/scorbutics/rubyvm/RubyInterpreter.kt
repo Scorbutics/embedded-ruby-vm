@@ -70,6 +70,29 @@ expect class RubyInterpreter : AutoCloseable {
     fun disableLogging()
 
     /**
+     * Arm the Ruby `debug` gem's DAP listener so a DAP client (VS Code's
+     * rdbg extension, `rdbg --attach`, JetBrains) can attach for live
+     * debugging — breakpoints, step in/over/out, locals, exceptions.
+     *
+     * Eagerly boots the VM with the listener armed in non-stop mode, so the
+     * port is available before the first script is enqueued. Must be called
+     * before any [enqueue] / `executeScriptSync` (otherwise returns
+     * [RubyVMErrorCode.ALREADY_STARTED]).
+     *
+     * For Android: bind to "127.0.0.1" (default) and tunnel via
+     * `adb forward tcp:<port> tcp:<port>` from the dev host.
+     *
+     * @param host        Bind address; null means "127.0.0.1".
+     * @param port        TCP port, must be > 0.
+     * @param token       Shared-secret cookie; must be non-empty. Clients
+     *                    pass this via the debug gem's cookie handshake.
+     * @param sessionName Optional friendly name surfaced to DAP clients.
+     * @return 0 on success; negative RubyVMErrorCode on failure.
+     * @throws IllegalStateException if interpreter has been destroyed
+     */
+    fun enableRemoteDebug(host: String?, port: Int, token: String, sessionName: String?): Int
+
+    /**
      * Destroy the interpreter and free all resources.
      * Must be called when the interpreter is no longer needed.
      *

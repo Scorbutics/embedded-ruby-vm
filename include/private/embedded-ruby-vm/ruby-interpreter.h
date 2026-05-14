@@ -4,6 +4,7 @@
 #include "embedded-ruby-vm/log-listener.h"
 #include "embedded-ruby-vm/completion-task.h"
 #include "embedded-ruby-vm/ruby-script-location.h"
+#include "embedded-ruby-vm/ruby-vm.h"  // for RubyVMRemoteDebugOptions
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +40,21 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
 int ruby_interpreter_execute_sync(RubyInterpreter* interpreter, RubyScript* script);
 int ruby_interpreter_enable_logging(RubyInterpreter* interpreter);
 int ruby_interpreter_disable_logging(RubyInterpreter* interpreter);
+
+/**
+ * Enable the remote DAP listener for live debugging. Must be called BEFORE the
+ * VM is started (i.e. before the first enqueue/execute_sync). Eagerly boots
+ * the VM with the debug listener armed, so a DAP client (VS Code rdbg,
+ * `rdbg --attach`, etc.) can connect at any time during the VM's lifetime,
+ * including before any user script is enqueued. See RubyVMRemoteDebugOptions
+ * in ruby-vm.h for required option semantics.
+ *
+ * @return RUBY_VM_OK on success, RUBY_VM_ERROR_* on failure (in particular
+ *         RUBY_VM_ERROR_ALREADY_STARTED if called after the VM is booted).
+ */
+int ruby_interpreter_enable_remote_debug(RubyInterpreter* interpreter,
+                                         const RubyVMRemoteDebugOptions* opts);
+
 // Error handling - delegates to underlying VM
 const char* ruby_interpreter_get_error_message(const RubyInterpreter* interpreter);
 

@@ -1,7 +1,9 @@
 package com.scorbutics.rubyvm
 
 import java.io.Closeable
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 /**
@@ -50,6 +52,32 @@ actual class RubyInterpreter private constructor(
         check(!isDestroyed.get()) { "Interpreter has been destroyed" }
 
         RubyVMNative.disableLogging(interpreterPtr)
+    }
+
+    actual fun enableRemoteDebug(host: String?, port: Int, token: String, sessionName: String?): Int {
+        check(!isDestroyed.get()) { "Interpreter has been destroyed" }
+
+        // Must run on a JVM worker thread, not the calling thread. Booting the
+        // VM spawns a native pthread for the FIFO interpreter; if Ruby's GC
+        // signals were to be delivered to the JVM main thread later, it would
+        // crash (same constraint that drives `enqueue`'s thread{} wrapper).
+        // We block here until the eager-boot returns so the caller sees the
+        // listener-up status before continuing.
+        val result = AtomicInteger(0)
+        val latch = CountDownLatch(1)
+        thread(name = "RubyVM-EnableRemoteDebug", isDaemon = false) {
+            try {
+                result.set(RubyVMNative.enableRemoteDebug(interpreterPtr, host, port, token, sessionName))
+            } catch (e: Exception) {
+                System.err.println("[RubyVM] enableRemoteDebug failed: ${e.message}")
+                e.printStackTrace()
+                result.set(-1)
+            } finally {
+                latch.countDown()
+            }
+        }
+        latch.await()
+        return result.get()
     }
 
     actual fun destroy() {

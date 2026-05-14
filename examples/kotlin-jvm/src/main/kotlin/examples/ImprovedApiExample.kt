@@ -13,12 +13,13 @@ fun main() {
     println("=== Ruby VM Improved API Examples ===\n")
 
     val listener = object : LogListener {
-        override fun onLog(message: String) {
-            println("[Ruby] $message")
-        }
-
-        override fun onError(message: String) {
-            System.err.println("[Ruby Error] $message")
+        override fun onLogMessage(logMessage: LogMessage) {
+            when (logMessage.source) {
+                LogSource.RUBY_STDERR, LogSource.NATIVE_STDERR ->
+                    System.err.println("[Ruby Error] ${logMessage.message}")
+                else ->
+                    println("[Ruby] ${logMessage.message}")
+            }
         }
     }
 

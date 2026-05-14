@@ -58,6 +58,18 @@ actual class RubyInterpreter private constructor(
         ruby_interpreter_disable_logging(interpreterPtr?.reinterpret())
     }
 
+    actual fun enableRemoteDebug(host: String?, port: Int, token: String, sessionName: String?): Int {
+        check(!isDestroyed) { "Interpreter has been destroyed" }
+        return memScoped {
+            val opts = alloc<RubyVMRemoteDebugOptions>()
+            opts.host = host?.cstr?.getPointer(this)
+            opts.port = port
+            opts.token = token.cstr.getPointer(this)
+            opts.session_name = sessionName?.cstr?.getPointer(this)
+            ruby_interpreter_enable_remote_debug(interpreterPtr?.reinterpret(), opts.ptr)
+        }
+    }
+
     actual fun destroy() {
         if (!isDestroyed && interpreterPtr != null) {
             // Disable logging BEFORE destroying the interpreter and disposing the

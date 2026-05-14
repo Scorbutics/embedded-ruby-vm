@@ -88,10 +88,14 @@ void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
  * Ensure the global VM is initialized and ready.
  * This is shared initialization logic for both sync and async execution.
  *
- * @param interpreter Interpreter instance with configuration
+ * @param interpreter   Interpreter instance with configuration
+ * @param remote_debug  Optional remote-debug options applied after ruby_vm_create
+ *                      and before ruby_vm_start. NULL means "no remote debug".
+ *                      Ignored if the VM is already created.
  * @return 0 on success, error code on failure
  */
-static int ensure_vm_initialized(RubyInterpreter* interpreter) {
+static int ensure_vm_initialized(RubyInterpreter* interpreter,
+                                 const RubyVMRemoteDebugOptions* remote_debug) {
     pthread_mutex_lock(&g_vm_mutex);
 
     if (g_global_vm == NULL) {
@@ -120,6 +124,23 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
 
         // Store VM reference in interpreter for error access
         interpreter->vm = g_global_vm;
+
+        if (remote_debug != NULL) {
+            DEBUG_LOG("Applying remote debug options before start");
+            int rd_result = ruby_vm_enable_remote_debug(g_global_vm, remote_debug);
+            if (rd_result != RUBY_VM_OK) {
+                DEBUG_LOG("ruby_vm_enable_remote_debug() failed: %d", rd_result);
+                // Tear down the just-created VM so a subsequent call with valid
+                // options can retry. Without this, a single bad-options call
+                // would permanently leave g_global_vm in a half-initialized
+                // state (created but never started).
+                ruby_vm_destroy(g_global_vm);
+                g_global_vm = NULL;
+                interpreter->vm = NULL;
+                pthread_mutex_unlock(&g_vm_mutex);
+                return rd_result;
+            }
+        }
 
         DEBUG_LOG("Calling ruby_vm_start()");
         int start_result = ruby_vm_start(g_global_vm, interpreter->ruby_base_directory, interpreter->native_libs_location);
@@ -160,7 +181,7 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter) {
 }
 
 int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, RubyCompletionTask on_complete) {
-    int init_result = ensure_vm_initialized(interpreter);
+    int init_result = ensure_vm_initialized(interpreter, NULL);
     if (init_result != 0) {
         ruby_completion_task_invoke(&on_complete, init_result);
         return init_result;
@@ -173,7 +194,7 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
 }
 
 int ruby_interpreter_execute_sync(RubyInterpreter* interpreter, RubyScript* script) {
-    int init_result = ensure_vm_initialized(interpreter);
+    int init_result = ensure_vm_initialized(interpreter, NULL);
     if (init_result != 0) {
         return init_result;
     }
@@ -191,12 +212,34 @@ int ruby_interpreter_enable_logging(RubyInterpreter* interpreter) {
 
     // Ensure VM is initialized before enabling logging
     // This allows enableLogging() to be called before the first script execution
-    int init_result = ensure_vm_initialized(interpreter);
+    int init_result = ensure_vm_initialized(interpreter, NULL);
     if (init_result != 0) {
         return -2;
     }
 
     return ruby_vm_enable_logging(interpreter->vm);
+}
+
+int ruby_interpreter_enable_remote_debug(RubyInterpreter* interpreter,
+                                         const RubyVMRemoteDebugOptions* opts) {
+    if (!interpreter || !opts) {
+        return RUBY_VM_ERROR_INVALID_PARAM;
+    }
+
+    // Eagerly initialize the VM with debug enabled. Subsequent enqueue/sync
+    // calls will see the running VM and skip re-init. If the VM was already
+    // started (without debug), ensure_vm_initialized's remote_debug arg is
+    // ignored — surface that as ALREADY_STARTED here so the caller knows the
+    // listener never came up.
+    pthread_mutex_lock(&g_vm_mutex);
+    int already_started = (g_global_vm != NULL);
+    pthread_mutex_unlock(&g_vm_mutex);
+    if (already_started) {
+        DEBUG_LOG("ruby_interpreter_enable_remote_debug: VM already started, cannot enable remote debug");
+        return RUBY_VM_ERROR_ALREADY_STARTED;
+    }
+
+    return ensure_vm_initialized(interpreter, opts);
 }
 
 int ruby_interpreter_disable_logging(RubyInterpreter* interpreter) {
