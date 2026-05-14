@@ -31,6 +31,7 @@
 #include "embedded-ruby-vm/assets-install.h"
 #include "embedded-ruby-vm/assets-error.h"
 #include "embedded-ruby-vm/ruby-vm-error.h"
+#include "embedded-ruby-vm/log-listener.h"  /* logging_get_original_stdout_fd */
 
 /* Use a high port unlikely to clash with anything in CI sandboxes. */
 #define TEST_EVAL_PORT     57893
@@ -42,18 +43,66 @@ static RubyAPI ruby_api;
 static AssetsLayout* g_layout = NULL;
 static FILE* g_log = NULL;
 
+/* LOGF must bypass the dup2 redirect once logging is initialized — the VM's
+ * `ruby_vm_enable_logging` replaces STDOUT_FILENO with a pipe write end, so
+ * any later `fprintf(stdout, ...)` from the test enters the async logging
+ * pipeline. If the process dies before the logging thread drains, those
+ * bytes are lost and the diagnostic trail goes dark exactly when we need
+ * it. We write directly to the saved-original-stdout fd (via write(2)) so
+ * the line lands in the terminal even mid-crash.
+ *
+ * Before logging is initialized, logging_get_original_stdout_fd() returns
+ * -1; we fall back to fprintf(stdout). */
+static void logf_emit(const char* buf, size_t len) {
+    int fd = logging_get_original_stdout_fd();
+    if (fd >= 0) {
+        ssize_t ignored = write(fd, buf, len);
+        (void)ignored;
+    } else {
+        fwrite(buf, 1, len, stdout);
+        fflush(stdout);
+    }
+}
 #define LOGF(fmt, ...) do {                                       \
-    if (g_log) { fprintf(g_log, fmt, ##__VA_ARGS__); fflush(g_log); } \
-    fprintf(stdout, fmt, ##__VA_ARGS__); fflush(stdout);          \
+    char _logf_buf[1024];                                         \
+    int _logf_n = snprintf(_logf_buf, sizeof(_logf_buf), fmt, ##__VA_ARGS__); \
+    if (_logf_n > 0) {                                            \
+        size_t _logf_len = (size_t)_logf_n < sizeof(_logf_buf)    \
+            ? (size_t)_logf_n : sizeof(_logf_buf) - 1;            \
+        if (g_log) { fwrite(_logf_buf, 1, _logf_len, g_log); fflush(g_log); } \
+        logf_emit(_logf_buf, _logf_len);                          \
+    }                                                             \
 } while (0)
 
+/* Dual-output the log callbacks so Ruby's own crash reports and the
+ * `[Ruby VM] Failed ...` lines from exec-main-vm.c surface in CTest's
+ * --output-on-failure dump (which only captures stdout/stderr — not the
+ * separate test_remote_eval.log file). Without this, a fast process death
+ * on the VM thread shows up as a silent failure in CI.
+ *
+ * CONTRACT: these callbacks run on the logging worker thread; fd 1/2 are
+ * dup2'd to the logging pipe write ends, so writing to stdout/stderr from
+ * here would feed our own output back into the pipeline. We use
+ * logging_get_original_stdout_fd() to bypass the redirect. */
+static void emit_terminal(const char* prefix, const char* line) {
+    char buf[2048];
+    int n = snprintf(buf, sizeof(buf), "%s %s\n", prefix, line);
+    if (n <= 0) return;
+    size_t len = (size_t)n < sizeof(buf) ? (size_t)n : sizeof(buf) - 1;
+    int fd = logging_get_original_stdout_fd();
+    if (fd < 0) return; /* logging not yet initialized: skip terminal copy */
+    ssize_t ignored = write(fd, buf, len);
+    (void)ignored;
+}
 static void OnRubyLog(LogListener* l, const char* line)    {
     (void)l;
     if (g_log) { fprintf(g_log, "[Ruby] %s\n", line); fflush(g_log); }
+    emit_terminal("[Ruby]", line);
 }
 static void OnRubyLogErr(LogListener* l, const char* line) {
     (void)l;
     if (g_log) { fprintf(g_log, "[Ruby:err] %s\n", line); fflush(g_log); }
+    emit_terminal("[Ruby:err]", line);
 }
 
 /* ---------- helpers ---------- */
@@ -465,6 +514,12 @@ static int scenario_coexist_with_debug(void) {
 /* ---------- driver ---------- */
 
 int main(void) {
+    /* Unbuffered output: a crash in a sibling thread (VM thread, logging
+     * thread, signal handler) shouldn't swallow lines that were already
+     * printed but not flushed. Cheap; test-only. */
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+
     g_log = fopen("test_remote_eval.log", "w");
     if (!g_log) {
         fprintf(stdout, "WARNING: could not open test_remote_eval.log: %s\n", strerror(errno));
