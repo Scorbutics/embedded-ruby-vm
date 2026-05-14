@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
+#include <time.h>
 
 #include "embedded-ruby-vm/logging.h"
 #include "embedded-ruby-vm/jni_logging.h"
@@ -463,11 +464,120 @@ static void dispatch_enqueue_sentinel(void) {
     pthread_mutex_unlock(&g_dispatch_mutex);
 }
 
+/* ============================================================================
+ * Feedback-loop detection
+ *
+ * A custom_output callback that writes to fd 1 / fd 2 feeds bytes back into
+ * the logging pipes that the dispatch thread is draining, so the next read
+ * dispatches that same data right back. Without blocking writes (we set
+ * O_NONBLOCK on the redirected fd, see create_and_redirect_stream) this is
+ * a CPU-burning spin loop instead of a hard deadlock — but the operator
+ * sees no diagnostic and the process just feels "stuck busy".
+ *
+ * We detect the spin pattern here: if the SAME line is dispatched more than
+ * LOOP_DETECT_THRESHOLD times within LOOP_DETECT_WINDOW_MS, we write a
+ * one-shot warning directly to the saved original stderr (bypassing the
+ * pipes, so the warning itself can't feed the loop). Detection is purely
+ * heuristic — a legitimate burst of identical lines will trip it once, then
+ * stay quiet until the pattern breaks and resumes.
+ *
+ * Lives entirely on the dispatch thread, so no locking needed. */
+#define LOOP_DETECT_SNAPSHOT_LEN 96
+#define LOOP_DETECT_THRESHOLD    8
+#define LOOP_DETECT_WINDOW_MS    500
+
+typedef struct {
+    char  snapshot[LOOP_DETECT_SNAPSHOT_LEN];
+    int   snapshot_len;          /* 0 means "no current pattern" */
+    int   repeat_count;
+    long  window_start_ms;
+    int   warning_emitted;       /* 1 once we've warned about this pattern */
+} loop_detect_t;
+
+static loop_detect_t g_loop_detect[NUM_STREAMS];
+
+static long loop_detect_now_ms(void) {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return 0;
+    return (long)ts.tv_sec * 1000L + (long)ts.tv_nsec / 1000000L;
+}
+
+/* Map the public stream enum (1..5) to the internal 0-based array. Returns
+ * -1 for unknown values so the caller can skip detection. */
+static int loop_detect_stream_index(log_stream_t stream) {
+    switch (stream) {
+        case LOG_STREAM_RUBY_STDOUT:   return RUBY_STDOUT_INDEX;
+        case LOG_STREAM_RUBY_STDERR:   return RUBY_STDERR_INDEX;
+        case LOG_STREAM_VMLOGGER:      return VMLOGGER_INDEX;
+        case LOG_STREAM_NATIVE_STDOUT: return NATIVE_STDOUT_INDEX;
+        case LOG_STREAM_NATIVE_STDERR: return NATIVE_STDERR_INDEX;
+    }
+    return -1;
+}
+
+static const char* loop_detect_stream_name(log_stream_t stream) {
+    switch (stream) {
+        case LOG_STREAM_RUBY_STDOUT:   return "ruby_stdout";
+        case LOG_STREAM_RUBY_STDERR:   return "ruby_stderr";
+        case LOG_STREAM_VMLOGGER:      return "vmlogger";
+        case LOG_STREAM_NATIVE_STDOUT: return "native_stdout";
+        case LOG_STREAM_NATIVE_STDERR: return "native_stderr";
+    }
+    return "unknown";
+}
+
+static void detect_callback_feedback(log_stream_t stream, const char* line) {
+    int idx = loop_detect_stream_index(stream);
+    if (idx < 0) return;
+    loop_detect_t* d = &g_loop_detect[idx];
+
+    size_t line_len = line ? strlen(line) : 0;
+    int snap_len = (int)(line_len < LOOP_DETECT_SNAPSHOT_LEN
+                         ? line_len : LOOP_DETECT_SNAPSHOT_LEN);
+
+    int same_as_last = (d->snapshot_len == snap_len) &&
+                       (snap_len == 0 || memcmp(d->snapshot, line, (size_t)snap_len) == 0);
+
+    long now = loop_detect_now_ms();
+
+    if (same_as_last && d->snapshot_len > 0) {
+        d->repeat_count++;
+        if (!d->warning_emitted &&
+            d->repeat_count >= LOOP_DETECT_THRESHOLD &&
+            (now - d->window_start_ms) <= LOOP_DETECT_WINDOW_MS) {
+            d->warning_emitted = 1;
+            int err_fd = g_logging_state.original_stderr_fd;
+            if (err_fd >= 0) {
+                char warn[256];
+                int n = snprintf(warn, sizeof(warn),
+                    "[logging] possible callback feedback loop on stream %s: "
+                    "same line dispatched %d times in <%ldms — "
+                    "check that no log listener writes to fd 1/2\n",
+                    loop_detect_stream_name(stream),
+                    d->repeat_count,
+                    (long)LOOP_DETECT_WINDOW_MS);
+                if (n > 0) {
+                    size_t to_write = (size_t)n < sizeof(warn) ? (size_t)n : sizeof(warn) - 1;
+                    ssize_t ignored = write(err_fd, warn, to_write);
+                    (void)ignored;
+                }
+            }
+        }
+    } else {
+        memcpy(d->snapshot, line, (size_t)snap_len);
+        d->snapshot_len     = snap_len;
+        d->repeat_count     = 1;
+        d->window_start_ms  = now;
+        d->warning_emitted  = 0;
+    }
+}
+
 /* Invoke all registered custom-output callbacks for one log line. Runs on
  * the dispatch worker thread; holds g_logging_state.lock for the duration
  * of the iteration to serialize against logging_add_custom_output /
  * logging_remove_custom_output / logging_swap_listener. */
 static void dispatch_invoke_custom_callbacks(log_stream_t stream, const char* line) {
+    detect_callback_feedback(stream, line);
     pthread_mutex_lock(&g_logging_state.lock);
     custom_output_node_t* node = g_logging_state.custom_outputs;
     while (node != NULL) {
@@ -1017,6 +1127,21 @@ static int create_and_redirect_stream(int stream_index, int target_fd) {
         set_last_error(LOGGING_ERROR_DUP2_FAILED);
         // Note: Cannot call call_native_logging_function here - called with mutex held
         return -1;
+    }
+
+    /* Make the redirected fd non-blocking so a misbehaving log callback that
+     * writes back to fd 1/2 can't hard-deadlock the process. With blocking
+     * semantics, a large enough write from inside a callback fills the
+     * socketpair send buffer; the callback blocks in write() waiting for the
+     * reader, which is the same dispatch thread that just invoked it ->
+     * permanent hang. With O_NONBLOCK, the offending write gets EAGAIN /
+     * short-write under buffer pressure: the data is lost, but the process
+     * keeps running. The dispatch loop additionally runs feedback-loop
+     * detection (see detect_callback_feedback below) so the operator sees a
+     * clear warning instead of mysterious CPU spin. */
+    int flags = fcntl(target_fd, F_GETFL, 0);
+    if (flags >= 0) {
+        (void)fcntl(target_fd, F_SETFL, flags | O_NONBLOCK);
     }
 
     close(g_logging_state.stream_pfd[stream_index][1]);
@@ -1631,4 +1756,39 @@ int logging_get_original_stdout_fd(void) {
 
 int logging_get_original_stderr_fd(void) {
     return g_logging_state.original_stderr_fd;
+}
+
+/* Write `len` bytes to `fd` exactly, retrying on partial writes / EINTR.
+ * On other errors returns -1; on success returns `len`. EAGAIN is treated
+ * as a transient retry too — the saved original-terminal fds are NOT set
+ * non-blocking, but a downstream consumer (e.g. unit test) might dup() and
+ * change flags, so we cover the case defensively. */
+static ssize_t write_all(int fd, const char* buf, size_t len) {
+    size_t total = 0;
+    while (total < len) {
+        ssize_t n = write(fd, buf + total, len - total);
+        if (n > 0) {
+            total += (size_t)n;
+            continue;
+        }
+        if (n < 0 && (errno == EINTR || errno == EAGAIN)) {
+            continue;
+        }
+        return -1;
+    }
+    return (ssize_t)total;
+}
+
+ssize_t logging_emit_to_terminal(const char* buf, size_t len) {
+    if (buf == NULL || len == 0) return 0;
+    int fd = g_logging_state.original_stdout_fd;
+    if (fd < 0) return -1;
+    return write_all(fd, buf, len);
+}
+
+ssize_t logging_emit_to_terminal_err(const char* buf, size_t len) {
+    if (buf == NULL || len == 0) return 0;
+    int fd = g_logging_state.original_stderr_fd;
+    if (fd < 0) return -1;
+    return write_all(fd, buf, len);
 }

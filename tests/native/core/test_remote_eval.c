@@ -48,21 +48,9 @@ static FILE* g_log = NULL;
  * any later `fprintf(stdout, ...)` from the test enters the async logging
  * pipeline. If the process dies before the logging thread drains, those
  * bytes are lost and the diagnostic trail goes dark exactly when we need
- * it. We write directly to the saved-original-stdout fd (via write(2)) so
- * the line lands in the terminal even mid-crash.
- *
- * Before logging is initialized, logging_get_original_stdout_fd() returns
- * -1; we fall back to fprintf(stdout). */
-static void logf_emit(const char* buf, size_t len) {
-    int fd = logging_get_original_stdout_fd();
-    if (fd >= 0) {
-        ssize_t ignored = write(fd, buf, len);
-        (void)ignored;
-    } else {
-        fwrite(buf, 1, len, stdout);
-        fflush(stdout);
-    }
-}
+ * it. logging_emit_to_terminal() writes directly to the saved-original
+ * stdout fd; before logging is initialized it returns -1 and we fall back
+ * to fprintf(stdout). */
 #define LOGF(fmt, ...) do {                                       \
     char _logf_buf[1024];                                         \
     int _logf_n = snprintf(_logf_buf, sizeof(_logf_buf), fmt, ##__VA_ARGS__); \
@@ -70,7 +58,9 @@ static void logf_emit(const char* buf, size_t len) {
         size_t _logf_len = (size_t)_logf_n < sizeof(_logf_buf)    \
             ? (size_t)_logf_n : sizeof(_logf_buf) - 1;            \
         if (g_log) { fwrite(_logf_buf, 1, _logf_len, g_log); fflush(g_log); } \
-        logf_emit(_logf_buf, _logf_len);                          \
+        if (logging_emit_to_terminal(_logf_buf, _logf_len) < 0) { \
+            fwrite(_logf_buf, 1, _logf_len, stdout); fflush(stdout); \
+        }                                                         \
     }                                                             \
 } while (0)
 
@@ -80,19 +70,14 @@ static void logf_emit(const char* buf, size_t len) {
  * separate test_remote_eval.log file). Without this, a fast process death
  * on the VM thread shows up as a silent failure in CI.
  *
- * CONTRACT: these callbacks run on the logging worker thread; fd 1/2 are
- * dup2'd to the logging pipe write ends, so writing to stdout/stderr from
- * here would feed our own output back into the pipeline. We use
- * logging_get_original_stdout_fd() to bypass the redirect. */
+ * Uses logging_emit_to_terminal() (the public safe-emit API) rather than
+ * fprintf(stdout) — see log-listener.h for the why. */
 static void emit_terminal(const char* prefix, const char* line) {
     char buf[2048];
     int n = snprintf(buf, sizeof(buf), "%s %s\n", prefix, line);
     if (n <= 0) return;
     size_t len = (size_t)n < sizeof(buf) ? (size_t)n : sizeof(buf) - 1;
-    int fd = logging_get_original_stdout_fd();
-    if (fd < 0) return; /* logging not yet initialized: skip terminal copy */
-    ssize_t ignored = write(fd, buf, len);
-    (void)ignored;
+    (void)logging_emit_to_terminal(buf, len);
 }
 static void OnRubyLog(LogListener* l, const char* line)    {
     (void)l;

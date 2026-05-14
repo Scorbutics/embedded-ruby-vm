@@ -2,6 +2,7 @@
 #define LOG_LISTENER_PUBLIC_H
 
 #include <stddef.h>
+#include <sys/types.h>  /* ssize_t for logging_emit_to_terminal */
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,20 +70,25 @@ static inline void log_listener_init(LogListener* listener) {
  * pipes so the logger thread can capture native C library output (printf,
  * std::cerr, SFML errors, etc.) and forward it to registered listeners.
  *
- * CALLBACK CONTRACT — log listener callbacks MUST NOT write to fd 1 / fd 2.
+ * CALLBACK CONTRACT — log listener callbacks SHOULD NOT write to fd 1 / fd 2.
  * Doing so feeds the bytes back into the pipes the logger is reading,
- * triggering another callback invocation; the resulting recursion is
- * bounded only by the dispatch queue cap (lines beyond it are dropped with
- * periodic warnings). Prefer the platform's async log channel for callback
- * output:
- *   - Android (C):    __android_log_print / __android_log_write
- *   - Android (JVM):  android.util.Log.d / .i / .w / .e
- *   - Apple:          os_log
- *   - Linux/systemd:  sd_journal_print
+ * triggering another callback invocation. The logging system has
+ * safety nets — fd 1 / fd 2 are O_NONBLOCK so a feedback write can't
+ * deadlock, and the dispatcher emits a one-shot "possible callback
+ * feedback loop" warning if the same line repeats fast — but the
+ * resulting CPU spin still wastes work. For callback output prefer:
  *
- * If the callback genuinely needs a "raw terminal" channel for diagnostics,
- * write() directly to the FD returned by this function — those are the
- * pre-redirect FDs and bypass the pipes entirely.
+ *   1. logging_emit_to_terminal() / _err() (below) — direct write to the
+ *      original terminal FD, bypassing the pipes entirely.
+ *   2. The platform's async log channel:
+ *      - Android (C):    __android_log_print / __android_log_write
+ *      - Android (JVM):  android.util.Log.d / .i / .w / .e
+ *      - Apple:          os_log
+ *      - Linux/systemd:  sd_journal_print
+ *
+ * If you need the raw FD (e.g. to pass to a logging library), this
+ * function returns it. Most callers want logging_emit_to_terminal() —
+ * see below.
  *
  * @return Original stdout FD (>= 0), or -1 if logging has not redirected stdout
  */
@@ -97,6 +103,37 @@ int logging_get_original_stdout_fd(void);
  * @see logging_get_original_stdout_fd
  */
 int logging_get_original_stderr_fd(void);
+
+/**
+ * Safe terminal-emit helpers for use FROM INSIDE a log listener callback.
+ *
+ * Writes the given byte range to the pre-redirect terminal stdout / stderr,
+ * bypassing the logging pipes entirely. This is the right API for a
+ * callback that wants to surface output to the operator without feeding
+ * the bytes back into the logging pipeline (which would re-dispatch the
+ * same line and burn CPU in a spin loop).
+ *
+ * The bytes are written verbatim — no newline is appended. Partial writes
+ * and EINTR / EAGAIN are handled internally; the function only returns
+ * early on a hard write error.
+ *
+ * Safe to call from any thread once logging is initialized. Returns -1 if
+ * called before logging has redirected stdout/stderr (the saved original
+ * FDs aren't available yet), or on a write error.
+ *
+ * Typical usage:
+ *
+ *   static int on_log_line(const char* line, log_stream_t stream, void* ctx) {
+ *       char buf[256];
+ *       int n = snprintf(buf, sizeof(buf), "[app] %s\n", line);
+ *       if (n > 0) logging_emit_to_terminal(buf, (size_t)n);
+ *       return 0;
+ *   }
+ */
+ssize_t logging_emit_to_terminal(const char* buf, size_t len);
+
+/** Same as logging_emit_to_terminal, but targets the original stderr. */
+ssize_t logging_emit_to_terminal_err(const char* buf, size_t len);
 
 #ifdef __cplusplus
 }
