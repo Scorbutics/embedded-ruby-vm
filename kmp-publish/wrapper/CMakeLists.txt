@@ -63,6 +63,13 @@ endif()
 # or can be used as a shared library entry point (Linux Desktop).
 add_library(rgss_runtime SHARED "${CMAKE_CURRENT_SOURCE_DIR}/native_main.c")
 
+# native_main.c uses RubyVMRemoteDebugOptions / RubyVMRemoteEvalOptions from
+# the public header — these are POD structs only, no pthread/atomic, so this
+# is the only embedded-ruby-vm path the wrapper needs.
+target_include_directories(rgss_runtime PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../include/public"
+)
+
 # Link the entire fat static library into the shared library
 # Use whole-archive to ensure all symbols are included
 if(ANDROID)

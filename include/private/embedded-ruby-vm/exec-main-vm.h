@@ -26,6 +26,21 @@ int ExecRubyScriptInline(const char* rubyDirectoryPath,
                          const char* nativeLibsDirLocation,
                          const char* scriptFilePath);
 
+/**
+ * Same as ExecRubyScriptInline but additionally arms the remote DAP and/or
+ * the remote line-eval listener at VM boot, mirroring the JNI path's
+ * enableRemoteDebug/enableRemoteEval. Either or both opts pointers can be
+ * NULL to skip that listener.
+ *
+ * Intended for Android NativeActivity wrappers that read listener
+ * configuration from environment variables before the VM boots.
+ */
+int ExecRubyScriptInlineWithRemote(const char* rubyDirectoryPath,
+                                   const char* nativeLibsDirLocation,
+                                   const char* scriptFilePath,
+                                   const RubyVMRemoteDebugOptions* remote_debug,
+                                   const RubyVMRemoteEvalOptions* remote_eval);
+
 #ifdef __cplusplus
 }
 #endif

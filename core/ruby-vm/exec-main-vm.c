@@ -455,3 +455,12 @@ int ExecRubyScriptInline(const char* rubyDirectoryPath,
     return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation,
                             scriptFilePath, 1, -1, NULL, NULL);
 }
+
+int ExecRubyScriptInlineWithRemote(const char* rubyDirectoryPath,
+                                   const char* nativeLibsDirLocation,
+                                   const char* scriptFilePath,
+                                   const RubyVMRemoteDebugOptions* remote_debug,
+                                   const RubyVMRemoteEvalOptions* remote_eval) {
+    return run_main_vm_node(rubyDirectoryPath, nativeLibsDirLocation,
+                            scriptFilePath, 1, -1, remote_debug, remote_eval);
+}
