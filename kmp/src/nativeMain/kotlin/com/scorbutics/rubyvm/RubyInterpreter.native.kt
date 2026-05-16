@@ -119,17 +119,12 @@ actual class RubyInterpreter private constructor(
             // Create log listener structure
             memScoped {
                 val logListener = alloc<com.scorbutics.rubyvm.native.LogListener>()
-                // IMPORTANT: All callback fields must be explicitly initialized.
-                // The logging system spawns a C pthread that invokes these callbacks.
+                // The logging system spawns a C pthread that invokes the callback.
                 // With Kotlin/Native's new memory model (1.7.20+), StableRef and
                 // Kotlin object access from foreign threads is supported.
-                // We use on_log_message (preferred by the C code) and set legacy
-                // callbacks to null to avoid ambiguity.
                 logListener.context = listenerRef.asCPointer()
                 logListener.user_data = null
-                logListener.accept = null
-                logListener.on_log_error = null
-                logListener.on_log_message = staticCFunction { listenerPtr, message, source ->
+                logListener.on_log_message = staticCFunction { listenerPtr, message, source, level ->
                     if (listenerPtr == null || message == null) return@staticCFunction
                     val ktListener = listenerPtr.pointed.context
                         ?.asStableRef<com.scorbutics.rubyvm.LogListener>()
@@ -142,7 +137,13 @@ actual class RubyInterpreter private constructor(
                         5 -> LogSource.NATIVE_STDERR
                         else -> LogSource.NATIVE_STDERR // fallback for unknown source
                     }
-                    ktListener.onLogMessage(LogMessage(message.toKString(), logSource))
+                    val logLevel = when (level.toInt()) {
+                        1 -> LogLevel.DEBUG
+                        2 -> LogLevel.INFO
+                        3 -> LogLevel.ERROR
+                        else -> LogLevel.INFO // matches derive_default_level_for_stream
+                    }
+                    ktListener.onLogMessage(LogMessage(message.toKString(), logSource, logLevel))
                 }
 
                 // Call C function directly (works for static builds)

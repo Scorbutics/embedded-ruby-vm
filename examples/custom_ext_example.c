@@ -91,14 +91,15 @@ void initialize_custom_extensions(void) {
 // Logging Support
 // ============================================================================
 
-static void log_accept(LogListener* listener, const char* message) {
+static void on_log_message(LogListener* listener, const char* message,
+                            log_stream_t source, log_level_t level) {
     (void)listener;
-    printf("[Ruby] %s\n", message);
-}
-
-static void log_error(LogListener* listener, const char* message) {
-    (void)listener;
-    fprintf(stderr, "[Ruby Error] %s\n", message);
+    (void)source;
+    if (level == LOG_LEVEL_ERROR) {
+        fprintf(stderr, "[Ruby Error] %s\n", message);
+    } else {
+        printf("[Ruby] %s\n", message);
+    }
 }
 
 // ============================================================================
@@ -123,8 +124,7 @@ int main(int argc, char** argv) {
     LogListener listener = {
         .context = NULL,
         .user_data = NULL,
-        .accept = log_accept,
-        .on_log_error = log_error
+        .on_log_message = on_log_message
     };
     
     // Create Ruby interpreter

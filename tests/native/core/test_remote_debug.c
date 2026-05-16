@@ -50,13 +50,14 @@ static FILE* g_log = NULL;
     fprintf(stdout, fmt, ##__VA_ARGS__); fflush(stdout);          \
 } while (0)
 
-static void OnRubyLog(LogListener* l, const char* line)   {
+static void OnRubyLog(LogListener* l, const char* line, log_stream_t source, log_level_t level) {
     (void)l;
-    if (g_log) { fprintf(g_log, "[Ruby] %s\n", line); fflush(g_log); }
-}
-static void OnRubyLogErr(LogListener* l, const char* line) {
-    (void)l;
-    if (g_log) { fprintf(g_log, "[Ruby:err] %s\n", line); fflush(g_log); }
+    (void)source;
+    if (g_log) {
+        const char* prefix = (level == LOG_LEVEL_ERROR) ? "[Ruby:err]" : "[Ruby]";
+        fprintf(g_log, "%s %s\n", prefix, line);
+        fflush(g_log);
+    }
 }
 
 /* ---------- helpers ---------- */
@@ -151,7 +152,7 @@ static int setup_runtime(void) {
 static RubyInterpreter* make_interpreter(void) {
     LogListener listener = {
         .context = NULL, .user_data = NULL,
-        .accept = OnRubyLog, .on_log_error = OnRubyLogErr,
+        .on_log_message = OnRubyLog,
     };
     return ruby_api.interpreter.create(".", g_layout->ruby_stdlib_path,
                                        g_layout->native_libs_dir, listener);

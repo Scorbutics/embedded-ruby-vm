@@ -29,24 +29,42 @@ typedef enum {
 } log_stream_t;
 
 /**
- * Log listener callback types and structure.
+ * Log severity level for a single log line.
  *
- * The LogListener structure is passed through the C core and across
- * the JNI/cinterop boundary. It contains callback function pointers
- * and an opaque context pointer for the caller's use.
+ * For LOG_STREAM_VMLOGGER lines, the level reflects which VMLogger method
+ * produced the line (VMLogger.debug -> DEBUG, .info -> INFO, .error -> ERROR);
+ * the parsing happens inside the logging system from an in-band tag emitted by
+ * safe_runner.rb, so consumers see the level directly.
+ *
+ * For non-VMLOGGER streams, the level is derived from the stream identity:
+ * RUBY_STDERR and NATIVE_STDERR map to ERROR; the remaining stdout streams
+ * map to INFO. This keeps the field meaningful for every line without
+ * forcing consumers to special-case the source.
+ */
+typedef enum {
+    LOG_LEVEL_DEBUG = 1,
+    LOG_LEVEL_INFO  = 2,
+    LOG_LEVEL_ERROR = 3
+} log_level_t;
+
+/**
+ * Log listener callback structure.
+ *
+ * Passed through the C core and across the JNI/cinterop boundary.
+ * Every log line — stdout, stderr, VMLogger, native — is delivered through
+ * the single on_log_message callback, with source and severity attached.
  */
 struct LogListener;
 
-typedef void (*LogAcceptFunc)(struct LogListener* listener, const char* lineMessage);
-typedef void (*LogErrorFunc)(struct LogListener* listener, const char* errorMessage);
-typedef void (*LogMessageFunc)(struct LogListener* listener, const char* message, log_stream_t source);
+typedef void (*LogMessageFunc)(struct LogListener* listener,
+                                const char* message,
+                                log_stream_t source,
+                                log_level_t level);
 
 typedef struct LogListener {
     void* context;
     void* user_data;
-    LogAcceptFunc accept;           /* Legacy callback for stdout (deprecated) */
-    LogErrorFunc on_log_error;      /* Legacy callback for stderr (deprecated) */
-    LogMessageFunc on_log_message;  /* New callback with source information */
+    LogMessageFunc on_log_message;
 } LogListener;
 
 /**
@@ -58,8 +76,6 @@ static inline void log_listener_init(LogListener* listener) {
     if (!listener) return;
     listener->context = NULL;
     listener->user_data = NULL;
-    listener->accept = NULL;
-    listener->on_log_error = NULL;
     listener->on_log_message = NULL;
 }
 
@@ -123,7 +139,8 @@ int logging_get_original_stderr_fd(void);
  *
  * Typical usage:
  *
- *   static int on_log_line(const char* line, log_stream_t stream, void* ctx) {
+ *   static int on_log_line(const char* line, log_stream_t stream,
+ *                          log_level_t level, void* ctx) {
  *       char buf[256];
  *       int n = snprintf(buf, sizeof(buf), "[app] %s\n", line);
  *       if (n > 0) logging_emit_to_terminal(buf, (size_t)n);

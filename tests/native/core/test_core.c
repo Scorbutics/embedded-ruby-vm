@@ -24,24 +24,15 @@ static void OnScriptCompleted(void* context, int result) {
     finished = 1;
 }
 
-static void OnLog(LogListener* listener, const char* line) {
+static void OnLog(LogListener* listener, const char* line,
+                  log_stream_t source, log_level_t level) {
     (void)listener;
-    
+    (void)source;
     if (g_log_file != NULL) {
-        fprintf(g_log_file, "[Ruby] %s\n", line);
+        const char* prefix = (level == LOG_LEVEL_ERROR) ? "[Ruby Error]" : "[Ruby]";
+        fprintf(g_log_file, "%s %s\n", prefix, line);
         fflush(g_log_file);  /* Ensure immediate write */
     }
-    
-}
-
-static void OnLogError(LogListener* listener, const char* line) {
-    (void)listener;
-    
-    if (g_log_file != NULL) {
-        fprintf(g_log_file, "[Ruby Error] %s\n", line);
-        fflush(g_log_file);  /* Ensure immediate write */
-    }
-    
 }
 
 int main(int argc, char* argv[]) {
@@ -142,8 +133,7 @@ int main(int argc, char* argv[]) {
     LogListener listener = {
         .context = NULL,
         .user_data = NULL,
-        .accept = OnLog,
-        .on_log_error = OnLogError
+        .on_log_message = OnLog
     };
 
     printf("Execution location: %s\n", execution_location);

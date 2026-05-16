@@ -72,22 +72,29 @@ typedef enum {
     LOG_STREAM_NATIVE_STDERR_M = 5
 } log_stream_main_t;
 
+/* Mirror of log_level_t (log-listener.h). Kept inline so this standalone
+ * wrapper doesn't need the embedded-ruby-vm headers. */
+typedef enum {
+    LOG_LEVEL_DEBUG_M = 1,
+    LOG_LEVEL_INFO_M  = 2,
+    LOG_LEVEL_ERROR_M = 3
+} log_level_main_t;
+
 extern int logging_init(const char* appname);
 extern int logging_add_custom_output(
-    int (*func)(const char* line, log_stream_main_t stream, void* context),
+    int (*func)(const char* line, log_stream_main_t stream, log_level_main_t level, void* context),
     void* context);
 
-/* Log callback for the logging system */
-static int on_log_message(const char* line, log_stream_main_t stream, void* context) {
+/* Log callback for the logging system. Routes by parsed severity so
+ * VMLogger.error reaches the error log channel even though it shares the
+ * vmlogger pipe with .info/.debug. */
+static int on_log_message(const char* line, log_stream_main_t stream, log_level_main_t level, void* context) {
+    (void)stream;
     (void)context;
-    switch (stream) {
-        case LOG_STREAM_RUBY_STDERR_M:
-        case LOG_STREAM_NATIVE_STDERR_M:
-            LOGE("[Ruby] %s", line);
-            break;
-        default:
-            LOGI("[Ruby] %s", line);
-            break;
+    if (level == LOG_LEVEL_ERROR_M) {
+        LOGE("[Ruby] %s", line);
+    } else {
+        LOGI("[Ruby] %s", line);
     }
     return 0;
 }

@@ -15,13 +15,12 @@ public class SimpleJavaExample {
         // Create log listener
         LogListener listener = new LogListener() {
             @Override
-            public void onLog(String message) {
-                System.out.println("[Log Ruby] " + message);
-            }
-
-            @Override
-            public void onError(String message) {
-                System.err.println("[Log Ruby Error] " + message);
+            public void onLogMessage(LogMessage logMessage) {
+                if (logMessage.getLevel() == LogLevel.ERROR) {
+                    System.err.println("[Log Ruby Error] " + logMessage.getMessage());
+                } else {
+                    System.out.println("[Log Ruby] " + logMessage.getMessage());
+                }
             }
         };
 

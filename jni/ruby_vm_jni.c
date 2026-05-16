@@ -189,26 +189,17 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
         return NULL;
     }
 
-    // Get method IDs for the LogListener interface methods
-    context->accept_method_id = (*env)->GetMethodID(env, listener_class,
-                                                    "accept", "(Ljava/lang/String;)V");
-    context->error_method_id = (*env)->GetMethodID(env, listener_class,
-                                                   "onLogError", "(Ljava/lang/String;)V");
+    // Cache the single Kotlin callback method ID.
     context->log_message_method_id = (*env)->GetMethodID(env, listener_class,
-                                                         "onLogMessage", "(Ljava/lang/String;I)V");
+                                                         "onLogMessage", "(Ljava/lang/String;II)V");
 
     (*env)->DeleteLocalRef(env, listener_class);
 
-    if (!context->accept_method_id || !context->error_method_id) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get legacy method IDs");
+    if (!context->log_message_method_id) {
+        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get onLogMessage method ID");
         (*env)->DeleteGlobalRef(env, context->kotlin_listener);
         free(context);
         return NULL;
-    }
-
-    // log_message_method_id is optional (for backward compatibility)
-    if (!context->log_message_method_id) {
-        jni_log_write(JNI_LOG_WARN, "RubyVM", "onLogMessage method not found, using legacy callbacks only");
     }
 
     diag_log("[JNI-DIAG] CREATE ctx=%p magic=0x%08x jvm=%p listener=%p",
@@ -263,140 +254,11 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
 // ============================================================================
 
 /**
- * C callback for log messages (stdout).
- * Called from native logging thread via LogListener.
- * Calls JVM directly - logging thread is daemon-attached so this is safe.
- *
- * Updated signature to match LogAcceptFunc with source parameter.
+ * C callback for log messages with source + severity.
+ * Called from the native logging thread via LogListener — that thread is
+ * daemon-attached so the JNI call is safe.
  */
-static void jni_log_accept_callback(LogListener* listener, const char* message) {
-    // Validate listener pointer
-    if (!listener) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL listener");
-        return;
-    }
-    
-    // Validate message pointer
-    if (!message) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL message");
-        return;
-    }
-    
-    // Debug: Log all incoming messages to understand what we're receiving
-    jni_log_printf(JNI_LOG_DEBUG, "RubyVM", "jni_log_accept_callback: Received message (len=%zu): '%s'", strlen(message), message);
-    
-    // Validate context pointer
-    JNICallbackContext* context = (JNICallbackContext*) listener->context;
-    if (!context) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_accept_callback: NULL context");
-        return;
-    }
-
-    if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
-        atomic_fetch_add(&g_bad_magic_count, 1);
-        diag_log("[JNI-DIAG] accept_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p — UAF detected, dropping",
-                  (void*)listener, (void*)context, context->magic, (void*)context->jvm);
-        return;
-    }
-
-    // Get JNI environment for this thread (attaches as daemon if needed)
-    JNIEnv* env = get_jni_env(context->jvm);
-    if (!env) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in log callback");
-        jni_log_printf(JNI_LOG_DEBUG, "RubyVM", "Message was: %s", message);
-        return;
-    }
-
-    // Create Java String for message content
-    jstring j_message = (*env)->NewStringUTF(env, message);
-    if (!j_message) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create Java string from message");
-        return;
-    }
-
-    // Call the Kotlin accept method
-    (*env)->CallVoidMethod(env, context->kotlin_listener,
-                            context->accept_method_id, j_message);
-
-    // Clean up
-    (*env)->DeleteLocalRef(env, j_message);
-
-    // Check for exceptions
-    if ((*env)->ExceptionCheck(env)) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in log callback");
-        (*env)->ExceptionDescribe(env);
-        (*env)->ExceptionClear(env);
-    }
-}
-
-/**
- * C callback for log errors (stderr).
- * Called from native logging thread via LogListener.
- * Calls JVM directly - logging thread is daemon-attached so this is safe.
- */
-static void jni_log_error_callback(LogListener* listener, const char* error_message) {
-    // Validate listener pointer
-    if (!listener) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_error_callback: NULL listener");
-        return;
-    }
-    
-    // Validate message pointer
-    if (!error_message) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_error_callback: NULL error_message");
-        return;
-    }
-    
-    // Validate context pointer
-    JNICallbackContext* context = (JNICallbackContext*) listener->context;
-    if (!context) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_error_callback: NULL context");
-        return;
-    }
-
-    if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
-        atomic_fetch_add(&g_bad_magic_count, 1);
-        diag_log("[JNI-DIAG] error_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p — UAF detected, dropping",
-                  (void*)listener, (void*)context, context->magic, (void*)context->jvm);
-        return;
-    }
-
-    // Get JNI environment for this thread (attaches as daemon if needed)
-    JNIEnv* env = get_jni_env(context->jvm);
-    if (!env) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to get JNI env in error callback");
-        jni_log_printf(JNI_LOG_ERROR, "RubyVM", "Error message was: %s", error_message);
-        return;
-    }
-
-    // Create Java String for message content
-    jstring j_message = (*env)->NewStringUTF(env, error_message);
-    if (!j_message) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Failed to create Java string from error_message");
-        return;
-    }
-
-    // Call the Kotlin onLogError method
-    (*env)->CallVoidMethod(env, context->kotlin_listener,
-                            context->error_method_id, j_message);
-
-    // Clean up
-    (*env)->DeleteLocalRef(env, j_message);
-
-    // Check for exceptions
-    if ((*env)->ExceptionCheck(env)) {
-        jni_log_write(JNI_LOG_ERROR, "RubyVM", "Exception in error callback");
-        (*env)->ExceptionDescribe(env);
-        (*env)->ExceptionClear(env);
-    }
-}
-
-/**
- * C callback for log messages with source information.
- * Called from native logging thread via LogListener.
- * Calls JVM directly - logging thread is daemon-attached so this is safe.
- */
-static void jni_log_message_callback(LogListener* listener, const char* message, log_stream_t source) {
+static void jni_log_message_callback(LogListener* listener, const char* message, log_stream_t source, log_level_t level) {
     // Validate listener pointer
     if (!listener) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_message_callback: NULL listener");
@@ -418,8 +280,8 @@ static void jni_log_message_callback(LogListener* listener, const char* message,
 
     if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
         atomic_fetch_add(&g_bad_magic_count, 1);
-        diag_log("[JNI-DIAG] message_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p source=%d — UAF detected, dropping",
-                  (void*)listener, (void*)context, context->magic, (void*)context->jvm, (int)source);
+        diag_log("[JNI-DIAG] message_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p source=%d level=%d — UAF detected, dropping",
+                  (void*)listener, (void*)context, context->magic, (void*)context->jvm, (int)source, (int)level);
         return;
     }
 
@@ -438,9 +300,10 @@ static void jni_log_message_callback(LogListener* listener, const char* message,
         return;
     }
 
-    // Call the Kotlin onLogMessage method with source
+    // Call the Kotlin onLogMessage method with source + parsed VMLogger severity
     (*env)->CallVoidMethod(env, context->kotlin_listener,
-                            context->log_message_method_id, j_message, (jint)source);
+                            context->log_message_method_id, j_message,
+                            (jint)source, (jint)level);
 
     // Clean up
     (*env)->DeleteLocalRef(env, j_message);
@@ -630,14 +493,14 @@ Java_com_scorbutics_rubyvm_RubyVMNative_createInterpreter(JNIEnv *env, jclass cl
         return 0; // null pointer
     }
 
-    // Create LogListener with C callback functions and context
-    // The context is stored IN the LogListener and will be passed to callbacks
+    // Create LogListener with C callback functions and context.
+    // The context is stored IN the LogListener and will be passed to callbacks.
+    // The callback context construction already requires log_message_method_id,
+    // so by here we know the Kotlin side has onLogMessage.
     LogListener listener = {
             .context = callback_context,
             .user_data = NULL,
-            .accept = jni_log_accept_callback,
-            .on_log_error = jni_log_error_callback,
-            .on_log_message = callback_context->log_message_method_id != NULL ? jni_log_message_callback : NULL
+            .on_log_message = jni_log_message_callback
     };
 
     // Create interpreter

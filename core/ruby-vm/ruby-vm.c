@@ -244,46 +244,17 @@ static void* script_execution_thread_func(void* arg) {
     return NULL;
 }
 
-static int native_log_callbacks(const char* line, log_stream_t stream, void* context) {
+static int native_log_callbacks(const char* line, log_stream_t stream, log_level_t level, void* context) {
     if (context == NULL) {
         return -1;
     }
 
     RubyVM* vm = (RubyVM*)context;
 
-    // Prefer new callback with source information if available
-    if (vm->log_listener.on_log_message != NULL) {
-        vm->log_listener.on_log_message(&vm->log_listener, line, stream);
-        return 0;
+    if (vm->log_listener.on_log_message == NULL) {
+        return -2;
     }
-
-    // Fall back to legacy callbacks for backward compatibility
-    // Map new stream types to old callbacks as best as possible
-    switch (stream) {
-        case LOG_STREAM_RUBY_STDOUT:
-        case LOG_STREAM_NATIVE_STDOUT:
-        case LOG_STREAM_VMLOGGER:  // VMLogger info/debug goes to stdout callback
-            if (vm->log_listener.accept == NULL) {
-                // No accept handler defined
-                return -2;
-            }
-            vm->log_listener.accept(&vm->log_listener, line);
-            break;
-
-        case LOG_STREAM_RUBY_STDERR:
-        case LOG_STREAM_NATIVE_STDERR:
-            if (vm->log_listener.on_log_error == NULL) {
-                // No error handler defined
-                return -2;
-            }
-            vm->log_listener.on_log_error(&vm->log_listener, line);
-            break;
-
-        default:
-            // Unknown stream type
-            return -3;
-    }
-
+    vm->log_listener.on_log_message(&vm->log_listener, line, stream, level);
     return 0;
 }
 
@@ -525,7 +496,7 @@ static int ruby_vm_start_setup(RubyVM* vm) {
 
     // Auto-enable logging if a listener was provided
     // This ensures log streams are available before Ruby VM needs them
-    if (vm->log_listener.accept != NULL || vm->log_listener.on_log_error != NULL || vm->log_listener.on_log_message != NULL) {
+    if (vm->log_listener.on_log_message != NULL) {
         DEBUG_LOG("ruby_vm_start_setup: Auto-enabling logging (listener provided)");
         int logging_result = ruby_vm_enable_logging(vm);
         if (logging_result != 0) {

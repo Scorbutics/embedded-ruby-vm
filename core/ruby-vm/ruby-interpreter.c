@@ -102,12 +102,10 @@ static void rebind_existing_vm_locked(RubyInterpreter* interpreter) {
     }
     interpreter->vm = g_global_vm;
 
-    /* Re-enable logging if the new interpreter has listener callbacks.
+    /* Re-enable logging if the new interpreter has a listener callback.
      * A previous interpreter's destroy() may have disabled logging, which
      * stops the logging thread entirely. */
-    if (interpreter->log_listener.accept != NULL ||
-        interpreter->log_listener.on_log_error != NULL ||
-        interpreter->log_listener.on_log_message != NULL) {
+    if (interpreter->log_listener.on_log_message != NULL) {
         ruby_vm_enable_logging(g_global_vm);
     }
 }

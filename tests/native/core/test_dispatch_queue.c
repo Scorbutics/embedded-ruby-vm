@@ -79,14 +79,14 @@ static void diag(const char* fmt, ...) {
 
 /* ----- callbacks ---------------------------------------------------------- */
 
-static int counter_callback(const char* line, log_stream_t stream, void* context) {
-    (void)line; (void)stream; (void)context;
+static int counter_callback(const char* line, log_stream_t stream, log_level_t level, void* context) {
+    (void)line; (void)stream; (void)level; (void)context;
     atomic_fetch_add(&g_invocation_count, 1);
     return 0;
 }
 
-static int slow_counter_callback(const char* line, log_stream_t stream, void* context) {
-    (void)line; (void)stream; (void)context;
+static int slow_counter_callback(const char* line, log_stream_t stream, log_level_t level, void* context) {
+    (void)line; (void)stream; (void)level; (void)context;
     atomic_fetch_add(&g_invocation_count, 1);
     /* Slow consumer: forces the producer (logger thread) to outpace the
      * worker, so the dispatch queue actually fills and drops trigger. */
@@ -96,8 +96,8 @@ static int slow_counter_callback(const char* line, log_stream_t stream, void* co
 
 #define RECURSIVE_PRINT_CAP 5
 
-static int recursive_printer_callback(const char* line, log_stream_t stream, void* context) {
-    (void)line; (void)stream; (void)context;
+static int recursive_printer_callback(const char* line, log_stream_t stream, log_level_t level, void* context) {
+    (void)line; (void)stream; (void)level; (void)context;
     int prev = atomic_fetch_add(&g_invocation_count, 1);
     /* Up to N invocations write back to fd 1 (the redirected stdout = native
      * stdout pipe). Each write produces another line that the logger reads

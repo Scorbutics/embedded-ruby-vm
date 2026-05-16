@@ -370,6 +370,7 @@ typedef struct dispatch_item {
         struct {
             char* line;        /* heap copy, freed after dispatch */
             log_stream_t stream;
+            log_level_t level; /* severity attached at write_full_log_line time */
         } log_line;
         struct {
             logging_drain_cb_t cb;
@@ -404,7 +405,7 @@ static void dispatch_enqueue_locked(dispatch_item_t* item) {
 }
 
 /* Try to enqueue a log line. Drops on backpressure. Bytes are copied. */
-static void dispatch_try_enqueue_log_line(const char* line, log_stream_t stream) {
+static void dispatch_try_enqueue_log_line(const char* line, log_stream_t stream, log_level_t level) {
     pthread_mutex_lock(&g_dispatch_mutex);
     if (g_dispatch_log_line_count >= DISPATCH_QUEUE_MAX_LOG_LINES) {
         unsigned long dropped = ++g_dispatch_dropped_total;
@@ -426,6 +427,7 @@ static void dispatch_try_enqueue_log_line(const char* line, log_stream_t stream)
     item->data.log_line.line = strdup(line);
     if (item->data.log_line.line == NULL) { free(item); return; }
     item->data.log_line.stream = stream;
+    item->data.log_line.level = level;
 
     pthread_mutex_lock(&g_dispatch_mutex);
     dispatch_enqueue_locked(item);
@@ -576,13 +578,13 @@ static void detect_callback_feedback(log_stream_t stream, const char* line) {
  * the dispatch worker thread; holds g_logging_state.lock for the duration
  * of the iteration to serialize against logging_add_custom_output /
  * logging_remove_custom_output / logging_swap_listener. */
-static void dispatch_invoke_custom_callbacks(log_stream_t stream, const char* line) {
+static void dispatch_invoke_custom_callbacks(log_stream_t stream, log_level_t level, const char* line) {
     detect_callback_feedback(stream, line);
     pthread_mutex_lock(&g_logging_state.lock);
     custom_output_node_t* node = g_logging_state.custom_outputs;
     while (node != NULL) {
         if (node->func != NULL && node->context != NULL) {
-            int err = node->func(line, stream, node->context);
+            int err = node->func(line, stream, level, node->context);
             if (err != 0) {
                 /* Surface the failure via thread-local error state.
                  * set_last_error() is defined later in the file, so assign
@@ -619,6 +621,7 @@ static void* dispatch_thread_function(void* arg) {
         switch (item->type) {
             case DISPATCH_LOG_LINE:
                 dispatch_invoke_custom_callbacks(item->data.log_line.stream,
+                                                 item->data.log_line.level,
                                                  item->data.log_line.line);
                 free(item->data.log_line.line);
                 break;
@@ -829,6 +832,75 @@ static int call_native_logging_function(int prio, const char* tag, const char* t
  * callbacks run off the logger thread, and the contract requires they not
  * write to fd 1/2 — so no swap is needed. */
 
+/* Map a log stream to a default severity. Used for every non-VMLOGGER line
+ * (where the FD identity carries the only severity signal), and as a fallback
+ * for VMLOGGER lines that arrive without a recognizable level tag — e.g. a
+ * legacy embedder writing directly into the VMLOGGER pipe, or transitional
+ * builds where the C side has been upgraded but the Ruby script_runner has
+ * not. The fallback is INFO rather than UNKNOWN so consumers can always treat
+ * the field as set. */
+static log_level_t derive_default_level_for_stream(log_stream_t stream) {
+    switch (stream) {
+        case LOG_STREAM_RUBY_STDERR:
+        case LOG_STREAM_NATIVE_STDERR:
+            return LOG_LEVEL_ERROR;
+        case LOG_STREAM_RUBY_STDOUT:
+        case LOG_STREAM_NATIVE_STDOUT:
+        case LOG_STREAM_VMLOGGER:
+        default:
+            return LOG_LEVEL_INFO;
+    }
+}
+
+/* Parse a VMLogger severity tag emitted by safe_runner.rb (see
+ * VMLOGGER_LEVEL_TAG_* in constants.h). On match, sets *out_level to the
+ * parsed severity and returns a pointer to the byte immediately past the
+ * tag (i.e. the start of the actual message). On no-match the input pointer
+ * is returned unchanged and *out_level is left untouched, so callers can
+ * safely seed it with derive_default_level_for_stream() beforehand. */
+static const char* parse_vmlogger_level_tag(const char* line, log_level_t* out_level) {
+    static const size_t prefix_len = sizeof(VMLOGGER_LEVEL_TAG_PREFIX) - 1;
+    static const size_t suffix_len = sizeof(VMLOGGER_LEVEL_TAG_SUFFIX) - 1;
+
+    if (strncmp(line, VMLOGGER_LEVEL_TAG_PREFIX, prefix_len) != 0) {
+        return line;
+    }
+    const char* name = line + prefix_len;
+    const char* suffix = strstr(name, VMLOGGER_LEVEL_TAG_SUFFIX);
+    if (suffix == NULL) {
+        return line;
+    }
+    size_t name_len = (size_t)(suffix - name);
+    if (name_len == sizeof(VMLOGGER_LEVEL_NAME_DEBUG) - 1
+        && memcmp(name, VMLOGGER_LEVEL_NAME_DEBUG, name_len) == 0) {
+        *out_level = LOG_LEVEL_DEBUG;
+    } else if (name_len == sizeof(VMLOGGER_LEVEL_NAME_INFO) - 1
+               && memcmp(name, VMLOGGER_LEVEL_NAME_INFO, name_len) == 0) {
+        *out_level = LOG_LEVEL_INFO;
+    } else if (name_len == sizeof(VMLOGGER_LEVEL_NAME_ERROR) - 1
+               && memcmp(name, VMLOGGER_LEVEL_NAME_ERROR, name_len) == 0) {
+        *out_level = LOG_LEVEL_ERROR;
+    } else {
+        /* Unknown level inside a well-formed tag — keep the original line
+         * intact rather than swallow data the host cannot interpret. */
+        return line;
+    }
+    return suffix + suffix_len;
+}
+
+/* Pick the native logging priority (Android logcat / android.util.Log style)
+ * matching a parsed log_level_t. Kept narrow on purpose: VMLogger only emits
+ * DEBUG/INFO/ERROR, and every other source path collapses to one of those
+ * via derive_default_level_for_stream(). */
+static int native_priority_for_level(log_level_t level) {
+    switch (level) {
+        case LOG_LEVEL_DEBUG: return LOG_DEBUG;
+        case LOG_LEVEL_ERROR: return LOG_ERROR;
+        case LOG_LEVEL_INFO:
+        default:              return LOG_INFO;
+    }
+}
+
 /**
  * Output a complete log line to all configured outputs
  * Returns 0 on success, negative if any output fails
@@ -836,7 +908,9 @@ static int call_native_logging_function(int prio, const char* tag, const char* t
 static int write_full_log_line(const char* line, log_stream_t stream) {
     /* Intercept the script-completion sentinel. Forwarded to the dispatch
      * worker as a control item so it fires AFTER all preceding LOG_LINE
-     * items have been delivered to callbacks (FIFO ordering preserved). */
+     * items have been delivered to callbacks (FIFO ordering preserved).
+     * Checked before the VMLOG-level tag parser since safe_runner.rb's
+     * VMLogger.protocol bypasses tagging — the sentinel rides the pipe raw. */
     if (stream == LOG_STREAM_VMLOGGER && strstr(line, SCRIPT_COMPLETE_SENTINEL) != NULL) {
         dispatch_enqueue_sentinel();
         return 0;
@@ -859,8 +933,16 @@ static int write_full_log_line(const char* line, log_stream_t stream) {
         return 0;
     }
 
+    /* Recover the per-VMLogger-call severity that the single pipe would
+     * otherwise flatten. For non-VMLOGGER streams the default level (derived
+     * from the FD identity) is already correct and parse_* is skipped. */
+    log_level_t level = derive_default_level_for_stream(stream);
+    if (stream == LOG_STREAM_VMLOGGER) {
+        line = parse_vmlogger_level_tag(line, &level);
+    }
+
     const char* tag = (g_logging_state.log_tag != NULL) ? g_logging_state.log_tag : "UNKNOWN";
-    int priority = (stream == LOG_STREAM_RUBY_STDERR) ? LOG_ERROR : LOG_INFO;
+    int priority = native_priority_for_level(level);
 
     /* Native logging (logcat / __android_log_print etc.) is fast and writes
      * to a dedicated platform channel that does not feed back into our
@@ -874,7 +956,7 @@ static int write_full_log_line(const char* line, log_stream_t stream) {
                        native_logging_error);
     }
 
-    dispatch_try_enqueue_log_line(line, stream);
+    dispatch_try_enqueue_log_line(line, stream, level);
 
     return native_logging_error;
 }

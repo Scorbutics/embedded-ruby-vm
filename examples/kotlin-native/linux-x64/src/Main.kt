@@ -13,12 +13,9 @@ fun main() {
 
     // Create a log listener
     val listener = object : LogListener {
-        override fun onLog(message: String) {
-            println("[Ruby] $message")
-        }
-
-        override fun onError(message: String) {
-            kotlin.io.println("[Ruby Error] $message")
+        override fun onLogMessage(logMessage: LogMessage) {
+            val prefix = if (logMessage.level == LogLevel.ERROR) "[Ruby Error]" else "[Ruby]"
+            println("$prefix ${logMessage.message}")
         }
     }
 

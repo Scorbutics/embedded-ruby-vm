@@ -100,7 +100,7 @@ typedef int (*logging_native_logging_func_t)(int priority, const char* tag, cons
  *
  * @return 0 on success; non-zero is logged but does not stop dispatch.
  */
-typedef int (*logging_custom_output_func_t)(const char* line, log_stream_t stream, void* context);
+typedef int (*logging_custom_output_func_t)(const char* line, log_stream_t stream, log_level_t level, void* context);
 
 /**
  * Initialize the logging system with an application name

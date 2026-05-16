@@ -54,14 +54,14 @@ static void diag(const char* fmt, ...) {
 
 static RubyAPI ruby_api;
 
-static void on_log(LogListener* listener, const char* line) {
+static void on_log(LogListener* listener, const char* line, log_stream_t stream, log_level_t level) {
     (void)listener;
-    fprintf(stdout, "[ruby] %s\n", line);
-}
-
-static void on_log_error(LogListener* listener, const char* line) {
-    (void)listener;
-    fprintf(stderr, "[ruby-err] %s\n", line);
+    (void)stream;
+    if (level == LOG_LEVEL_ERROR) {
+        fprintf(stderr, "[ruby-err] %s\n", line);
+    } else {
+        fprintf(stdout, "[ruby] %s\n", line);
+    }
 }
 
 static long elapsed_ms(struct timespec start, struct timespec end) {
@@ -112,9 +112,7 @@ int main(void) {
     LogListener listener = {
         .context = NULL,
         .user_data = NULL,
-        .accept = on_log,
-        .on_log_error = on_log_error,
-        .on_log_message = NULL
+        .on_log_message = on_log
     };
 
     interpreter = ruby_api.interpreter.create(

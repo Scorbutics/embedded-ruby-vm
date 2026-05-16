@@ -32,6 +32,16 @@ module VMLogger
   LOG_INFO = 1
   LOG_ERROR = 2
 
+  # In-band severity tags prepended to every VMLogger line when @output_io is set.
+  # The host-side logging system (see SCRIPT_COMPLETE_SENTINEL in constants.h)
+  # parses these in write_full_log_line, strips them, and surfaces the level as
+  # a LogLevel attribute on LogMessage — letting consumers tell VMLogger.info,
+  # .debug, and .error apart even though they all share the vmlogger pipe.
+  # Format must stay in sync with VMLOGGER_LEVEL_TAG_* in constants.h.
+  TAG_DEBUG = "<<<VMLOG:DEBUG>>> ".freeze
+  TAG_INFO  = "<<<VMLOG:INFO>>> ".freeze
+  TAG_ERROR = "<<<VMLOG:ERROR>>> ".freeze
+
   @log_level = if ENV['RUBY_VM_LOG_LEVEL']
                  ENV['RUBY_VM_LOG_LEVEL'].to_i
                elsif ENV['NDEBUG'] == '1'
@@ -70,17 +80,17 @@ module VMLogger
 
   def self.debug(message)
     return if @log_level > LOG_DEBUG
-    write_out(message)
+    write_out(message, TAG_DEBUG)
   end
 
   def self.info(message)
     return if @log_level > LOG_INFO
-    write_out(message)
+    write_out(message, TAG_INFO)
   end
 
   def self.error(message)
     if @output_io
-      @output_io.puts(message)
+      @output_io.puts("#{TAG_ERROR}#{message}")
       @output_io.flush
     else
       STDERR.puts(message)
@@ -106,9 +116,13 @@ module VMLogger
 
   private
 
-  def self.write_out(message)
+  # tag must be one of the TAG_* constants. Tag is prepended only on the
+  # @output_io path — the STDOUT/file paths preserve the historical untagged
+  # format (they don't share the vmlogger pipe, so source attribution is
+  # already carried by the FD).
+  def self.write_out(message, tag)
     if @output_io
-      @output_io.puts(message)
+      @output_io.puts("#{tag}#{message}")
       @output_io.flush
     else
       STDOUT.puts(message)

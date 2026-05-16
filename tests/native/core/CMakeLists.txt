@@ -25,6 +25,14 @@ add_executable(test_dispatch_queue
     test_dispatch_queue.c
 )
 
+# VMLogger severity propagation: write tagged lines into the VMLOGGER pipe and
+# verify the parser strips the <<<VMLOG:LEVEL>>> prefix and surfaces the level
+# as log_level_t on the custom-output callback. Also covers default-level
+# derivation for non-VMLOGGER streams.
+add_executable(test_vmlogger_level
+    test_vmlogger_level.c
+)
+
 # Remote DAP debugger: verifies the Ruby `debug` gem's TCP listener comes up
 # when ruby_interpreter_enable_remote_debug is called, that an empty token is
 # refused at the API surface, and that no listener exists without the call.
@@ -55,6 +63,12 @@ target_link_libraries(test_sentinel_log_level
 )
 
 target_link_libraries(test_dispatch_queue
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_vmlogger_level
     assets
     embedded-ruby
     dl
@@ -105,6 +119,10 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_vmlogger_level PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
         target_link_options(test_remote_debug PRIVATE
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
@@ -126,6 +144,10 @@ target_include_directories(test_sentinel_log_level PRIVATE
     ${CMAKE_SOURCE_DIR}/include/public
 )
 target_include_directories(test_dispatch_queue PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_vmlogger_level PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -152,6 +174,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_vmlogger_level PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
     set_target_properties(test_remote_debug PROPERTIES
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
@@ -169,5 +195,6 @@ endif()
 add_test(NAME test_core COMMAND test_core WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_sentinel_log_level COMMAND test_sentinel_log_level WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_dispatch_queue COMMAND test_dispatch_queue WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_vmlogger_level COMMAND test_vmlogger_level WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_remote_debug COMMAND test_remote_debug WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_remote_eval COMMAND test_remote_eval WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

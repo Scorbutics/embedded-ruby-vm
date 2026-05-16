@@ -19,10 +19,8 @@
 typedef struct {
     uint32_t magic;
     JavaVM* jvm;
-    jobject kotlin_listener; // Global reference to Kotlin LogListener
-    jmethodID accept_method_id;       // Legacy: accept(String)
-    jmethodID error_method_id;        // Legacy: onLogError(String)
-    jmethodID log_message_method_id;  // New: onLogMessage(String, int)
+    jobject kotlin_listener;         // Global reference to Kotlin LogListener
+    jmethodID log_message_method_id; // onLogMessage(String, int, int)
 } JNICallbackContext;
 
 JNIEXPORT jint JNICALL

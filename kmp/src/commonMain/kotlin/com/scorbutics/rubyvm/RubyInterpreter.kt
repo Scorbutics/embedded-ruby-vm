@@ -20,8 +20,10 @@ package com.scorbutics.rubyvm
  * Example usage:
  * ```kotlin
  * val listener = object : LogListener {
- *     override fun onLog(message: String) = println("[Ruby] $message")
- *     override fun onError(message: String) = println("[Error] $message")
+ *     override fun onLogMessage(logMessage: LogMessage) {
+ *         val tag = if (logMessage.level == LogLevel.ERROR) "[Error]" else "[Ruby]"
+ *         println("$tag ${logMessage.message}")
+ *     }
  * }
  *
  * val interpreter = RubyInterpreter.create(

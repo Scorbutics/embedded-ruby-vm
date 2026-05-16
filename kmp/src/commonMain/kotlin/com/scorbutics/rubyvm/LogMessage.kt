@@ -1,14 +1,18 @@
 package com.scorbutics.rubyvm
 
 /**
- * Represents a log message with its source.
+ * Represents a log message with its source and severity.
  *
  * @property message The log message content
- * @property source The source of the log message
+ * @property source The source pipe the message came from (which physical stream)
+ * @property level The severity reported for this line. For VMLOGGER, recovered
+ * from the in-band tag emitted by VMLogger.debug/info/error; for other sources,
+ * derived from the stream (stderr -> ERROR, stdout -> INFO).
  */
 data class LogMessage(
     val message: String,
-    val source: LogSource
+    val source: LogSource,
+    val level: LogLevel = LogLevel.INFO
 ) {
     /**
      * Convenience method to check if this is a Ruby stdout message
