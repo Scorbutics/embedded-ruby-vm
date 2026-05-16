@@ -25,6 +25,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
+#include <fcntl.h>
 #include <time.h>
 
 #include "embedded-ruby-vm/ruby-api-loader.h"
@@ -89,38 +90,90 @@ static void OnRubyLog(LogListener* l, const char* line, log_stream_t source, log
 
 /* ---------- helpers ---------- */
 
-static int try_tcp_connect(const char* host, int port, int timeout_ms) {
+/* CRITICAL: this test runs INSIDE the Ruby-hosting process, so the test
+ * thread inherits Ruby's signal handlers. CRuby installs handlers without
+ * SA_RESTART (so it can preempt threads on the GVL), which means syscalls
+ * here can return EINTR. A blocking connect() that gets EINTR has its TCP
+ * handshake completed by the kernel anyway — Ruby's accept_loop sees the
+ * connection and the C test sees a misleading "connect failed". This was
+ * the macOS-CI failure mode that looked like "listener gone between
+ * connections": Ruby logs "auth rejected for 127.0.0.1:<port>" right
+ * after the C side logs "connect to existing listener failed". So:
+ *   - Use a non-blocking socket so connect() returns immediately with
+ *     EINPROGRESS and the wait happens explicitly in poll().
+ *   - Retry poll() on EINTR.
+ *   - When `log_errors` is set, surface the errno via LOGF so CI output
+ *     shows the real failure reason. wait_for_listener's polling loop
+ *     passes false to avoid spamming the log for the expected
+ *     ECONNREFUSED while the listener thread is still binding. */
+static int try_tcp_connect_ex(const char* host, int port, int timeout_ms, int log_errors) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) return -1;
+    if (fd < 0) {
+        if (log_errors) LOGF("  try_tcp_connect: socket() failed errno=%d (%s)\n", errno, strerror(errno));
+        return -1;
+    }
+
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        if (log_errors) LOGF("  try_tcp_connect: fcntl O_NONBLOCK failed errno=%d (%s)\n", errno, strerror(errno));
+        close(fd); return -1;
+    }
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons((uint16_t)port);
     if (inet_pton(AF_INET, host, &addr.sin_addr) != 1) {
-        close(fd);
-        return -1;
+        if (log_errors) LOGF("  try_tcp_connect: inet_pton(%s) failed\n", host);
+        close(fd); return -1;
     }
 
     int rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
-    if (rc == 0) return fd;
-    if (errno != EINPROGRESS) { close(fd); return -1; }
+    if (rc < 0 && errno != EINPROGRESS) {
+        int e = errno;
+        if (log_errors) LOGF("  try_tcp_connect: connect(%s:%d) failed errno=%d (%s)\n", host, port, e, strerror(e));
+        close(fd); return -1;
+    }
 
-    struct pollfd pfd = { .fd = fd, .events = POLLOUT };
-    rc = poll(&pfd, 1, timeout_ms);
-    if (rc <= 0) { close(fd); return -1; }
-    int so_err = 0;
-    socklen_t so_err_len = sizeof(so_err);
-    getsockopt(fd, SOL_SOCKET, SO_ERROR, &so_err, &so_err_len);
-    if (so_err != 0) { close(fd); return -1; }
+    if (rc < 0) {
+        /* EINPROGRESS: wait for completion. poll can return EINTR for the
+         * same reason as connect above — retry it. */
+        struct pollfd pfd = { .fd = fd, .events = POLLOUT };
+        int prc;
+        do { prc = poll(&pfd, 1, timeout_ms); } while (prc < 0 && errno == EINTR);
+        if (prc <= 0) {
+            int e = errno;
+            if (log_errors) LOGF("  try_tcp_connect: poll(%s:%d) returned %d errno=%d (%s)\n", host, port, prc, e, strerror(e));
+            close(fd); return -1;
+        }
+
+        int so_err = 0;
+        socklen_t so_err_len = sizeof(so_err);
+        if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &so_err, &so_err_len) < 0 || so_err != 0) {
+            if (log_errors) LOGF("  try_tcp_connect: SO_ERROR=%d (%s) for %s:%d\n", so_err, strerror(so_err), host, port);
+            close(fd); return -1;
+        }
+    }
+
+    /* Restore blocking mode — callers use blocking read_line / write. */
+    if (fcntl(fd, F_SETFL, flags) < 0) {
+        if (log_errors) LOGF("  try_tcp_connect: fcntl restore failed errno=%d (%s)\n", errno, strerror(errno));
+        close(fd); return -1;
+    }
     return fd;
+}
+
+static int try_tcp_connect(const char* host, int port, int timeout_ms) {
+    return try_tcp_connect_ex(host, port, timeout_ms, /*log_errors=*/1);
 }
 
 static int wait_for_listener(const char* host, int port, int total_timeout_ms) {
     const int step_ms = 100;
     int elapsed = 0;
     while (elapsed < total_timeout_ms) {
-        int fd = try_tcp_connect(host, port, step_ms);
+        /* Quiet variant: we expect ECONNREFUSED while the listener thread
+         * is still binding — logging every probe would bury real errors. */
+        int fd = try_tcp_connect_ex(host, port, step_ms, /*log_errors=*/0);
         if (fd >= 0) { close(fd); return 0; }
         usleep(step_ms * 1000);
         elapsed += step_ms;
@@ -158,16 +211,22 @@ static int read_line(int fd, char* dst, size_t dst_len, int timeout_ms) {
 
 static int read_prompt(int fd, int timeout_ms) {
     /* Prompt is "rubyvm[...]> " — no trailing newline. We just consume bytes
-     * until we hit "> ". Bounded read avoids hanging. */
+     * until we hit "> ". Bounded read avoids hanging.
+     *
+     * EINTR retry: Ruby's signal-driven thread scheduler can interrupt
+     * syscalls in this thread (no SA_RESTART). Without the retry, a
+     * spurious signal would surface here as a false "no prompt". */
     char buf[128];
     size_t pos = 0;
     while (pos < sizeof(buf) - 1) {
         struct pollfd pfd = { .fd = fd, .events = POLLIN };
         int pr = poll(&pfd, 1, timeout_ms);
-        if (pr <= 0) return -1;
+        if (pr == 0) return -1;       /* timeout */
+        if (pr < 0)  { if (errno == EINTR) continue; return -1; }
         char c;
         ssize_t n = read(fd, &c, 1);
-        if (n <= 0) return -1;
+        if (n == 0) return -1;        /* EOF */
+        if (n < 0)  { if (errno == EINTR) continue; return -1; }
         buf[pos++] = c;
         if (pos >= 2 && buf[pos-2] == '>' && buf[pos-1] == ' ') {
             buf[pos] = '\0';
