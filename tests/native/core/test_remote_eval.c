@@ -262,17 +262,14 @@ static int scenario_no_listener_without_enable(void) {
     return 0;
 }
 
-static int scenario_empty_token_refused(void) {
+static int scenario_empty_token_refused(RubyInterpreter* interp) {
     LOGF("[test_remote_eval] scenario_empty_token_refused START\n");
-    RubyInterpreter* interp = make_interpreter();
-    if (!interp) { LOGF("  interpreter.create failed\n"); return 20; }
 
     RubyVMRemoteEvalOptions opts = {
         .host = "127.0.0.1", .port = TEST_EVAL_PORT + 1,
         .token = "", .session_name = NULL,
     };
     int rc = ruby_api.interpreter.enable_remote_eval(interp, &opts);
-    ruby_api.interpreter.destroy(interp);
 
     if (rc == RUBY_VM_OK)            { LOGF("  expected failure for empty token\n"); return 21; }
     if (rc != RUBY_VM_ERROR_INVALID_PARAM) {
@@ -283,12 +280,8 @@ static int scenario_empty_token_refused(void) {
     return 0;
 }
 
-static int scenario_listener_up_and_eval(void) {
+static int scenario_listener_up_and_eval(RubyInterpreter* interp) {
     LOGF("[test_remote_eval] scenario_listener_up_and_eval START\n");
-    LOGF("  step: calling make_interpreter()...\n");
-    RubyInterpreter* interp = make_interpreter();
-    if (!interp) { LOGF("  interpreter.create failed\n"); return 10; }
-    LOGF("  step: make_interpreter() returned %p\n", (void*)interp);
 
     RubyVMRemoteEvalOptions opts = {
         .host = "127.0.0.1", .port = TEST_EVAL_PORT,
@@ -301,43 +294,37 @@ static int scenario_listener_up_and_eval(void) {
     if (rc != RUBY_VM_OK) {
         LOGF("  enable_remote_eval failed: %d (%s)\n",
              rc, ruby_api.interpreter.get_error_message(interp));
-        ruby_api.interpreter.destroy(interp);
         return 11;
     }
 
     LOGF("  step: polling wait_for_listener (timeout %d ms)...\n", LISTENER_WAIT_MS);
     if (wait_for_listener("127.0.0.1", TEST_EVAL_PORT, LISTENER_WAIT_MS) != 0) {
         LOGF("  no listener on 127.0.0.1:%d after %d ms\n", TEST_EVAL_PORT, LISTENER_WAIT_MS);
-        ruby_api.interpreter.destroy(interp);
         return 12;
     }
     LOGF("  step: wait_for_listener succeeded\n");
 
     /* Real protocol round-trip. */
     int fd = connect_and_auth(TEST_EVAL_PORT, TEST_TOKEN);
-    if (fd < 0) { ruby_api.interpreter.destroy(interp); return 13; }
+    if (fd < 0) return 13;
 
     if (read_prompt(fd, SOCKET_READ_TIMEOUT_MS) != 0) {
         LOGF("  no prompt after OK\n"); close(fd);
-        ruby_api.interpreter.destroy(interp);
         return 14;
     }
 
     if (send_str(fd, "1 + 1\n") != 0) {
         LOGF("  failed to send eval\n"); close(fd);
-        ruby_api.interpreter.destroy(interp);
         return 15;
     }
 
     char reply[128];
     if (read_line(fd, reply, sizeof(reply), SOCKET_READ_TIMEOUT_MS) < 0) {
         LOGF("  no eval reply\n"); close(fd);
-        ruby_api.interpreter.destroy(interp);
         return 16;
     }
     if (strcmp(reply, "=> 2") != 0) {
         LOGF("  unexpected eval reply: '%s' (want '=> 2')\n", reply); close(fd);
-        ruby_api.interpreter.destroy(interp);
         return 17;
     }
     LOGF("  OK: 1 + 1 => 2\n");
@@ -345,14 +332,14 @@ static int scenario_listener_up_and_eval(void) {
     /* Clean exit. */
     send_str(fd, "exit\n");
     close(fd);
-    ruby_api.interpreter.destroy(interp);
     return 0;
 }
 
-/* Reuses the listener that scenario_listener_up_and_eval armed — the v1
- * single-shot lifecycle keeps the VM and its eval thread alive after the
- * interpreter wrapper is destroyed, so we can still drive cookie tests
- * against the same port. */
+/* Reuses the listener that scenario_listener_up_and_eval armed. The VM and
+ * its eval thread stay alive across scenarios because main() holds a single
+ * interpreter for the lifetime of the test (so the log listener stays
+ * attached and Ruby-side errors remain visible if the listener thread dies).
+ */
 static int scenario_wrong_token_dropped(void) {
     LOGF("[test_remote_eval] scenario_wrong_token_dropped START\n");
 
@@ -388,15 +375,8 @@ static int scenario_wrong_token_dropped(void) {
  * RemoteEval.expose(:probe, binding) where the binding has a local
  * variable `secret = 1337`. Then opens an eval session, runs
  * `attach probe`, then `secret`, and asserts the response is `=> 1337`. */
-static int scenario_expose_and_attach(void) {
+static int scenario_expose_and_attach(RubyInterpreter* interp) {
     LOGF("[test_remote_eval] scenario_expose_and_attach START\n");
-
-    /* The listener is still up on TEST_EVAL_PORT. We need to push a script
-     * into the FIFO interpreter to register a binding. The interpreter
-     * wrapper we used in scenario_listener_up_and_eval was destroyed, so
-     * make a fresh one — it'll reuse the running VM. */
-    RubyInterpreter* interp = make_interpreter();
-    if (!interp) return 50;
 
     /* Script wraps its locals in a Proc whose binding we expose, so the
      * local `secret` survives after the eval'd script returns. */
@@ -404,48 +384,47 @@ static int scenario_expose_and_attach(void) {
         "secret = 1337\n"
         "RemoteEval.expose(:probe, binding)\n";
     RubyScript* script = ruby_api.script.create_from_content(script_src, strlen(script_src));
-    if (!script) { ruby_api.interpreter.destroy(interp); return 51; }
+    if (!script) return 51;
 
     int sync_rc = ruby_api.interpreter.execute_sync(interp, script);
     ruby_api.script.destroy(script);
     if (sync_rc != 0) {
         LOGF("  exposing script failed: %d\n", sync_rc);
-        ruby_api.interpreter.destroy(interp); return 52;
+        return 52;
     }
 
     /* Now drive the remote console. */
     int fd = connect_and_auth(TEST_EVAL_PORT, TEST_TOKEN);
-    if (fd < 0) { ruby_api.interpreter.destroy(interp); return 53; }
+    if (fd < 0) return 53;
     if (read_prompt(fd, SOCKET_READ_TIMEOUT_MS) != 0) {
-        close(fd); ruby_api.interpreter.destroy(interp); return 54;
+        close(fd); return 54;
     }
 
     send_str(fd, "attach probe\n");
     char reply[256];
     if (read_line(fd, reply, sizeof(reply), SOCKET_READ_TIMEOUT_MS) < 0) {
-        close(fd); ruby_api.interpreter.destroy(interp); return 55;
+        close(fd); return 55;
     }
     if (strstr(reply, "attached to :probe") == NULL) {
         LOGF("  unexpected attach reply: '%s'\n", reply);
-        close(fd); ruby_api.interpreter.destroy(interp); return 56;
+        close(fd); return 56;
     }
     if (read_prompt(fd, SOCKET_READ_TIMEOUT_MS) != 0) {
-        close(fd); ruby_api.interpreter.destroy(interp); return 57;
+        close(fd); return 57;
     }
 
     send_str(fd, "secret\n");
     if (read_line(fd, reply, sizeof(reply), SOCKET_READ_TIMEOUT_MS) < 0) {
-        close(fd); ruby_api.interpreter.destroy(interp); return 58;
+        close(fd); return 58;
     }
     if (strcmp(reply, "=> 1337") != 0) {
         LOGF("  unexpected eval reply for 'secret': '%s' (want '=> 1337')\n", reply);
-        close(fd); ruby_api.interpreter.destroy(interp); return 59;
+        close(fd); return 59;
     }
     LOGF("  OK: attached to :probe, secret => 1337\n");
 
     send_str(fd, "exit\n");
     close(fd);
-    ruby_api.interpreter.destroy(interp);
     return 0;
 }
 
@@ -453,11 +432,8 @@ static int scenario_expose_and_attach(void) {
  * the eval listener up via the boot path (since the VM was idle when this
  * binary started). Now we ask enable_remote_debug to arm the DAP listener
  * on a different port — which exercises the post-boot inject path. */
-static int scenario_coexist_with_debug(void) {
+static int scenario_coexist_with_debug(RubyInterpreter* interp) {
     LOGF("[test_remote_eval] scenario_coexist_with_debug START\n");
-
-    RubyInterpreter* interp = make_interpreter();
-    if (!interp) return 60;
 
     int debug_port = TEST_EVAL_PORT + 5;
     RubyVMRemoteDebugOptions opts = {
@@ -468,13 +444,11 @@ static int scenario_coexist_with_debug(void) {
     if (rc != RUBY_VM_OK) {
         LOGF("  enable_remote_debug post-boot failed: %d (%s)\n",
              rc, ruby_api.interpreter.get_error_message(interp));
-        ruby_api.interpreter.destroy(interp);
         return 61;
     }
 
     if (wait_for_listener("127.0.0.1", debug_port, LISTENER_WAIT_MS) != 0) {
         LOGF("  DAP listener never bound on port %d\n", debug_port);
-        ruby_api.interpreter.destroy(interp);
         return 62;
     }
     LOGF("  OK: DAP listener up on %d (via post-boot inject)\n", debug_port);
@@ -483,13 +457,11 @@ static int scenario_coexist_with_debug(void) {
     int fd = try_tcp_connect("127.0.0.1", TEST_EVAL_PORT, 500);
     if (fd < 0) {
         LOGF("  eval listener regressed after debug injection?\n");
-        ruby_api.interpreter.destroy(interp);
         return 63;
     }
     close(fd);
     LOGF("  OK: eval listener still up on %d (both coexisting)\n", TEST_EVAL_PORT);
 
-    ruby_api.interpreter.destroy(interp);
     return 0;
 }
 
@@ -516,25 +488,38 @@ int main(void) {
     /* Order matters: no-listener-without-enable must run BEFORE any scenario
      * that boots the VM. After that, the single-shot lifecycle means only
      * one scenario actually gets to start a listener — subsequent ones
-     * either skip cleanly or piggyback. */
+     * either skip cleanly or piggyback.
+     *
+     * One interpreter wrapper is held alive for the whole test run so the
+     * VM's LogListener stays bound to OnRubyLog. ruby_interpreter_destroy
+     * swaps the listener to empty when called mid-flow, which silently
+     * dropped every Ruby-side log line between scenarios — including any
+     * `[RemoteEval] listener crashed: ...` / `listener thread exiting ...`
+     * that would tell us why the eval listener died on macOS. Keep one
+     * interpreter, destroy at the very end. */
     rc = scenario_no_listener_without_enable();
     if (rc != 0) { LOGF("FAIL: no_listener_without_enable (%d)\n", rc); return rc; }
 
-    rc = scenario_empty_token_refused();
-    if (rc != 0) { LOGF("FAIL: empty_token_refused (%d)\n", rc); return rc; }
+    RubyInterpreter* interp = make_interpreter();
+    if (!interp) { LOGF("FAIL: make_interpreter at startup\n"); return 100; }
 
-    rc = scenario_listener_up_and_eval();
-    if (rc != 0) { LOGF("FAIL: listener_up_and_eval (%d)\n", rc); return rc; }
+    rc = scenario_empty_token_refused(interp);
+    if (rc != 0) { LOGF("FAIL: empty_token_refused (%d)\n", rc); goto done; }
+
+    rc = scenario_listener_up_and_eval(interp);
+    if (rc != 0) { LOGF("FAIL: listener_up_and_eval (%d)\n", rc); goto done; }
 
     rc = scenario_wrong_token_dropped();
-    if (rc != 0) { LOGF("FAIL: wrong_token_dropped (%d)\n", rc); return rc; }
+    if (rc != 0) { LOGF("FAIL: wrong_token_dropped (%d)\n", rc); goto done; }
 
-    rc = scenario_expose_and_attach();
-    if (rc != 0) { LOGF("FAIL: expose_and_attach (%d)\n", rc); return rc; }
+    rc = scenario_expose_and_attach(interp);
+    if (rc != 0) { LOGF("FAIL: expose_and_attach (%d)\n", rc); goto done; }
 
-    rc = scenario_coexist_with_debug();
-    if (rc != 0) { LOGF("FAIL: coexist_with_debug (%d)\n", rc); return rc; }
+    rc = scenario_coexist_with_debug(interp);
+    if (rc != 0) { LOGF("FAIL: coexist_with_debug (%d)\n", rc); goto done; }
 
     LOGF("[test_remote_eval] ALL OK\n");
-    return 0;
+done:
+    ruby_api.interpreter.destroy(interp);
+    return rc;
 }
