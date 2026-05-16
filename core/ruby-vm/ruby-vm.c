@@ -31,9 +31,29 @@ typedef struct {
  */
 typedef struct {
     RubyVM* vm;
+    int interpreter_id;
     RubyScript* script;
     RubyCompletionTask on_complete;
 } ScriptExecutionArgs;
+
+/**
+ * Per-script waiter. One is allocated and registered on the VM's FIFO list
+ * before bytes hit the wire; the reader thread pops it on the matching
+ * response and signals the waiting submitter thread.
+ *
+ * The list is shared across all interpreter_ids. FIFO order on the list
+ * mirrors FIFO order on the wire, which mirrors FIFO order in the
+ * dispatcher's per-id worker queue. So "first waiter with matching id" is
+ * always the right one.
+ */
+struct result_waiter {
+    int interpreter_id;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    int exit_code;
+    int completed;            // 0 pending, 1 ready, -1 cancelled by shutdown
+    struct result_waiter* next;
+};
 
 
 /**
@@ -83,24 +103,36 @@ static int write_all(int fd, const void* buf, size_t count) {
 }
 
 /**
- * Send a script to the Ruby VM
+ * Send a script request to the Ruby VM.
+ *
+ * Wire format (each frame, request side):
+ *     <interpreter_id>\n
+ *     <length>\n
+ *     <script_content>          (exactly <length> bytes)
+ *
+ * Caller must hold vm->send_lock so writes from concurrent submitters
+ * stay non-interleaved AND match the order in which waiters were
+ * registered on the FIFO list.
  *
  * @param socket_fd Socket file descriptor
+ * @param interpreter_id Owning interpreter's id
  * @param script_content Script content to send
  * @return 0 on success, negative on error
  */
-static int send_script_to_ruby(int socket_fd, const char* script_content) {
+static int send_script_to_ruby(int socket_fd, int interpreter_id, const char* script_content) {
     size_t script_length = strlen(script_content);
-    char length_buffer[32];
+    char header[64];
 
-    // Send length prefix: "<length>\n"
-    int written = snprintf(length_buffer, sizeof(length_buffer), "%zu\n", script_length);
-    if (write_all(socket_fd, length_buffer, (size_t)written) != 0) {
-        perror("Failed to write length prefix");
+    int written = snprintf(header, sizeof(header), "%d\n%zu\n", interpreter_id, script_length);
+    if (written < 0 || written >= (int)sizeof(header)) {
+        fprintf(stderr, "Failed to format script header\n");
+        return -1;
+    }
+    if (write_all(socket_fd, header, (size_t)written) != 0) {
+        perror("Failed to write script header");
         return -1;
     }
 
-    // Send script content (no trailing newline needed)
     if (write_all(socket_fd, script_content, script_length) != 0) {
         perror("Failed to write script content");
         return -1;
@@ -108,62 +140,174 @@ static int send_script_to_ruby(int socket_fd, const char* script_content) {
     return 0;
 }
 
-// Default timeout for waiting on script exit code (in milliseconds).
-// Set to 0 for no timeout (block indefinitely).
-#define SCRIPT_READ_TIMEOUT_MS 0
-
 /**
- * Read the exit code response from the Ruby VM.
- * The protocol is: "<exit_code>\n" where exit_code is a decimal integer (0-255).
+ * Read one newline-terminated line into buf (no trailing newline; null-
+ * terminated). Returns 0 on success, -1 on EOF or error.
  *
- * @param fd Socket file descriptor
- * @param timeout_ms Timeout in milliseconds (0 = no timeout)
- * @param exit_code Output parameter for the parsed exit code
- * @return 0 on success, -1 on error/timeout
+ * Used only by the per-VM reader thread, so no mutex required on the fd.
  */
-static int read_exit_code(int fd, int timeout_ms, int* exit_code) {
-    // Wait for data with optional timeout
-    if (timeout_ms > 0) {
-        struct pollfd pfd = { .fd = fd, .events = POLLIN };
-        int poll_result;
-        do {
-            poll_result = poll(&pfd, 1, timeout_ms);
-        } while (poll_result < 0 && errno == EINTR);
-
-        if (poll_result == 0) {
-            fprintf(stderr, "Timeout waiting for script exit code (%d ms)\n", timeout_ms);
-            return -1;
-        }
-        if (poll_result < 0) {
-            perror("poll() failed waiting for exit code");
-            return -1;
-        }
-    }
-
-    // Read response byte-by-byte until newline (max 4 bytes: up to "255\n")
-    char buf[8];
-    int pos = 0;
-    while (pos < (int)(sizeof(buf) - 1)) {
+static int read_line(int fd, char* buf, size_t buf_size) {
+    size_t pos = 0;
+    while (pos + 1 < buf_size) {
         ssize_t n = read(fd, &buf[pos], 1);
         if (n < 0) {
             if (errno == EINTR) continue;
-            perror("Failed to read exit code");
             return -1;
         }
         if (n == 0) {
-            fprintf(stderr, "protocol error: EOF while reading exit code\n");
-            return -1;
+            return -1;   // EOF: command channel closed
         }
         if (buf[pos] == '\n') {
             buf[pos] = '\0';
-            *exit_code = atoi(buf);
             return 0;
         }
         pos++;
     }
-
-    fprintf(stderr, "protocol error: exit code too long (no newline in %d bytes)\n", pos);
+    /* Line too long; consume rest until newline to keep the stream sane. */
+    char drop;
+    while (1) {
+        ssize_t n = read(fd, &drop, 1);
+        if (n <= 0) return -1;
+        if (drop == '\n') break;
+    }
+    fprintf(stderr, "protocol error: response line truncated\n");
     return -1;
+}
+
+/**
+ * Append a waiter to the VM's FIFO list. Caller must hold vm->send_lock
+ * so the append happens in the same critical section as the wire write —
+ * that's what guarantees registration order matches request order on the
+ * wire.
+ */
+static void waiter_register_locked(RubyVM* vm, result_waiter_t* w) {
+    pthread_mutex_lock(&vm->waiters_lock);
+    w->next = NULL;
+    if (vm->waiters_tail == NULL) {
+        vm->waiters_head = w;
+        vm->waiters_tail = w;
+    } else {
+        vm->waiters_tail->next = w;
+        vm->waiters_tail = w;
+    }
+    pthread_mutex_unlock(&vm->waiters_lock);
+}
+
+/**
+ * Pop the first waiter with the given interpreter_id from the FIFO list.
+ * Returns NULL if none found. The reader thread calls this on every
+ * response; the submitter waits on the returned waiter's condvar.
+ */
+static result_waiter_t* waiter_pop_first_for_id(RubyVM* vm, int interpreter_id) {
+    pthread_mutex_lock(&vm->waiters_lock);
+    result_waiter_t* prev = NULL;
+    result_waiter_t* cur = vm->waiters_head;
+    while (cur != NULL && cur->interpreter_id != interpreter_id) {
+        prev = cur;
+        cur = cur->next;
+    }
+    if (cur != NULL) {
+        if (prev == NULL) {
+            vm->waiters_head = cur->next;
+        } else {
+            prev->next = cur->next;
+        }
+        if (vm->waiters_tail == cur) {
+            vm->waiters_tail = prev;
+        }
+        cur->next = NULL;
+    }
+    pthread_mutex_unlock(&vm->waiters_lock);
+    return cur;
+}
+
+/**
+ * Mark every still-pending waiter as cancelled. Called at shutdown after
+ * the wire is closed and the reader thread has joined — gives any
+ * submitters still parked in waiter_wait() a chance to wake up and return
+ * with an error rather than hanging the process. */
+static void cancel_all_waiters(RubyVM* vm) {
+    pthread_mutex_lock(&vm->waiters_lock);
+    result_waiter_t* w = vm->waiters_head;
+    while (w != NULL) {
+        result_waiter_t* next = w->next;
+        pthread_mutex_lock(&w->lock);
+        w->exit_code = 1;
+        w->completed = -1;
+        pthread_cond_signal(&w->cond);
+        pthread_mutex_unlock(&w->lock);
+        w = next;
+    }
+    vm->waiters_head = NULL;
+    vm->waiters_tail = NULL;
+    pthread_mutex_unlock(&vm->waiters_lock);
+}
+
+/**
+ * Block until this waiter is completed (or cancelled). Returns the
+ * resolved exit code. The waiter is freed by the caller after this
+ * function returns — by that point the reader thread has fully released
+ * it (see signal sequence in reader_thread_func / cancel_all_waiters).
+ */
+static int waiter_wait_and_destroy(result_waiter_t* w) {
+    pthread_mutex_lock(&w->lock);
+    while (w->completed == 0) {
+        pthread_cond_wait(&w->cond, &w->lock);
+    }
+    int code = w->exit_code;
+    pthread_mutex_unlock(&w->lock);
+
+    pthread_cond_destroy(&w->cond);
+    pthread_mutex_destroy(&w->lock);
+    free(w);
+    return code;
+}
+
+/**
+ * Reader thread body. Reads response frames `<id>\n<exit_code>\n` from the
+ * command channel and signals the matching waiter. Exits cleanly on EOF
+ * (which is what ruby_vm_destroy provokes by closing the channel).
+ */
+static void* reader_thread_func(void* arg) {
+    RubyVM* vm = (RubyVM*) arg;
+
+    /* Block all signals on this thread too — same reasoning as
+     * script_execution_thread_func: Ruby's GC may target a random pthread
+     * with SIGPROF/SIGALRM and we don't want this background reader
+     * sucking those up. */
+    sigset_t set;
+    sigfillset(&set);
+    pthread_sigmask(SIG_BLOCK, &set, NULL);
+
+    int fd = vm->commands_channel.main_fd;
+    char id_buf[32];
+    char code_buf[16];
+
+    while (1) {
+        if (read_line(fd, id_buf, sizeof(id_buf)) != 0) break;
+        if (read_line(fd, code_buf, sizeof(code_buf)) != 0) break;
+
+        int interpreter_id = atoi(id_buf);
+        int exit_code = atoi(code_buf);
+
+        result_waiter_t* w = waiter_pop_first_for_id(vm, interpreter_id);
+        if (w == NULL) {
+            /* Stray response — interpreter destroyed before its result
+             * came back, or a protocol mishap. Drop it. */
+            DEBUG_LOG("reader: no waiter for interpreter_id=%d, dropping exit_code=%d",
+                      interpreter_id, exit_code);
+            continue;
+        }
+
+        pthread_mutex_lock(&w->lock);
+        w->exit_code = exit_code;
+        w->completed = 1;
+        pthread_cond_signal(&w->cond);
+        pthread_mutex_unlock(&w->lock);
+    }
+
+    DEBUG_LOG("reader_thread_func: EOF or error on command channel — exiting");
+    return NULL;
 }
 
 /**
@@ -175,30 +319,58 @@ static int read_exit_code(int fd, int timeout_ms, int* exit_code) {
  * @param script Script to execute
  * @return Exit code (0 = success, non-zero = error)
  */
-static int execute_script_internal(RubyVM* vm, RubyScript* script) {
-    int result = 1; // Default to error
+static int execute_script_internal(RubyVM* vm, int interpreter_id, RubyScript* script) {
     const char* content = ruby_script_get_content(script);
 
-    // Lock for entire transaction
-    pthread_mutex_lock(&vm->socket_lock);
+    /* Allocate and pre-init the waiter BEFORE taking send_lock so we don't
+     * hold the wire-serialization lock across a malloc. */
+    result_waiter_t* w = malloc(sizeof(*w));
+    if (w == NULL) {
+        fprintf(stderr, "Failed to allocate result waiter\n");
+        return 1;
+    }
+    w->interpreter_id = interpreter_id;
+    w->exit_code = 1;
+    w->completed = 0;
+    w->next = NULL;
+    pthread_mutex_init(&w->lock, NULL);
+    pthread_cond_init(&w->cond, NULL);
 
-    // Write commands as VM socket input
-    if (send_script_to_ruby(vm->commands_channel.main_fd, content) != 0) {
+    /* Register + send atomically under send_lock. This pairs each waiter
+     * to the request that lands on the wire immediately after — preserves
+     * FIFO order between submitters for any given interpreter_id. */
+    pthread_mutex_lock(&vm->send_lock);
+    waiter_register_locked(vm, w);
+    int send_rc = send_script_to_ruby(vm->commands_channel.main_fd, interpreter_id, content);
+    pthread_mutex_unlock(&vm->send_lock);
+
+    if (send_rc != 0) {
         fprintf(stderr, "Failed to send script to Ruby VM\n");
-        pthread_mutex_unlock(&vm->socket_lock);
+        /* The waiter is now orphaned on the list. Cancel it locally so we
+         * don't leak — pop by id and free. */
+        result_waiter_t* popped = waiter_pop_first_for_id(vm, interpreter_id);
+        if (popped == w) {
+            pthread_cond_destroy(&w->cond);
+            pthread_mutex_destroy(&w->lock);
+            free(w);
+        } else if (popped != NULL) {
+            /* Another submitter snuck in between our register and our
+             * cancel pop — push the wrong one back on the head, then try
+             * again for ours. Rare; handled defensively. */
+            pthread_mutex_lock(&vm->waiters_lock);
+            popped->next = vm->waiters_head;
+            vm->waiters_head = popped;
+            if (vm->waiters_tail == NULL) vm->waiters_tail = popped;
+            pthread_mutex_unlock(&vm->waiters_lock);
+            /* Fall through to wait — the response will eventually arrive
+             * (or shutdown will cancel us). */
+            return waiter_wait_and_destroy(w);
+        }
         return 1;
     }
 
-    // Read exit code response
-    if (read_exit_code(vm->commands_channel.main_fd, SCRIPT_READ_TIMEOUT_MS, &result) != 0) {
-        fprintf(stderr, "Failed to read exit code from Ruby VM\n");
-        result = 1;
-    }
-
-    // Unlock for next script
-    pthread_mutex_unlock(&vm->socket_lock);
-
-    return result;
+    /* Block until the reader thread (or shutdown) signals the waiter. */
+    return waiter_wait_and_destroy(w);
 }
 
 /**
@@ -210,6 +382,7 @@ static int execute_script_internal(RubyVM* vm, RubyScript* script) {
 static void* script_execution_thread_func(void* arg) {
     ScriptExecutionArgs* exec_args = (ScriptExecutionArgs*)arg;
     RubyVM* vm = exec_args->vm;
+    int interpreter_id = exec_args->interpreter_id;
     RubyScript* script = exec_args->script;
     RubyCompletionTask on_complete = exec_args->on_complete;
 
@@ -225,7 +398,7 @@ static void* script_execution_thread_func(void* arg) {
     DEBUG_LOG("Script execution thread started");
 
     // Execute the script
-    const int result = execute_script_internal(vm, script);
+    const int result = execute_script_internal(vm, interpreter_id, script);
 
     DEBUG_LOG("Script execution thread finished - invoking completion callback");
 
@@ -275,7 +448,11 @@ RubyVM* ruby_vm_create(const char* application_path, RubyScript* main_script, Lo
     atomic_store(&vm->in_flight_scripts, 0);
     pthread_mutex_init(&vm->drain_mutex, NULL);
     pthread_cond_init(&vm->drain_cond, NULL);
-    pthread_mutex_init(&vm->socket_lock, NULL);
+    pthread_mutex_init(&vm->send_lock, NULL);
+    pthread_mutex_init(&vm->waiters_lock, NULL);
+    vm->waiters_head = NULL;
+    vm->waiters_tail = NULL;
+    atomic_store(&vm->reader_thread_started, 0);
     ruby_vm_error_init(&vm->last_error);
     vm->remote_debug = NULL;
     vm->remote_eval = NULL;
@@ -438,6 +615,21 @@ void ruby_vm_destroy(RubyVM* vm) {
         // still write to stdout/stderr/vmlogger without hitting broken pipes.
         close_comm_channel(&vm->commands_channel);
 
+        /* Closing the channel also EOFs the response side, which is what
+         * the reader_thread is parked on inside read_line. Join it so we
+         * can safely cancel any leftover waiters next. */
+        if (atomic_load(&vm->reader_thread_started)) {
+            DEBUG_LOG("ruby_vm_destroy: Joining reader thread");
+            pthread_join(vm->reader_thread, NULL);
+            atomic_store(&vm->reader_thread_started, 0);
+            DEBUG_LOG("ruby_vm_destroy: Reader thread joined");
+        }
+
+        /* Anyone parked in execute_script_internal -> waiter_wait_and_destroy
+         * is now unreachable from the reader thread (it's gone). Wake them
+         * with an error code so they return rather than hang the process. */
+        cancel_all_waiters(vm);
+
         DEBUG_LOG("ruby_vm_destroy: Joining main VM thread");
         // Wait for the Ruby VM thread to fully exit (including Ruby cleanup).
         // Without this join, ruby_run_node() may still be running when we tear
@@ -456,7 +648,8 @@ void ruby_vm_destroy(RubyVM* vm) {
     logging_shutdown();
 
     // Destroy synchronization primitives
-    pthread_mutex_destroy(&vm->socket_lock);
+    pthread_mutex_destroy(&vm->send_lock);
+    pthread_mutex_destroy(&vm->waiters_lock);
     pthread_cond_destroy(&vm->drain_cond);
     pthread_mutex_destroy(&vm->drain_mutex);
 
@@ -514,6 +707,23 @@ static int ruby_vm_start_setup(RubyVM* vm) {
         return RUBY_VM_ERROR_COMM_CHANNEL;
     }
     DEBUG_LOG("ruby_vm_start_setup: Socket pair created");
+
+    /* Spawn the response-reader thread. It demuxes `<id>\n<exit_code>\n`
+     * frames from the Ruby side and signals matching waiters. Must exist
+     * before any script can be submitted, so we spawn it here while the
+     * VM is still in CREATED — submitters that race the state flip to
+     * RUNNING are gated by the atomic_load check in execute_sync/enqueue
+     * anyway. */
+    int reader_rc = pthread_create(&vm->reader_thread, NULL, reader_thread_func, vm);
+    if (reader_rc != 0) {
+        DEBUG_LOG("ruby_vm_start_setup: Failed to spawn reader thread (error %d)", reader_rc);
+        close_comm_channel(&vm->commands_channel);
+        ruby_vm_error_set(&vm->last_error, RUBY_VM_ERROR_THREAD_CREATE,
+                          "Failed to create response-reader thread (error %d)", reader_rc);
+        return RUBY_VM_ERROR_THREAD_CREATE;
+    }
+    atomic_store(&vm->reader_thread_started, 1);
+    DEBUG_LOG("ruby_vm_start_setup: Reader thread spawned");
 
     return RUBY_VM_OK;
 }
@@ -629,7 +839,7 @@ int ruby_vm_disable_logging(RubyVM* vm) {
     return 0;
 }
 
-void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_complete) {
+void ruby_vm_enqueue(RubyVM* vm, int interpreter_id, RubyScript* script, RubyCompletionTask on_complete) {
     if (!vm || !script) {
         DEBUG_LOG("ruby_vm_enqueue: Invalid parameters");
         ruby_completion_task_invoke(&on_complete, 1);
@@ -657,6 +867,7 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
     }
 
     args->vm = vm;
+    args->interpreter_id = interpreter_id;
     args->script = script;
     args->on_complete = on_complete;
 
@@ -677,7 +888,7 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
     DEBUG_LOG("ruby_vm_enqueue: Script execution thread created and detached");
 }
 
-int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
+int ruby_vm_execute_sync(RubyVM* vm, int interpreter_id, RubyScript* script) {
     if (!vm || !script) {
         DEBUG_LOG("ruby_vm_execute_sync: Invalid parameters");
         return 1;
@@ -714,7 +925,7 @@ int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script) {
     pthread_sigmask(SIG_BLOCK, &new_set, &old_set);
 
     // Execute the script using shared internal implementation
-    const int result = execute_script_internal(vm, script);
+    const int result = execute_script_internal(vm, interpreter_id, script);
 
     // Restore original signal mask before returning to JVM context
     pthread_sigmask(SIG_SETMASK, &old_set, NULL);

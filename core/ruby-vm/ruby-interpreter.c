@@ -35,6 +35,21 @@ static void diag_log(const char* fmt, ...) {
 static RubyVM* g_global_vm = NULL;
 static pthread_mutex_t g_vm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* Process-wide source of interpreter IDs. Starts at 1 so 0 can remain a
+ * reserved "no interpreter" sentinel — useful if a future caller of the
+ * VM-level API (test harness, etc.) wants to submit a script without
+ * binding to a logical interpreter. We never recycle IDs: an interpreter
+ * that destroys itself releases its worker Thread, but the same id is
+ * never reissued, so a stray response with a stale id is always
+ * unambiguously droppable. */
+#include <stdatomic.h>
+static atomic_int g_next_interpreter_id = 1;
+
+/* Body of the stop sentinel script. The Ruby-side dispatcher matches the
+ * exact content (no eval) and pushes a :stop token into the matching
+ * interpreter's worker queue. Keep in sync with fifo_interpreter.rb. */
+static const char STOP_SENTINEL_SCRIPT[] = "__RGSS_STOP_INTERPRETER__";
+
 RubyInterpreter* ruby_interpreter_create(const char* application_path,
                                        const char* ruby_base_directory,
                                        const char* native_libs_location,
@@ -56,12 +71,40 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
 
     interpreter->log_listener = listener;
     interpreter->vm = NULL;
+    interpreter->interpreter_id = atomic_fetch_add(&g_next_interpreter_id, 1);
 
     return interpreter;
 }
 
 void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
     if (!interpreter) return;
+
+    /* Cooperative worker shutdown: if the VM is up and this interpreter has
+     * ever submitted a script (worker Thread lazily created on first
+     * request), ask the dispatcher to push a :stop token into our worker's
+     * inbox. We send-and-wait synchronously so the worker has actually
+     * exited before we return; that way the caller knows that no more
+     * callbacks bound to this interpreter's log_listener context can fire.
+     *
+     * If the worker is currently blocked in a long-running eval (e.g. a
+     * render loop), the :stop will queue behind it. Cooperative stop is
+     * the contract: long-running scripts must poll a flag (e.g.
+     * $rgss_should_stop) themselves and bail. We do not Thread#kill here
+     * — that would leave Ruby objects half-finalised. */
+    pthread_mutex_lock(&g_vm_mutex);
+    int vm_running = (g_global_vm != NULL &&
+                      interpreter->vm == g_global_vm &&
+                      atomic_load(&g_global_vm->state) == RUBY_VM_STATE_RUNNING);
+    pthread_mutex_unlock(&g_vm_mutex);
+
+    if (vm_running) {
+        RubyScript* stop = ruby_script_create_from_content(
+            STOP_SENTINEL_SCRIPT, sizeof(STOP_SENTINEL_SCRIPT) - 1);
+        if (stop != NULL) {
+            (void) ruby_vm_execute_sync(g_global_vm, interpreter->interpreter_id, stop);
+            ruby_script_destroy(stop);
+        }
+    }
 
     /* If this interpreter's listener is still bound to the global VM, swap
      * it out under the logging system's lock before the caller frees any
@@ -232,7 +275,7 @@ int ruby_interpreter_enqueue(RubyInterpreter* interpreter, RubyScript* script, R
     }
 
     DEBUG_LOG("Enqueueing script");
-    ruby_vm_enqueue(g_global_vm, script, on_complete);
+    ruby_vm_enqueue(g_global_vm, interpreter->interpreter_id, script, on_complete);
     DEBUG_LOG("Script enqueued");
     return 0;
 }
@@ -244,7 +287,7 @@ int ruby_interpreter_execute_sync(RubyInterpreter* interpreter, RubyScript* scri
     }
 
     DEBUG_LOG("Executing script synchronously");
-    int result = ruby_vm_execute_sync(g_global_vm, script);
+    int result = ruby_vm_execute_sync(g_global_vm, interpreter->interpreter_id, script);
     DEBUG_LOG("Script execution completed with result: %d", result);
     return result;
 }
@@ -288,7 +331,7 @@ static int validate_remote_eval_opts(const RubyVMRemoteEvalOptions* opts) {
  *
  * Safe to call from any caller of ruby_interpreter_enable_remote_*; the
  * FIFO interpreter serializes the work onto the Ruby VM main thread. */
-static int inject_remote_debug_listener(const RubyVMRemoteDebugOptions* opts) {
+static int inject_remote_debug_listener(int interpreter_id, const RubyVMRemoteDebugOptions* opts) {
     char port_str[16];
     snprintf(port_str, sizeof(port_str), "%d", opts->port);
     setenv("RUBY_DEBUG_HOST",    opts->host ? opts->host : "127.0.0.1", 1);
@@ -307,12 +350,12 @@ static int inject_remote_debug_listener(const RubyVMRemoteDebugOptions* opts) {
         "DEBUGGER__.open\n";
     RubyScript* script = ruby_script_create_from_content(src, strlen(src));
     if (!script) return RUBY_VM_ERROR_OUT_OF_MEMORY;
-    int rc = ruby_vm_execute_sync(g_global_vm, script);
+    int rc = ruby_vm_execute_sync(g_global_vm, interpreter_id, script);
     ruby_script_destroy(script);
     return rc == 0 ? RUBY_VM_OK : RUBY_VM_ERROR_RUBY_EXEC;
 }
 
-static int inject_remote_eval_listener(const RubyVMRemoteEvalOptions* opts) {
+static int inject_remote_eval_listener(int interpreter_id, const RubyVMRemoteEvalOptions* opts) {
     char port_str[16];
     snprintf(port_str, sizeof(port_str), "%d", opts->port);
     setenv("REMOTE_EVAL_HOST",  opts->host ? opts->host : "127.0.0.1", 1);
@@ -334,7 +377,7 @@ static int inject_remote_eval_listener(const RubyVMRemoteEvalOptions* opts) {
         " session_name: ENV['REMOTE_EVAL_SESSION_NAME'])\n";
     RubyScript* script = ruby_script_create_from_content(src, strlen(src));
     if (!script) return RUBY_VM_ERROR_OUT_OF_MEMORY;
-    int rc = ruby_vm_execute_sync(g_global_vm, script);
+    int rc = ruby_vm_execute_sync(g_global_vm, interpreter_id, script);
     ruby_script_destroy(script);
     return rc == 0 ? RUBY_VM_OK : RUBY_VM_ERROR_RUBY_EXEC;
 }
@@ -358,7 +401,7 @@ int ruby_interpreter_enable_remote_debug(RubyInterpreter* interpreter,
     /* Post-boot path: VM already up (e.g. enable_remote_eval was called
      * first). Inject the listener via the FIFO interpreter. */
     DEBUG_LOG("ruby_interpreter_enable_remote_debug: VM up — using post-boot inject path");
-    return inject_remote_debug_listener(opts);
+    return inject_remote_debug_listener(interpreter->interpreter_id, opts);
 }
 
 int ruby_interpreter_enable_remote_eval(RubyInterpreter* interpreter,
@@ -376,7 +419,7 @@ int ruby_interpreter_enable_remote_eval(RubyInterpreter* interpreter,
     }
 
     DEBUG_LOG("ruby_interpreter_enable_remote_eval: VM up — using post-boot inject path");
-    return inject_remote_eval_listener(opts);
+    return inject_remote_eval_listener(interpreter->interpreter_id, opts);
 }
 
 int ruby_interpreter_disable_logging(RubyInterpreter* interpreter) {

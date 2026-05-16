@@ -35,6 +35,11 @@ typedef enum {
  * NativeActivity wrapper, JNI callers — can use them without dragging in
  * pthread / atomic / CommChannel / LogListener. */
 
+/* Forward decl — definition is in ruby-vm.c. Each in-flight script holds a
+ * waiter on the per-VM FIFO list; the reader thread pops the front waiter
+ * for a matching interpreter_id when a response arrives. */
+typedef struct result_waiter result_waiter_t;
+
 struct RubyVM {
     char* application_path;
     RubyScript* main_script;
@@ -45,7 +50,29 @@ struct RubyVM {
     atomic_int in_flight_scripts;  // ref-count of active script execution threads
     pthread_mutex_t drain_mutex;   // protects drain_cond
     pthread_cond_t drain_cond;     // signaled when in_flight_scripts reaches 0
-    pthread_mutex_t socket_lock;
+
+    /* send_lock protects writes to commands_channel.main_fd. A request
+     * (interp_id + length + content) is written atomically under this lock
+     * AND the waiter is registered under it, so that the FIFO ordering of
+     * registrations matches the FIFO ordering of bytes on the wire. */
+    pthread_mutex_t send_lock;
+
+    /* reader_thread drains responses (interp_id + exit_code) from the
+     * command channel and signals the matching waiter. Spawned by
+     * ruby_vm_start_setup, joined by ruby_vm_destroy after EOF on the wire. */
+    pthread_t reader_thread;
+    atomic_int reader_thread_started;  // 0/1 — only join if it was spawned
+
+    /* FIFO list of pending waiters, protected by waiters_lock. The list is
+     * shared across all interpreter ids; on completion we walk from the
+     * head and pop the first waiter whose interpreter_id matches — that
+     * preserves request ordering both globally (head of list = oldest) and
+     * per-interpreter (the dispatcher and worker preserve per-id FIFO on
+     * the Ruby side). */
+    pthread_mutex_t waiters_lock;
+    result_waiter_t* waiters_head;
+    result_waiter_t* waiters_tail;
+
     RubyVMError last_error;
     /* NULL unless ruby_vm_enable_remote_debug() was called. When non-NULL,
      * the VM has duplicated the caller's strings and owns them — freed in
@@ -120,13 +147,20 @@ int ruby_vm_enable_logging(RubyVM* vm);
 int ruby_vm_disable_logging(RubyVM* vm);
 
 /**
- * Enqueue a Ruby script to be executed (asynchronously via native pthread)
+ * Enqueue a Ruby script to be executed (asynchronously via native pthread).
+ *
+ * The script is tagged with `interpreter_id` so the Ruby-side dispatcher
+ * routes it to that interpreter's worker Thread. Scripts targeting the
+ * same id are processed sequentially by that worker; scripts targeting
+ * different ids run on separate Ruby Threads and share the GVL
+ * cooperatively. See execute_script_internal in ruby-vm.c.
  *
  * @param vm Pointer to the Ruby VM instance
+ * @param interpreter_id Owning interpreter's id (RubyInterpreter::interpreter_id)
  * @param script Ruby script to enqueue
  * @param on_complete Completion callback
  */
-void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_complete);
+void ruby_vm_enqueue(RubyVM* vm, int interpreter_id, RubyScript* script, RubyCompletionTask on_complete);
 
 /**
  * Execute a Ruby script synchronously on the calling thread.
@@ -136,10 +170,11 @@ void ruby_vm_enqueue(RubyVM* vm, RubyScript* script, RubyCompletionTask on_compl
  * This avoids native pthreads attaching to JVM.
  *
  * @param vm Pointer to the Ruby VM instance
+ * @param interpreter_id Owning interpreter's id (RubyInterpreter::interpreter_id)
  * @param script Ruby script to execute
  * @return 0 on success, non-zero on error
  */
-int ruby_vm_execute_sync(RubyVM* vm, RubyScript* script);
+int ruby_vm_execute_sync(RubyVM* vm, int interpreter_id, RubyScript* script);
 
 /**
  * Get the last error that occurred in the Ruby VM

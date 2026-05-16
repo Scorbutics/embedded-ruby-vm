@@ -47,6 +47,16 @@ add_executable(test_remote_eval
     test_remote_eval.c
 )
 
+# Thread-per-interpreter cooperation: two RubyInterpreter wrappers (and
+# therefore two interpreter_ids on the wire) running concurrently. One
+# does a long-running until-loop, the other fires short sync scripts.
+# Before the multiplexed fifo_interpreter refactor, this would deadlock
+# at the first B-side sync script — A's eval was still holding the
+# single shared socket_lock and the only Ruby eval frame.
+add_executable(test_multi_interpreter
+    test_multi_interpreter.c
+)
+
 # Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
 # Link against embedded-ruby which combines logging, ruby-vm, and jni OBJECT libraries
@@ -81,6 +91,12 @@ target_link_libraries(test_remote_debug
 )
 
 target_link_libraries(test_remote_eval
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_multi_interpreter
     assets
     embedded-ruby
     dl
@@ -131,6 +147,10 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_multi_interpreter PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
     endif()
 endif()
 
@@ -156,6 +176,10 @@ target_include_directories(test_remote_debug PRIVATE
     ${CMAKE_SOURCE_DIR}/include/public
 )
 target_include_directories(test_remote_eval PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_multi_interpreter PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -186,6 +210,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_multi_interpreter PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
 endif()
 
 # Note: No RPATH needed since we're using static linking for libassets.a
@@ -198,3 +226,4 @@ add_test(NAME test_dispatch_queue COMMAND test_dispatch_queue WORKING_DIRECTORY 
 add_test(NAME test_vmlogger_level COMMAND test_vmlogger_level WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_remote_debug COMMAND test_remote_debug WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_remote_eval COMMAND test_remote_eval WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_multi_interpreter COMMAND test_multi_interpreter WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
