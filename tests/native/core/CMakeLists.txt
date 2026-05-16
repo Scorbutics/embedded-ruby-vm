@@ -219,7 +219,10 @@ endif()
 # Note: No RPATH needed since we're using static linking for libassets.a
 # The executable can be run directly without LD_LIBRARY_PATH for the assets library
 
-# Register with CTest
+# Register with CTest. TIMEOUT keeps a hung test from stalling the whole
+# CI run — typical wall times are 6 s or less; 30 s gives ~5x headroom for
+# slow runners while still failing fast on real hangs so CTest can print
+# the captured stdout (LOGF) via --output-on-failure.
 add_test(NAME test_core COMMAND test_core WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_sentinel_log_level COMMAND test_sentinel_log_level WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_dispatch_queue COMMAND test_dispatch_queue WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
@@ -227,3 +230,14 @@ add_test(NAME test_vmlogger_level COMMAND test_vmlogger_level WORKING_DIRECTORY 
 add_test(NAME test_remote_debug COMMAND test_remote_debug WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_remote_eval COMMAND test_remote_eval WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_multi_interpreter COMMAND test_multi_interpreter WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+
+set_tests_properties(
+    test_core
+    test_sentinel_log_level
+    test_dispatch_queue
+    test_vmlogger_level
+    test_remote_debug
+    test_remote_eval
+    test_multi_interpreter
+    PROPERTIES TIMEOUT 30
+)
