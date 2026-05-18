@@ -122,20 +122,19 @@ list(APPEND libs_dependencies
     z
 )
 
-# Optionally include the ruby-physfs gem, statically built by ruby-for-android
-# alongside libphysfs. When ON, embedded-ruby-vm exposes Init_physfs as a
-# reachable symbol; the host application is responsible for calling
-# Init_physfs() and rb_provide("physfs") via ruby_set_custom_ext_init() at
-# VM bootstrap time. The .a files must already exist in EXTERNAL_LIBS_DIR
-# (i.e., ruby-for-android was built with physfs + ruby-physfs in its
-# APP_DEPENDENCIES list). Defaults OFF so legacy builds without these libs
-# keep working.
+# Optionally include the ruby-physfs gem, built from source as part of this
+# CMake build (see ../cmake/Physfs.cmake + ../cmake/RubyPhysfs.cmake). When
+# ON, embedded-ruby-vm exposes Init_physfs as a reachable symbol; the host
+# application is responsible for calling Init_physfs() and rb_provide("physfs")
+# via ruby_set_custom_ext_init() at VM bootstrap time. Defaults OFF so
+# non-game consumers don't pay for the virtual-FS layer.
 option(EMBEDDED_RUBY_VM_WITH_PHYSFS
     "Include the ruby-physfs gem statically in libembedded-ruby-vm" OFF)
 if(EMBEDDED_RUBY_VM_WITH_PHYSFS)
-    # Order matters for link resolution: the gem references libphysfs,
-    # so physfs-ruby must come before physfs in the link line.
-    list(APPEND libs_dependencies physfs-ruby physfs)
+    # Order matters: RubyPhysfs.cmake needs physfs's IMPORTED target to read
+    # the physfs.h include dir.
+    include(${CMAKE_SOURCE_DIR}/cmake/Physfs.cmake)
+    include(${CMAKE_SOURCE_DIR}/cmake/RubyPhysfs.cmake)
     message(STATUS "Including ruby-physfs gem (static)")
 endif()
 
