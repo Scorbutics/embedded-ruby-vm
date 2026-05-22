@@ -83,6 +83,8 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
      * a second interpreter overlapped with the first. */
     if (listener.on_log_message != NULL) {
         (void) logging_register_interpreter_listener(interpreter->interpreter_id, listener);
+        diag_log("[JNI-DIAG] ruby_interpreter_create: registered listener id=%d ctx=%p",
+                 interpreter->interpreter_id, (void*)listener.context);
     }
 
     return interpreter;
@@ -129,6 +131,8 @@ void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
      * interpreter never finished binding to g_global_vm. A stray
      * unregister on an id that was never registered is a no-op. */
     if (interpreter->log_listener.on_log_message != NULL) {
+        diag_log("[JNI-DIAG] ruby_interpreter_destroy: unregistering listener id=%d ctx=%p",
+                 interpreter->interpreter_id, (void*)interpreter->log_listener.context);
         (void) logging_unregister_interpreter_listener(interpreter->interpreter_id);
     }
 
