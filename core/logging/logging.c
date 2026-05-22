@@ -1050,12 +1050,28 @@ static int write_full_log_line(const char* line, log_stream_t stream) {
     const char* tag = (g_logging_state.log_tag != NULL) ? g_logging_state.log_tag : "UNKNOWN";
     int priority = native_priority_for_level(level);
 
+    /* Strip the interpreter-id tag before handing the line to anything
+     * downstream. The tag is plumbing for per-interpreter routing — it
+     * has no business showing up in logcat or in any consumer's log file.
+     * `parse_interpreter_id_prefix` does not mutate the input; it returns
+     * the id (used by dispatch_invoke_custom_callbacks for registry
+     * lookup) and a pointer past the prefix in `body`. We pass `body` to
+     * BOTH the native logger and the async dispatch queue — that way:
+     *   - logcat shows the unprefixed text the Ruby code actually wrote,
+     *   - the dispatch worker re-parses the same prefix (cheap) to route
+     *     to the per-interpreter listener (see dispatch_invoke_custom_callbacks).
+     * We must re-enqueue the original tagged `line` though, because the
+     * dispatch path needs the tag to find the right interpreter listener;
+     * stripping it here would lose the routing key. */
+    const char* native_body = NULL;
+    (void) parse_interpreter_id_prefix(line, &native_body);
+
     /* Native logging (logcat / __android_log_print etc.) is fast and writes
      * to a dedicated platform channel that does not feed back into our
      * pipes, so we keep it inline on the logger thread. Custom callbacks
      * may be slow and may be implemented in JNI/Kotlin/JVM, so they're
      * dispatched asynchronously. */
-    int native_logging_error = call_native_logging_function(priority, tag, line);
+    int native_logging_error = call_native_logging_function(priority, tag, native_body);
     if (native_logging_error != 0) {
         jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag,
                        "write_full_log_line: Native logging callback failed (error %d)",
