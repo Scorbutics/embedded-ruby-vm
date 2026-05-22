@@ -80,11 +80,24 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
      * the list, which by registration order is the first interpreter
      * created (typically the long-running loader). This replaces the
      * old vm->log_listener swap-on-rebind dance that broke as soon as
-     * a second interpreter overlapped with the first. */
+     * a second interpreter overlapped with the first.
+     *
+     * Registration is order-tolerant: it runs BEFORE the consumer's
+     * subsequent enableLogging() (which is what calls logging_init and
+     * brings up the dispatch thread). logging_register_interpreter_listener
+     * handles the "not initialized yet" case by registering without
+     * starting the thread — the thread comes up later when the consumer's
+     * enableLogging() fires logging_add_custom_output, and the registry
+     * entry is already in place when the first line arrives. */
     if (listener.on_log_message != NULL) {
-        (void) logging_register_interpreter_listener(interpreter->interpreter_id, listener);
-        diag_log("[JNI-DIAG] ruby_interpreter_create: registered listener id=%d ctx=%p",
-                 interpreter->interpreter_id, (void*)listener.context);
+        int rc = logging_register_interpreter_listener(interpreter->interpreter_id, listener);
+        if (rc != 0) {
+            diag_log("[JNI-DIAG] ruby_interpreter_create: FAILED to register listener id=%d ctx=%p rc=%d — onLogMessage will not fire for this interpreter",
+                     interpreter->interpreter_id, (void*)listener.context, rc);
+        } else {
+            diag_log("[JNI-DIAG] ruby_interpreter_create: registered listener id=%d ctx=%p",
+                     interpreter->interpreter_id, (void*)listener.context);
+        }
     }
 
     return interpreter;

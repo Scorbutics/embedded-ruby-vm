@@ -1959,13 +1959,22 @@ int logging_register_interpreter_listener(int interpreter_id, LogListener listen
     g_logging_state.interpreter_listener_count++;
 
     /* Bring up the dispatch thread on the first interpreter registration
-     * (mirrors what logging_add_custom_output does on its first add).
-     * Without this, a consumer that ONLY uses the registry path — with
-     * no legacy custom_output callbacks — would sit on a never-drained
-     * pipe forever. internal_start_logging_thread is idempotent so this
-     * is harmless on subsequent registrations. */
+     * (mirrors what logging_add_custom_output does on its first add) —
+     * but ONLY if logging is already initialized. Consumers that register
+     * before logging_init (e.g. RubyInterpreter wrappers that register at
+     * create-time and only call ruby_vm_enable_logging later) keep their
+     * registration in place; the thread will be brought up by whichever
+     * subsequent logging_init + first add_custom_output the consumer
+     * issues. Rolling back the registration here when init hasn't happened
+     * would silently drop the listener and leave the consumer's
+     * onLogMessage path unreachable for the rest of the process lifetime.
+     *
+     * Registry-only consumers that ALSO want the thread up early can call
+     * logging_init() themselves before registering — the second add or
+     * register short-circuits idempotently. */
     int thread_start_rc = 0;
-    if (g_logging_state.interpreter_listener_count == 1 &&
+    if (g_logging_state.is_initialized &&
+        g_logging_state.interpreter_listener_count == 1 &&
         g_logging_state.custom_output_count == 0 &&
         !g_logging_state.is_running) {
         thread_start_rc = internal_start_logging_thread();
