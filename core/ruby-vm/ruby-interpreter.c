@@ -243,6 +243,26 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter,
     vm_created_here = 1;
     interpreter->vm = g_global_vm;
 
+    /* Initialize logging BEFORE ruby_vm_start so the log-stream pipes
+     * (RUBY_STDOUT / RUBY_STDERR / VMLOGGER) exist by the time
+     * exec-main-vm.c's setup_log_fds runs inside ruby_vm_start →
+     * ruby_vm_start_setup. The legacy code path relied on
+     * ruby_vm_start_setup auto-enabling logging when vm->log_listener
+     * was non-NULL; we now pass an empty listener (see above), so the
+     * auto-enable branch no longer fires. Without this explicit call,
+     * setup_log_fds reports "Failed to get log stream file descriptors"
+     * and falls back to the real STDOUT/STDERR fds, which makes Ruby's
+     * VMLogger.protocol sentinel writes bypass the dispatch thread
+     * entirely — logging_wait_for_sentinel then times out forever.
+     *
+     * Gated on the interpreter having a listener: a headless test or
+     * test harness that wants the VM without logging gets the same
+     * "no auto-enable" behaviour as before. */
+    if (interpreter->log_listener.on_log_message != NULL) {
+        DEBUG_LOG("Enabling logging before ruby_vm_start");
+        (void) ruby_vm_enable_logging(g_global_vm);
+    }
+
     if (remote_debug != NULL) {
         DEBUG_LOG("Applying remote debug options before start");
         rc = ruby_vm_enable_remote_debug(g_global_vm, remote_debug);
