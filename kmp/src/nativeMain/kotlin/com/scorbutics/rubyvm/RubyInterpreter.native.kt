@@ -124,7 +124,7 @@ actual class RubyInterpreter private constructor(
                 // Kotlin object access from foreign threads is supported.
                 logListener.context = listenerRef.asCPointer()
                 logListener.user_data = null
-                logListener.on_log_message = staticCFunction { listenerPtr, message, source, level ->
+                logListener.on_log_message = staticCFunction { listenerPtr, message, source, level, interpreterId ->
                     if (listenerPtr == null || message == null) return@staticCFunction
                     val ktListener = listenerPtr.pointed.context
                         ?.asStableRef<com.scorbutics.rubyvm.LogListener>()
@@ -143,7 +143,7 @@ actual class RubyInterpreter private constructor(
                         3 -> LogLevel.ERROR
                         else -> LogLevel.INFO // matches derive_default_level_for_stream
                     }
-                    ktListener.onLogMessage(LogMessage(message.toKString(), logSource, logLevel))
+                    ktListener.onLogMessage(LogMessage(message.toKString(), logSource, logLevel, interpreterId))
                 }
 
                 // Call C function directly (works for static builds)

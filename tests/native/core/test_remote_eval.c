@@ -80,9 +80,10 @@ static void emit_terminal(const char* prefix, const char* line) {
     size_t len = (size_t)n < sizeof(buf) ? (size_t)n : sizeof(buf) - 1;
     (void)logging_emit_to_terminal(buf, len);
 }
-static void OnRubyLog(LogListener* l, const char* line, log_stream_t source, log_level_t level) {
+static void OnRubyLog(LogListener* l, const char* line, log_stream_t source, log_level_t level, int interpreter_id) {
     (void)l;
     (void)source;
+    (void)interpreter_id;
     const char* prefix = (level == LOG_LEVEL_ERROR) ? "[Ruby:err]" : "[Ruby]";
     if (g_log) { fprintf(g_log, "%s %s\n", prefix, line); fflush(g_log); }
     emit_terminal(prefix, line);

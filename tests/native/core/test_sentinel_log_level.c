@@ -54,9 +54,10 @@ static void diag(const char* fmt, ...) {
 
 static RubyAPI ruby_api;
 
-static void on_log(LogListener* listener, const char* line, log_stream_t stream, log_level_t level) {
+static void on_log(LogListener* listener, const char* line, log_stream_t stream, log_level_t level, int interpreter_id) {
     (void)listener;
     (void)stream;
+    (void)interpreter_id;
     if (level == LOG_LEVEL_ERROR) {
         fprintf(stderr, "[ruby-err] %s\n", line);
     } else {

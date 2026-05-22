@@ -147,6 +147,50 @@ int logging_add_custom_output(logging_custom_output_func_t func, void* context);
  */
 int logging_remove_custom_output(logging_custom_output_func_t func, void* context);
 
+/* ---- Per-interpreter listener registry --------------------------------
+ *
+ * Each RubyInterpreter registers itself here at create time with its id +
+ * LogListener. The dispatch path parses the line for an in-band
+ * "[<id>]" prefix the producing worker Thread emitted via the Ruby-side
+ * TaggedIO wrapper (see fifo_interpreter.rb), looks up the matching
+ * listener, strips the prefix, and invokes it. Lines without a prefix
+ * (native printf, std::cerr, anything outside a tagged worker) are
+ * delivered to whichever listener registered first — typically the
+ * long-running interpreter, which is the natural sink for native output.
+ *
+ * Multiple registrations for the same id are accepted but the latest
+ * wins; in practice only the first execute_sync after create touches
+ * this, and re-registration with the same context is a no-op.
+ *
+ * Replaces the older single-slot vm->log_listener / logging_swap_listener
+ * pair: that design only supported one active listener at a time and
+ * required serialized rebinding on every execute_sync, which broke
+ * overlapping interpreter lifetimes (an ephemeral compile interpreter
+ * could leave the persistent loader interpreter's listener unbound on
+ * destroy).
+ */
+
+/**
+ * Register a listener for the given Ruby interpreter id. Pass an id of
+ * [LOG_NATIVE_INTERPRETER_ID] is NOT supported here — that id is reserved
+ * for the dispatch's "no tag found" fallback path and matches all
+ * registered listeners by ordinal (oldest wins).
+ *
+ * @param interpreter_id The id assigned to the interpreter (>0).
+ * @param listener       Copied by value; caller may discard their copy.
+ * @return 0 on success, -1 on bad input.
+ */
+int logging_register_interpreter_listener(int interpreter_id, LogListener listener);
+
+/**
+ * Unregister the listener bound to [interpreter_id]. Drops it from the
+ * registry under the logging-system lock so any in-flight dispatch
+ * completes before the entry goes away. Safe to call multiple times.
+ *
+ * @return 0 on success (entry removed or never present), -1 on bad input.
+ */
+int logging_unregister_interpreter_listener(int interpreter_id);
+
 /**
  * Platform-specific logging setup (e.g., Android logcat integration)
  *

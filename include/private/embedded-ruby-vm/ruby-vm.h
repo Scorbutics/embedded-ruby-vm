@@ -132,7 +132,7 @@ int ruby_vm_start_on_current_thread(RubyVM* vm, const char* ruby_base_directory,
 /**
  * Enable logging with stdout/stderr redirection
  *
- * Call this if you want Ruby's stdout/stderr to be captured through the logging system. 
+ * Call this if you want Ruby's stdout/stderr to be captured through the logging system.
  * If not called, Ruby output goes to normal stdout/stderr.
  *
  * @return 0 on success, negative on error

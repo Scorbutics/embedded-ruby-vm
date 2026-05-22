@@ -104,9 +104,14 @@ internal object RubyVMNative {
 
 /**
  * JNI callback interface for log messages
+ *
+ * Signature kept in sync with `GetMethodID(..., "onLogMessage", "(Ljava/lang/String;III)V")`
+ * in jni/ruby_vm_jni.c. The trailing `interpreterId` is the per-interpreter
+ * routing id parsed by the C dispatcher from the in-band TaggedIO tag, or
+ * `LOG_NATIVE_INTERPRETER_ID` (0) for native/untagged lines.
  */
 internal interface JNILogListener {
-    fun onLogMessage(message: String, source: Int, level: Int)
+    fun onLogMessage(message: String, source: Int, level: Int, interpreterId: Int)
 }
 
 /**

@@ -427,7 +427,19 @@ static int native_log_callbacks(const char* line, log_stream_t stream, log_level
     if (vm->log_listener.on_log_message == NULL) {
         return -2;
     }
-    vm->log_listener.on_log_message(&vm->log_listener, line, stream, level);
+    /* Legacy delivery path. vm->log_listener is the listener of whichever
+     * interpreter happened to create the VM first; the per-interpreter
+     * registry (logging_register_interpreter_listener) is the authoritative
+     * routing path now. We pass LOG_NATIVE_INTERPRETER_ID because this
+     * callback has no idea which interpreter produced the line — it sees
+     * the post-strip line body after the dispatcher already parsed and
+     * consumed the in-band tag. In practice for new code vm->log_listener
+     * stays unset (ensure_vm_initialized passes an empty LogListener to
+     * ruby_vm_create), so this branch is a no-op; left intact only so
+     * legacy ruby_vm_create callers that DO supply a listener directly
+     * continue to receive messages. */
+    vm->log_listener.on_log_message(&vm->log_listener, line, stream, level,
+                                    LOG_NATIVE_INTERPRETER_ID);
     return 0;
 }
 

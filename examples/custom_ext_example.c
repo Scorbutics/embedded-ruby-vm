@@ -92,9 +92,11 @@ void initialize_custom_extensions(void) {
 // ============================================================================
 
 static void on_log_message(LogListener* listener, const char* message,
-                            log_stream_t source, log_level_t level) {
+                            log_stream_t source, log_level_t level,
+                            int interpreter_id) {
     (void)listener;
     (void)source;
+    (void)interpreter_id;
     if (level == LOG_LEVEL_ERROR) {
         fprintf(stderr, "[Ruby Error] %s\n", message);
     } else {

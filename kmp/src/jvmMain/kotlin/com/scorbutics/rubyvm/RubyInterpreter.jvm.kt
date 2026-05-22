@@ -115,7 +115,7 @@ actual class RubyInterpreter private constructor(
             listener: LogListener
         ): RubyInterpreter {
             val jniListener = object : JNILogListener {
-                override fun onLogMessage(message: String, source: Int, level: Int) {
+                override fun onLogMessage(message: String, source: Int, level: Int, interpreterId: Int) {
                     val logSource = when (source) {
                         1 -> LogSource.RUBY_STDOUT
                         2 -> LogSource.RUBY_STDERR
@@ -130,7 +130,7 @@ actual class RubyInterpreter private constructor(
                         3 -> LogLevel.ERROR
                         else -> LogLevel.INFO // matches derive_default_level_for_stream
                     }
-                    listener.onLogMessage(LogMessage(message, logSource, logLevel))
+                    listener.onLogMessage(LogMessage(message, logSource, logLevel, interpreterId))
                 }
             }
 

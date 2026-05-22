@@ -25,9 +25,11 @@ static void OnScriptCompleted(void* context, int result) {
 }
 
 static void OnLog(LogListener* listener, const char* line,
-                  log_stream_t source, log_level_t level) {
+                  log_stream_t source, log_level_t level,
+                  int interpreter_id) {
     (void)listener;
     (void)source;
+    (void)interpreter_id;
     if (g_log_file != NULL) {
         const char* prefix = (level == LOG_LEVEL_ERROR) ? "[Ruby Error]" : "[Ruby]";
         fprintf(g_log_file, "%s %s\n", prefix, line);

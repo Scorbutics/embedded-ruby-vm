@@ -35,6 +35,116 @@
 
 STOP_SENTINEL_SCRIPT = "__RGSS_STOP_INTERPRETER__".freeze
 
+# In-band tag emitted at the start of every line written to $stdout / $stderr
+# from inside a worker Thread. The C dispatcher (see
+# logging.c::parse_interpreter_id_prefix) parses these markers to route the
+# line to the matching per-interpreter LogListener registered via
+# logging_register_interpreter_listener.
+#
+# Format: "\x01[<decimal-id>]\x01<line>". \x01 (SOH) was chosen because it
+# never appears in normal Ruby script output, so a parse failure can only
+# come from a malformed tag (which falls back to LOG_NATIVE_INTERPRETER_ID
+# routing on the C side, not from a missed-routing-on-real-content edge).
+TAG_BOUNDARY = "\x01".freeze
+THREAD_INTERP_KEY = :rgss_interpreter_id
+
+# Per-worker tagged IO wrapper. Wraps the real ruby_stdout / ruby_stderr FDs
+# and, for every Ruby write, prepends the producing worker's interpreter id
+# to each line. Writes are serialized through a single mutex because $stdout
+# and $stderr are process-global — concurrent worker writes would otherwise
+# interleave at the byte level and corrupt the tag.
+#
+# Outside a worker Thread (Thread.current[THREAD_INTERP_KEY] is nil),
+# writes pass through untagged; the C dispatcher routes them as native
+# logs to the first-registered listener (per the registry fallback rule).
+class TaggedIO
+  def initialize(inner)
+    @inner = inner
+    @mutex = Mutex.new
+    @pending = +""   # accumulator for partial writes that don't end in \n
+  end
+
+  # Forward IO methods we don't override (sync, fsync, close, etc.) so the
+  # rest of the dispatcher (which does `$stdout.sync = true`, `flush`, etc.)
+  # works unchanged.
+  def respond_to_missing?(name, _priv = false)
+    @inner.respond_to?(name)
+  end
+  def method_missing(name, *args, &block)
+    @inner.__send__(name, *args, &block)
+  end
+
+  # Ruby's IO#puts, #print, #p, #printf, Kernel#warn all eventually call
+  # IO#write (#puts after appending "\n" if missing). Tagging at #write is
+  # therefore enough to cover the whole stdout/stderr API surface.
+  def write(*args)
+    return 0 if args.empty?
+    s = args.map(&:to_s).join
+    return 0 if s.empty?
+    @mutex.synchronize { write_tagged_locked(s) }
+  end
+
+  # IO#puts contract: each argument terminates with a newline. Override
+  # explicitly so we don't rely on Ruby's default (which would call write
+  # multiple times and split tagging across calls).
+  def puts(*args)
+    if args.empty?
+      write("\n")
+      return nil
+    end
+    args.each do |a|
+      s = a.to_s
+      s += "\n" unless s.end_with?("\n")
+      write(s)
+    end
+    nil
+  end
+
+  def print(*args)
+    write(*args)
+    nil
+  end
+
+  def flush
+    @mutex.synchronize do
+      # Flush any pending partial-line buffer as its own (untagged-tail-of-)
+      # tagged line. In practice scripts hit \n on every puts and pending
+      # is empty here, but a bare `print` without trailing \n is legal Ruby
+      # and would otherwise leak the line until the next write.
+      unless @pending.empty?
+        id = Thread.current[THREAD_INTERP_KEY]
+        prefix = id ? "#{TAG_BOUNDARY}[#{id}]#{TAG_BOUNDARY}" : ""
+        @inner.write("#{prefix}#{@pending}")
+        @pending.clear
+      end
+    end
+    @inner.flush
+    self
+  end
+
+  private
+
+  # Caller holds @mutex. Splits `s` at newline boundaries, prepends the
+  # current Thread's interpreter id to each complete line, and buffers any
+  # trailing partial line until the next write/flush. Returns total bytes
+  # written to the inner IO so callers using the return value of #write
+  # (e.g. IO copy machinery) see plausible numbers.
+  def write_tagged_locked(s)
+    id = Thread.current[THREAD_INTERP_KEY]
+    prefix = id ? "#{TAG_BOUNDARY}[#{id}]#{TAG_BOUNDARY}" : ""
+    written = 0
+    rest = @pending + s
+    @pending = +""
+    while (nl = rest.index("\n"))
+      line = rest[0, nl + 1]
+      written += @inner.write("#{prefix}#{line}")
+      rest = rest[(nl + 1)..]
+    end
+    @pending << rest unless rest.empty?
+    written
+  end
+end
+
 begin
   if ARGV.length < 4
     raise ArgumentError, "Usage: #{$0} <socket_fd> <ruby_stdout_fd> <ruby_stderr_fd> <vmlogger_fd>"
@@ -56,10 +166,16 @@ begin
   # See the long-form comment in the previous version: $stdout / $stderr are
   # assigned (not IO#reopen'd) so the host can keep RUBY-stream output
   # separable from NATIVE-stream output by FD identity.
-  $stdout = IO.for_fd(ruby_stdout_fd, "w")
-  $stdout.sync = true
-  $stderr = IO.for_fd(ruby_stderr_fd, "w")
-  $stderr.sync = true
+  #
+  # The raw IOs are then wrapped in TaggedIO so every Ruby-side `puts` /
+  # `print` / `warn` carries an in-band interpreter-id tag the C dispatcher
+  # uses to pick the right registered LogListener.
+  raw_stdout = IO.for_fd(ruby_stdout_fd, "w")
+  raw_stdout.sync = true
+  raw_stderr = IO.for_fd(ruby_stderr_fd, "w")
+  raw_stderr.sync = true
+  $stdout = TaggedIO.new(raw_stdout)
+  $stderr = TaggedIO.new(raw_stderr)
 
   vmlogger_io = IO.for_fd(vmlogger_fd, "w")
   VMLogger.set_output(vmlogger_io)
@@ -94,6 +210,15 @@ begin
     queue = SizedQueue.new(64)
     thread = Thread.new do
       Thread.current.name = "rgss-worker-#{interp_id}"
+      # Stamp the thread-local key TaggedIO reads to build the in-band tag.
+      # Set once at worker birth: every script this worker subsequently evals
+      # runs in this Thread, so any `puts` / `warn` they emit (including
+      # from spawned sub-threads that inherit Thread.current via Thread.new
+      # — Ruby doesn't propagate locals, but PSDK code rarely spawns; if a
+      # script DOES spawn a thread that logs, those writes fall back to the
+      # native id, which is the desired behaviour for "I don't know where
+      # this came from").
+      Thread.current[THREAD_INTERP_KEY] = interp_id
       loop do
         script = queue.pop
 

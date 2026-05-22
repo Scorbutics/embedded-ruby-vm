@@ -48,18 +48,33 @@ typedef enum {
 } log_level_t;
 
 /**
+ * Sentinel interpreter id used when the dispatch system cannot attribute
+ * a log line to any specific Ruby interpreter — typically native-side
+ * output (C printf, std::cerr) that did not originate from a worker
+ * Thread. Listeners receive this when the line predates any worker tag
+ * or comes from outside the Ruby pipe entirely. The dispatcher falls
+ * back to the first-registered listener for these.
+ */
+#define LOG_NATIVE_INTERPRETER_ID 0
+
+/**
  * Log listener callback structure.
  *
  * Passed through the C core and across the JNI/cinterop boundary.
  * Every log line — stdout, stderr, VMLogger, native — is delivered through
- * the single on_log_message callback, with source and severity attached.
+ * the single on_log_message callback, with source, severity, and the
+ * originating Ruby interpreter id attached. `interpreter_id` is the value
+ * set by the producing worker Thread via the Ruby-side tagged stdout
+ * wrapper (see fifo_interpreter.rb's TaggedIO), or [LOG_NATIVE_INTERPRETER_ID]
+ * when no tag is present (native logs, lines from outside a worker).
  */
 struct LogListener;
 
 typedef void (*LogMessageFunc)(struct LogListener* listener,
                                 const char* message,
                                 log_stream_t source,
-                                log_level_t level);
+                                log_level_t level,
+                                int interpreter_id);
 
 typedef struct LogListener {
     void* context;

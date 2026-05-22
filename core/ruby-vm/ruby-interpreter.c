@@ -73,6 +73,18 @@ RubyInterpreter* ruby_interpreter_create(const char* application_path,
     interpreter->vm = NULL;
     interpreter->interpreter_id = atomic_fetch_add(&g_next_interpreter_id, 1);
 
+    /* Register the listener in the per-interpreter routing table. The
+     * dispatch parses the in-band tag emitted by the Ruby-side TaggedIO
+     * (see fifo_interpreter.rb) and looks up this id to find the
+     * matching listener. Untagged native lines fall back to the head of
+     * the list, which by registration order is the first interpreter
+     * created (typically the long-running loader). This replaces the
+     * old vm->log_listener swap-on-rebind dance that broke as soon as
+     * a second interpreter overlapped with the first. */
+    if (listener.on_log_message != NULL) {
+        (void) logging_register_interpreter_listener(interpreter->interpreter_id, listener);
+    }
+
     return interpreter;
 }
 
@@ -106,20 +118,19 @@ void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
         }
     }
 
-    /* If this interpreter's listener is still bound to the global VM, swap
-     * it out under the logging system's lock before the caller frees any
-     * context referenced by the listener. Without this, the logging thread
-     * keeps draining buffered Ruby output and dispatching through the
-     * dangling listener — a UAF that crashes once the freed chunk is reused. */
-    pthread_mutex_lock(&g_vm_mutex);
-    if (g_global_vm != NULL &&
-        interpreter->vm == g_global_vm &&
-        g_global_vm->log_listener.context == interpreter->log_listener.context) {
-        LogListener empty;
-        log_listener_init(&empty);
-        logging_swap_listener(&g_global_vm->log_listener, empty);
+    /* Unregister this interpreter's listener from the routing table.
+     * Takes the logging-system lock internally so any in-flight dispatch
+     * finishes before the registry entry (and the caller-owned context
+     * referenced by the listener) goes away — without that protection,
+     * a callback racing with the destroy could deref a freed context.
+     *
+     * No VM-state guard needed here (unlike the legacy swap path): the
+     * registry is keyed by interpreter_id, which is unique even if this
+     * interpreter never finished binding to g_global_vm. A stray
+     * unregister on an id that was never registered is a no-op. */
+    if (interpreter->log_listener.on_log_message != NULL) {
+        (void) logging_unregister_interpreter_listener(interpreter->interpreter_id);
     }
-    pthread_mutex_unlock(&g_vm_mutex);
 
     free(interpreter->application_path);
     free(interpreter->ruby_base_directory);
@@ -127,27 +138,25 @@ void ruby_interpreter_destroy(RubyInterpreter* interpreter) {
     free(interpreter);
 }
 
-/* Handle the "VM already running" branch — swap in the new interpreter's
- * log listener (if different), point interpreter->vm at the global, and
- * re-enable logging if needed. Caller must hold g_vm_mutex. */
+/* Handle the "VM already running" branch — point interpreter->vm at the
+ * global and ensure the logging thread is alive. The listener routing is
+ * handled by the per-interpreter registry (populated by
+ * ruby_interpreter_create), so we no longer touch g_global_vm->log_listener
+ * here: previous code swapped that field on every execute_sync, which
+ * meant an ephemeral interpreter's destroy would clear it and break the
+ * long-running interpreter's listener until the next execute_sync from
+ * the surviving interpreter (which, for a loader stuck in its render
+ * loop, never comes).
+ *
+ * Caller must hold g_vm_mutex. */
 static void rebind_existing_vm_locked(RubyInterpreter* interpreter) {
-    /* Only swap if the listener actually differs — this is called on every
-     * execute_sync, so an unconditional struct copy would be pure overhead. */
-    if (memcmp(&g_global_vm->log_listener, &interpreter->log_listener,
-               sizeof(LogListener)) != 0) {
-        diag_log("[JNI-DIAG] ensure_vm_initialized: swapping listener on g_global_vm=%p old_ctx=%p new_ctx=%p",
-                 (void*)g_global_vm,
-                 (void*)g_global_vm->log_listener.context,
-                 (void*)interpreter->log_listener.context);
-        /* Take the logging lock so any in-flight callback dispatch finishes
-         * before we overwrite the listener — see logging_swap_listener. */
-        logging_swap_listener(&g_global_vm->log_listener, interpreter->log_listener);
-    }
     interpreter->vm = g_global_vm;
 
-    /* Re-enable logging if the new interpreter has a listener callback.
-     * A previous interpreter's destroy() may have disabled logging, which
-     * stops the logging thread entirely. */
+    /* Re-enable logging if a listener is registered. The first
+     * ruby_vm_enable_logging starts the dispatch thread; subsequent
+     * calls short-circuit on "already initialized" inside the logging
+     * system. Skipping this when the interpreter has no listener keeps
+     * the thread idle for headless test interpreters. */
     if (interpreter->log_listener.on_log_message != NULL) {
         ruby_vm_enable_logging(g_global_vm);
     }
@@ -208,7 +217,18 @@ static int ensure_vm_initialized(RubyInterpreter* interpreter,
     main_script_owned = 1;
 
     DEBUG_LOG("Calling ruby_vm_create()");
-    g_global_vm = ruby_vm_create(interpreter->application_path, main_script, interpreter->log_listener);
+    /* Pass an EMPTY listener: in the new design the per-interpreter
+     * registry (populated by ruby_interpreter_create) owns routing.
+     * Storing this interpreter's listener in vm->log_listener would
+     * cause the legacy native_log_callbacks path to deliver the SAME
+     * line a second time (alongside the registry's delivery), which
+     * would re-fire any consumer that examines line content (sentinel
+     * detection, log file appends, etc.). vm->log_listener stays
+     * unused for new callers; legacy ruby_vm_create-direct users keep
+     * working because they bypass the RubyInterpreter wrapper entirely. */
+    LogListener empty_vm_listener;
+    log_listener_init(&empty_vm_listener);
+    g_global_vm = ruby_vm_create(interpreter->application_path, main_script, empty_vm_listener);
     if (!g_global_vm) {
         DEBUG_LOG("ruby_vm_create() failed");
         rc = 2;

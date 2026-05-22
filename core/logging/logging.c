@@ -69,6 +69,19 @@ typedef struct custom_output_node {
 } custom_output_node_t;
 
 /**
+ * Linked list node for per-interpreter listener registry. See the kdoc in
+ * logging.h above [logging_register_interpreter_listener] for the design
+ * rationale (replaces the old single-slot vm->log_listener swap dance).
+ * Append-order matters: the head of the list IS the oldest registration
+ * and is the fallback for native (untagged) log lines.
+ */
+typedef struct interpreter_listener_node {
+    int interpreter_id;
+    LogListener listener;
+    struct interpreter_listener_node* next;
+} interpreter_listener_node_t;
+
+/**
  * Main logging state structure
  */
 typedef struct {
@@ -80,6 +93,12 @@ typedef struct {
     native_logger_node_t* native_loggers;
     custom_output_node_t* custom_outputs;
     int custom_output_count;
+    /* Head = oldest registered interpreter (the natural fallback sink
+     * for untagged native lines). Mutations and dispatch reads are
+     * serialized through the shared `lock` (same mutex that protects
+     * custom_outputs). */
+    interpreter_listener_node_t* interpreter_listeners;
+    int interpreter_listener_count;
 
     int original_stdout_fd;  // Terminal FD saved before dup2 redirect
     int original_stderr_fd;  // Terminal FD saved before dup2 redirect
@@ -105,6 +124,8 @@ static logging_state_t g_logging_state = {
     .native_loggers = NULL,
     .custom_outputs = NULL,
     .custom_output_count = 0,
+    .interpreter_listeners = NULL,
+    .interpreter_listener_count = 0,
     .original_stdout_fd = -1,
     .original_stderr_fd = -1,
     .pipe_stdout_write_fd = -1,
@@ -574,17 +595,90 @@ static void detect_callback_feedback(log_stream_t stream, const char* line) {
     }
 }
 
-/* Invoke all registered custom-output callbacks for one log line. Runs on
+/* Parse the in-band interpreter-id tag the Ruby-side TaggedIO emits at the
+ * start of every line: "\x01[<decimal-id>]\x01<actual line>". On a match,
+ * returns the parsed id (>0) and sets `*body_out` to point just past the
+ * closing \x01. On no-match, returns LOG_NATIVE_INTERPRETER_ID and sets
+ * `*body_out` to the original `line` pointer. The function does NOT mutate
+ * `line` — the body pointer is an offset into the original buffer.
+ *
+ * SOH (\x01) was chosen because it never appears in normal Ruby script
+ * output (control characters in source code emit as the byte not the
+ * literal `\x01` escape) and survives utf-8 strings without ambiguity.
+ *
+ * Robustness: tolerates a missing/empty/non-numeric id by returning the
+ * native-id fallback. This keeps a malformed tag from dropping the line
+ * entirely. */
+static int parse_interpreter_id_prefix(const char* line, const char** body_out) {
+    *body_out = line;
+    if (line == NULL || line[0] != '\x01' || line[1] != '[') return LOG_NATIVE_INTERPRETER_ID;
+    const char* p = line + 2;
+    int id = 0;
+    int digits = 0;
+    while (*p >= '0' && *p <= '9') {
+        /* Cap at 9 digits so we can't overflow `id` even on adversarial
+         * input — interpreter ids in practice are small ints from an
+         * atomic_fetch_add counter. */
+        if (digits >= 9) return LOG_NATIVE_INTERPRETER_ID;
+        id = id * 10 + (*p - '0');
+        digits++;
+        p++;
+    }
+    if (digits == 0 || *p != ']' || *(p + 1) != '\x01') return LOG_NATIVE_INTERPRETER_ID;
+    *body_out = p + 2;
+    return id;
+}
+
+/* Look up the listener for [interpreter_id]; falls back to the head of
+ * the registry (the first-registered listener, oldest = natural sink) if
+ * no exact match. Returns 1 if a listener was found, 0 otherwise. Caller
+ * holds g_logging_state.lock. */
+static int find_interpreter_listener_locked(int interpreter_id, LogListener* out) {
+    if (out == NULL) return 0;
+    /* Native lines (id==NATIVE) and unmatched ids both route to the head
+     * (oldest registration) — typically the long-running persistent
+     * interpreter, which is the right sink for native printf output. */
+    if (interpreter_id != LOG_NATIVE_INTERPRETER_ID) {
+        for (interpreter_listener_node_t* n = g_logging_state.interpreter_listeners;
+             n != NULL; n = n->next) {
+            if (n->interpreter_id == interpreter_id) {
+                *out = n->listener;
+                return 1;
+            }
+        }
+    }
+    if (g_logging_state.interpreter_listeners != NULL) {
+        *out = g_logging_state.interpreter_listeners->listener;
+        return 1;
+    }
+    return 0;
+}
+
+/* Invoke all registered custom-output callbacks for one log line, AND
+ * route the line to the per-interpreter listener identified by the line's
+ * in-band tag (or the registry head for untagged native lines). Runs on
  * the dispatch worker thread; holds g_logging_state.lock for the duration
  * of the iteration to serialize against logging_add_custom_output /
- * logging_remove_custom_output / logging_swap_listener. */
+ * logging_remove_custom_output / logging_register_interpreter_listener /
+ * logging_unregister_interpreter_listener. */
 static void dispatch_invoke_custom_callbacks(log_stream_t stream, log_level_t level, const char* line) {
-    detect_callback_feedback(stream, line);
+    /* Strip the interpreter-id tag (if any) BEFORE feeding the line to
+     * any downstream consumer — the tag is plumbing, not content. */
+    const char* body = NULL;
+    int interpreter_id = parse_interpreter_id_prefix(line, &body);
+    /* detect_callback_feedback compares against last-seen lines; pass the
+     * untagged body so the comparison is stable across taggings. */
+    detect_callback_feedback(stream, body);
+
     pthread_mutex_lock(&g_logging_state.lock);
+
+    /* Legacy custom_output callbacks: unchanged signature, no id. Kept
+     * because non-interpreter consumers (logcat bridges, test harnesses)
+     * still rely on the broadcast semantics. */
     custom_output_node_t* node = g_logging_state.custom_outputs;
     while (node != NULL) {
         if (node->func != NULL && node->context != NULL) {
-            int err = node->func(line, stream, level, node->context);
+            int err = node->func(body, stream, level, node->context);
             if (err != 0) {
                 /* Surface the failure via thread-local error state.
                  * set_last_error() is defined later in the file, so assign
@@ -594,6 +688,18 @@ static void dispatch_invoke_custom_callbacks(log_stream_t stream, log_level_t le
         }
         node = node->next;
     }
+
+    /* Per-interpreter routing: hand the line to exactly one listener,
+     * identified by the in-band tag. Lookup happens under the same lock
+     * so an unregister can't race the dispatch and free the listener
+     * context while we're holding a copy. */
+    LogListener listener;
+    log_listener_init(&listener);
+    if (find_interpreter_listener_locked(interpreter_id, &listener) &&
+        listener.on_log_message != NULL) {
+        listener.on_log_message(&listener, body, stream, level, interpreter_id);
+    }
+
     pthread_mutex_unlock(&g_logging_state.lock);
 }
 
@@ -1539,6 +1645,18 @@ int logging_shutdown(void) {
     g_logging_state.custom_outputs = NULL;
     g_logging_state.custom_output_count = 0;
 
+    // Free all per-interpreter listeners. In a well-behaved client every
+    // ruby_interpreter_create has a matching destroy before we get here, so
+    // this is normally empty; loop is purely defensive against leaks.
+    interpreter_listener_node_t* interp_current = g_logging_state.interpreter_listeners;
+    while (interp_current != NULL) {
+        interpreter_listener_node_t* next = interp_current->next;
+        free(interp_current);
+        interp_current = next;
+    }
+    g_logging_state.interpreter_listeners = NULL;
+    g_logging_state.interpreter_listener_count = 0;
+
     // Free log tag
     if (g_logging_state.log_tag != NULL) {
         free(g_logging_state.log_tag);
@@ -1775,6 +1893,106 @@ int logging_remove_custom_output(logging_custom_output_func_t func, void* contex
     set_last_error(LOGGING_ERROR_CALLBACK_NOT_FOUND);
     pthread_mutex_unlock(&g_logging_state.lock);
     return LOGGING_ERROR_CALLBACK_NOT_FOUND;
+}
+
+/* ---- Per-interpreter listener registry implementation ----------------- */
+
+int logging_register_interpreter_listener(int interpreter_id, LogListener listener) {
+    if (interpreter_id <= LOG_NATIVE_INTERPRETER_ID) {
+        set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+        return LOGGING_ERROR_INVALID_PARAMETER;
+    }
+
+    pthread_mutex_lock(&g_logging_state.lock);
+
+    /* If an entry already exists for this id, replace its listener in
+     * place (idempotent re-register from the same interpreter is normal
+     * — e.g. ruby_interpreter_create may be called after a previous
+     * destroy left a stale-but-soon-to-be-overwritten slot). Walking the
+     * list keeps insertion order stable, which preserves the "head =
+     * oldest = fallback" property the dispatcher relies on. */
+    interpreter_listener_node_t* node = g_logging_state.interpreter_listeners;
+    while (node != NULL) {
+        if (node->interpreter_id == interpreter_id) {
+            node->listener = listener;
+            pthread_mutex_unlock(&g_logging_state.lock);
+            return 0;
+        }
+        node = node->next;
+    }
+
+    interpreter_listener_node_t* new_node = malloc(sizeof(*new_node));
+    if (new_node == NULL) {
+        set_last_error(LOGGING_ERROR_MEMORY_ALLOCATION);
+        pthread_mutex_unlock(&g_logging_state.lock);
+        return LOGGING_ERROR_MEMORY_ALLOCATION;
+    }
+    new_node->interpreter_id = interpreter_id;
+    new_node->listener       = listener;
+    new_node->next           = NULL;
+
+    /* Append at tail so the head stays the first-ever-registered listener
+     * (the natural fallback sink for native logs). */
+    if (g_logging_state.interpreter_listeners == NULL) {
+        g_logging_state.interpreter_listeners = new_node;
+    } else {
+        interpreter_listener_node_t* tail = g_logging_state.interpreter_listeners;
+        while (tail->next != NULL) tail = tail->next;
+        tail->next = new_node;
+    }
+    g_logging_state.interpreter_listener_count++;
+
+    /* Bring up the dispatch thread on the first interpreter registration
+     * (mirrors what logging_add_custom_output does on its first add).
+     * Without this, a consumer that ONLY uses the registry path — with
+     * no legacy custom_output callbacks — would sit on a never-drained
+     * pipe forever. internal_start_logging_thread is idempotent so this
+     * is harmless on subsequent registrations. */
+    int thread_start_rc = 0;
+    if (g_logging_state.interpreter_listener_count == 1 &&
+        g_logging_state.custom_output_count == 0 &&
+        !g_logging_state.is_running) {
+        thread_start_rc = internal_start_logging_thread();
+        if (thread_start_rc != 0) {
+            /* Roll back the registration: the consumer would otherwise
+             * hold a registry entry that never receives lines. */
+            interpreter_listener_node_t** link = &g_logging_state.interpreter_listeners;
+            while (*link != NULL && *link != new_node) link = &(*link)->next;
+            if (*link == new_node) *link = new_node->next;
+            free(new_node);
+            g_logging_state.interpreter_listener_count--;
+        }
+    }
+
+    pthread_mutex_unlock(&g_logging_state.lock);
+    return thread_start_rc;
+}
+
+int logging_unregister_interpreter_listener(int interpreter_id) {
+    if (interpreter_id <= LOG_NATIVE_INTERPRETER_ID) {
+        set_last_error(LOGGING_ERROR_INVALID_PARAMETER);
+        return LOGGING_ERROR_INVALID_PARAMETER;
+    }
+
+    pthread_mutex_lock(&g_logging_state.lock);
+
+    interpreter_listener_node_t** link = &g_logging_state.interpreter_listeners;
+    while (*link != NULL) {
+        if ((*link)->interpreter_id == interpreter_id) {
+            interpreter_listener_node_t* to_free = *link;
+            *link = to_free->next;
+            free(to_free);
+            g_logging_state.interpreter_listener_count--;
+            pthread_mutex_unlock(&g_logging_state.lock);
+            return 0;
+        }
+        link = &(*link)->next;
+    }
+
+    /* Not found: treat as success — caller has nothing more to clean up,
+     * and re-entrant unregister (e.g. destroy called twice) is normal. */
+    pthread_mutex_unlock(&g_logging_state.lock);
+    return 0;
 }
 
 /**

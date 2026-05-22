@@ -72,9 +72,10 @@ static void on_a_completed(void* ctx, int result) {
     atomic_store(&a_finished, 1);
 }
 
-static void on_log(LogListener* listener, const char* line, log_stream_t stream, log_level_t level) {
+static void on_log(LogListener* listener, const char* line, log_stream_t stream, log_level_t level, int interpreter_id) {
     (void) listener;
     (void) stream;
+    (void) interpreter_id;
     const char* prefix = (level == LOG_LEVEL_ERROR) ? "[ruby-err]" : "[ruby]";
     diag("%s %s", prefix, line);
 }

@@ -190,8 +190,12 @@ static JNICallbackContext* create_jni_callback_context(JNIEnv* env, jobject kotl
     }
 
     // Cache the single Kotlin callback method ID.
+    // Signature: (message: String, source: Int, level: Int, interpreterId: Int) -> Unit
+    // The trailing int is the per-interpreter routing id parsed by the
+    // C dispatcher from the in-band TaggedIO tag; LOG_NATIVE_INTERPRETER_ID
+    // for native/untagged lines.
     context->log_message_method_id = (*env)->GetMethodID(env, listener_class,
-                                                         "onLogMessage", "(Ljava/lang/String;II)V");
+                                                         "onLogMessage", "(Ljava/lang/String;III)V");
 
     (*env)->DeleteLocalRef(env, listener_class);
 
@@ -258,7 +262,7 @@ static void destroy_jni_callback_context(JNICallbackContext* context) {
  * Called from the native logging thread via LogListener — that thread is
  * daemon-attached so the JNI call is safe.
  */
-static void jni_log_message_callback(LogListener* listener, const char* message, log_stream_t source, log_level_t level) {
+static void jni_log_message_callback(LogListener* listener, const char* message, log_stream_t source, log_level_t level, int interpreter_id) {
     // Validate listener pointer
     if (!listener) {
         jni_log_write(JNI_LOG_ERROR, "RubyVM", "jni_log_message_callback: NULL listener");
@@ -280,8 +284,8 @@ static void jni_log_message_callback(LogListener* listener, const char* message,
 
     if (context->magic != JNI_CALLBACK_CONTEXT_MAGIC_LIVE) {
         atomic_fetch_add(&g_bad_magic_count, 1);
-        diag_log("[JNI-DIAG] message_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p source=%d level=%d — UAF detected, dropping",
-                  (void*)listener, (void*)context, context->magic, (void*)context->jvm, (int)source, (int)level);
+        diag_log("[JNI-DIAG] message_callback: BAD magic listener=%p ctx=%p magic=0x%08x jvm=%p source=%d level=%d interp=%d — UAF detected, dropping",
+                  (void*)listener, (void*)context, context->magic, (void*)context->jvm, (int)source, (int)level, interpreter_id);
         return;
     }
 
@@ -301,9 +305,11 @@ static void jni_log_message_callback(LogListener* listener, const char* message,
     }
 
     // Call the Kotlin onLogMessage method with source + parsed VMLogger severity
+    // + interpreter_id parsed from the in-band tag by the C dispatch (or
+    // LOG_NATIVE_INTERPRETER_ID for native lines).
     (*env)->CallVoidMethod(env, context->kotlin_listener,
                             context->log_message_method_id, j_message,
-                            (jint)source, (jint)level);
+                            (jint)source, (jint)level, (jint)interpreter_id);
 
     // Clean up
     (*env)->DeleteLocalRef(env, j_message);

@@ -50,9 +50,10 @@ static FILE* g_log = NULL;
     fprintf(stdout, fmt, ##__VA_ARGS__); fflush(stdout);          \
 } while (0)
 
-static void OnRubyLog(LogListener* l, const char* line, log_stream_t source, log_level_t level) {
+static void OnRubyLog(LogListener* l, const char* line, log_stream_t source, log_level_t level, int interpreter_id) {
     (void)l;
     (void)source;
+    (void)interpreter_id;
     if (g_log) {
         const char* prefix = (level == LOG_LEVEL_ERROR) ? "[Ruby:err]" : "[Ruby]";
         fprintf(g_log, "%s %s\n", prefix, line);

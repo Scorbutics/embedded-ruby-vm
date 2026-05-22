@@ -72,10 +72,11 @@ static void diag(const char* fmt, ...) {
 
 /* Suppress the SystemExit error spam each exit() call produces. Real test
  * failures show up via the per-thread mismatch counters, not Ruby logs. */
-static void on_log(LogListener* listener, const char* line, log_stream_t stream, log_level_t level) {
+static void on_log(LogListener* listener, const char* line, log_stream_t stream, log_level_t level, int interpreter_id) {
     (void) listener;
     (void) stream;
     (void) level;
+    (void) interpreter_id;
     /* Drop SystemExit chatter; surface everything else so a real Ruby
      * crash is still visible. */
     if (strstr(line, "SystemExit") != NULL) return;
