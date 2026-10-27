@@ -402,8 +402,10 @@ jobs:
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
+            # One immutable snapshot per commit: consumers (litergss-everywhere)
+            # derive this tag from their submodule commit, so it must never move.
             VERSION="$(cat NEXT_VERSION | tr -d '[:space:]')"
-            TAG="v${VERSION}-snapshot"
+            TAG="v${VERSION}-${GITHUB_SHA::7}-snapshot"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
