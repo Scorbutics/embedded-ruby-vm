@@ -59,9 +59,11 @@ configure_file(
     @ONLY
 )
 
+# Ruby headers are third-party: SYSTEM keeps their warnings out of -Werror
+# (e.g. newer Apple clang's -Wdefault-const-init-field-unsafe in rstring.h).
+target_include_directories(ruby-vm SYSTEM PRIVATE ${IMPORT_DIR})
 target_include_directories(ruby-vm
     PRIVATE
-        ${IMPORT_DIR}
         ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/private
     PUBLIC
         ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public

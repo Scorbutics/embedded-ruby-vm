@@ -230,8 +230,8 @@ target_link_libraries(core INTERFACE
         logging
         ruby-vm
 )
-target_include_directories(core INTERFACE 
+target_include_directories(core INTERFACE
     ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public
     ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/private
-    ${IMPORT_DIR}
 )
+target_include_directories(core SYSTEM INTERFACE ${IMPORT_DIR})
