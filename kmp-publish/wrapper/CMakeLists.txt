@@ -84,6 +84,9 @@ if(ANDROID)
         OpenSLES  # OpenSL ES audio (required for OpenAL-Soft backend)
         android   # Android native API (ALooper, etc.)
     )
+    # 16 KB page size support (Android 15+): NDK r27 and older still align the RW LOAD
+    # segments on 4 KB by default, which makes the .so unloadable on 16 KB page devices.
+    target_link_options(rgss_runtime PRIVATE "-Wl,-z,max-page-size=16384")
 elseif(APPLE)
     # macOS uses -force_load instead of --whole-archive
     # macOS provides dl and pthread in libSystem (no separate libraries)
