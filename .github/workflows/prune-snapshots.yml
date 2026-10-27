@@ -1,0 +1,91 @@
+name: Prune Snapshots
+
+# Deletes old per-commit snapshot releases (v<X.Y.Z>-<sha7>-snapshot) and their tags.
+#
+# A snapshot is kept when ANY of these holds:
+#   - it is among the KEEP_COUNT most recent snapshots
+#   - it is younger than KEEP_DAYS
+#   - its commit also carries a stable tag (vX.Y.Z)
+# Stable releases are never touched: anything shipped must point at a stable tag.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Mondays 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      keep_count:
+        description: "Number of most recent snapshots always kept"
+        required: false
+        default: "20"
+        type: string
+      keep_days:
+        description: "Snapshots younger than this (days) are always kept"
+        required: false
+        default: "90"
+        type: string
+      dry_run:
+        description: "Only list what would be deleted"
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: prune-snapshots
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    name: Prune snapshot releases
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete expired snapshots
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEEP_COUNT: ${{ inputs.keep_count || '20' }}
+          KEEP_DAYS: ${{ inputs.keep_days || '90' }}
+          # Scheduled runs have no inputs: they really delete
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+
+          # <tag>\t<age in days>, newest first
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq '.[] | select(.prerelease) | select(.tag_name | endswith("-snapshot"))
+                  | [.tag_name, (((now - (.created_at | fromdateiso8601)) / 86400) | floor)] | @tsv' \
+            | sort -t$'\t' -k2,2n > snapshots.tsv
+
+          echo "Found $(wc -l < snapshots.tsv) snapshot releases (keep_count=$KEEP_COUNT, keep_days=$KEEP_DAYS, dry_run=$DRY_RUN)"
+
+          rank=0
+          deleted=0
+          while IFS=$'\t' read -r tag age; do
+            rank=$((rank + 1))
+            if [ "$rank" -le "$KEEP_COUNT" ]; then
+              echo "keep   $tag (#$rank most recent)"
+              continue
+            fi
+            if [ "$age" -lt "$KEEP_DAYS" ]; then
+              echo "keep   $tag (${age}d old)"
+              continue
+            fi
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null &&
+               git tag --points-at "refs/tags/$tag^{commit}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "keep   $tag (commit has a stable tag)"
+              continue
+            fi
+
+            echo "delete $tag (${age}d old)"
+            deleted=$((deleted + 1))
+            if [ "$DRY_RUN" != "true" ]; then
+              gh release delete "$tag" --yes --cleanup-tag
+            fi
+          done < snapshots.tsv
+
+          echo "$deleted snapshot(s) $([ "$DRY_RUN" = "true" ] && echo "would be" || echo "were") deleted"
