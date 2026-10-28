@@ -22,7 +22,7 @@ if(NOT BUILD_SHARED_LIBS)
     # Check if the static Ruby was built with musl
     # Ruby names the static lib differently per platform:
     #   Linux/Android: libruby-static.a
-    #   iOS/macOS:     libruby.3.1-static.a (versioned)
+    #   iOS/macOS:     libruby.<major>.<minor>-static.a (versioned)
     file(GLOB _ruby_static_candidates
         "${EXTERNAL_LIBS_DIR}/libruby*-static.a"
         "${EXTERNAL_LIBS_DIR}/libruby.a"
@@ -165,8 +165,9 @@ FOREACH(lib_name ${libs_dependencies})
         # - m: math functions (sin, cos, sqrt, etc.)
         # - dl: dynamic loading (Linux/Android only; macOS provides this in libSystem)
         # - pthread: POSIX threads (Linux/Android only; macOS provides this in libSystem)
+        # - Security (Apple): Ruby 3.0 reads random bytes with SecRandomCopyBytes
         if(APPLE)
-            set(RUBY_SYSTEM_LIBS "m")
+            set(RUBY_SYSTEM_LIBS "m;-framework Security")
         else()
             set(RUBY_SYSTEM_LIBS "m;dl;pthread")
         endif()
@@ -204,7 +205,7 @@ FOREACH(lib_name ${libs_dependencies})
         endif()
 
         # Find the static library: try lib<name>-static.a first, then versioned
-        # variants like libruby.3.1-static.a, then fall back to lib<name>.a
+        # variants like libruby.3.0-static.a, then fall back to lib<name>.a
         file(GLOB _static_candidates
             "${EXTERNAL_LIBS_DIR}/lib${lib_name}-static.a"
             "${EXTERNAL_LIBS_DIR}/lib${lib_name}.*-static.a"

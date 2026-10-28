@@ -14,10 +14,19 @@ message(STATUS "Found EmbeddedRubyVM: ${EMBEDDED_RUBY_VM_ROOT_DIR}")
 # Version Information
 # ============================================================================
 
-set(EMBEDDED_RUBY_VM_VERSION "3.1.1" CACHE STRING "Ruby version embedded in embedded-ruby-vm")
-set(EMBEDDED_RUBY_VM_VERSION_MAJOR "3")
-set(EMBEDDED_RUBY_VM_VERSION_MINOR "1")
-set(EMBEDDED_RUBY_VM_VERSION_PATCH "1")
+# Ruby version embedded in embedded-ruby-vm, read from the downloaded headers:
+# the embedded variant (3.0, 3.2, 3.3) is chosen at build time (RUBY_VARIANT).
+set(_ruby_version_h "${EMBEDDED_RUBY_VM_ROOT_DIR}/external/include/ruby/version.h")
+if(EXISTS "${_ruby_version_h}")
+    file(STRINGS "${_ruby_version_h}" _ruby_api_lines REGEX "^#define RUBY_API_VERSION_(MAJOR|MINOR|TEENY) [0-9]+")
+    string(REGEX REPLACE ".*_MAJOR ([0-9]+).*" "\\1" EMBEDDED_RUBY_VM_VERSION_MAJOR "${_ruby_api_lines}")
+    string(REGEX REPLACE ".*_MINOR ([0-9]+).*" "\\1" EMBEDDED_RUBY_VM_VERSION_MINOR "${_ruby_api_lines}")
+    string(REGEX REPLACE ".*_TEENY ([0-9]+).*" "\\1" EMBEDDED_RUBY_VM_VERSION_PATCH "${_ruby_api_lines}")
+    set(EMBEDDED_RUBY_VM_VERSION "${EMBEDDED_RUBY_VM_VERSION_MAJOR}.${EMBEDDED_RUBY_VM_VERSION_MINOR}.${EMBEDDED_RUBY_VM_VERSION_PATCH}")
+else()
+    message(WARNING "EmbeddedRubyVM: Ruby headers not found (${_ruby_version_h}), Ruby version unknown")
+    set(EMBEDDED_RUBY_VM_VERSION "")
+endif()
 
 # ============================================================================
 # Platform Detection
@@ -101,8 +110,9 @@ set(EMBEDDED_RUBY_VM_KOTLIN_LIBS
 option(EMBEDDED_RUBY_VM_USE_STATIC "Force static linking of Ruby libraries" OFF)
 
 # Check if static or shared libraries are available
+set(_ruby_versioned_so "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so.${EMBEDDED_RUBY_VM_VERSION_MAJOR}.${EMBEDDED_RUBY_VM_VERSION_MINOR}")
 if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so" OR
-   EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so.3.1" OR
+   EXISTS "${_ruby_versioned_so}" OR
    EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.dylib")
     set(EMBEDDED_RUBY_VM_SHARED_AVAILABLE TRUE)
 else()
@@ -162,8 +172,8 @@ if(NOT TARGET EmbeddedRubyVM::ruby)
         # Find the shared library (try different naming conventions)
         if(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so")
             set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so")
-        elseif(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so.3.1")
-            set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.so.3.1")
+        elseif(EXISTS "${_ruby_versioned_so}")
+            set(_ruby_lib "${_ruby_versioned_so}")
         elseif(EXISTS "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.dylib")
             set(_ruby_lib "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.dylib")
         endif()
@@ -177,7 +187,7 @@ if(NOT TARGET EmbeddedRubyVM::ruby)
     elseif(EMBEDDED_RUBY_VM_LINK_TYPE STREQUAL "STATIC")
         add_library(EmbeddedRubyVM::ruby STATIC IMPORTED)
 
-        # Find the static library: libruby-static.a, libruby.3.1-static.a, or libruby.a
+        # Find the static library: libruby-static.a, libruby.<major>.<minor>-static.a, or libruby.a
         file(GLOB _ruby_static_candidates
             "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby*-static.a"
             "${EMBEDDED_RUBY_VM_NATIVE_LIBS}/libruby.a"

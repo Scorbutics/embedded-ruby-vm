@@ -2,13 +2,13 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Kotlin](https://img.shields.io/badge/Kotlin-Multiplatform-blue.svg)](https://kotlinlang.org/docs/multiplatform.html)
-[![Ruby](https://img.shields.io/badge/Ruby-3.1.0-red.svg)](https://www.ruby-lang.org/)
+[![Ruby](https://img.shields.io/badge/Ruby-3.0%20%7C%203.2%20%7C%203.3-red.svg)](https://www.ruby-lang.org/)
 
 A cross-platform C library that embeds a full Ruby interpreter for use in native applications, Android, iOS, and JVM applications. Execute Ruby scripts from your Kotlin, Java, or C code with a complete Ruby runtime environment and standard library embedded directly into your binary.
 
 ## ✨ Features
 
-- 🚀 **Full Ruby 3.1.0 Runtime** - Complete Ruby interpreter with standard library
+- 🚀 **Full Ruby Runtime** - Complete Ruby 3.0, 3.2 or 3.3 interpreter with standard library (one build per variant)
 - 📦 **Single Binary Distribution** - No external Ruby installation required
 - 🌍 **Cross-Platform** - Android, iOS, macOS, Linux, Windows, JVM Desktop
 - 🔧 **Kotlin Multiplatform API** - Unified API across all platforms

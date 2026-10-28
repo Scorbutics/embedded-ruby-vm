@@ -7,7 +7,7 @@ cmake_install.cmake
 CTestTestfile.cmake
 CMakeFiles/
 # Ruby prebuilt libraries are downloaded from ruby-for-android GitHub Releases
-# (see scripts/download-ruby-libs.sh and RUBY_LIBS_VERSION)
+# (see scripts/download-ruby-libs.sh and RUBY_LIBS_VERSIONS)
 external/lib/
 external/include/aarch64-*/
 external/include/x86_64-*/

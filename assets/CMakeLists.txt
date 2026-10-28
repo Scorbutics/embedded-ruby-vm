@@ -272,6 +272,10 @@ if(ENABLE_ASSETS_JNI AND NOT ANDROID)
 endif()
 
 target_compile_definitions(assets PRIVATE HAS_EMBEDDED_DATA)
+# Stdlib directory name and libruby soname suffix of the embedded Ruby
+target_compile_definitions(assets PRIVATE
+    EMBEDDED_RUBY_ABI_VERSION="${EMBEDDED_RUBY_ABI_VERSION}"
+    EMBEDDED_RUBY_MINOR_VERSION="${EMBEDDED_RUBY_MINOR_VERSION}")
 
 if(EMBEDDED_NATIVE_LIBS_LIST)
     target_compile_definitions(assets PRIVATE HAS_EMBEDDED_NATIVE_LIBS)

@@ -33,6 +33,22 @@ cd build
 cd examples/kotlin-jvm && ../../gradlew runExample
 ```
 
+## Ruby Variants
+
+One build embeds one Ruby minor version (the variant: 3.0, 3.2 or 3.3), because Pokemon
+Studio game bytecode only loads on the Ruby minor that compiled it. `RUBY_LIBS_VERSIONS`
+pins the ruby-for-android release of each variant; select one with `RUBY_VARIANT=3.2`
+(download script), `-DRUBY_VARIANT=3.2` (CMake) or `-PrubyVariant=3.2` (Gradle); default 3.0.
+The Ruby ABI version is read from the downloaded headers, never hard-coded.
+
+```bash
+RUBY_VARIANT=3.2 ./scripts/download-ruby-libs.sh linux-x86_64
+# Use a local ruby-for-android build instead of a release:
+RUBY_VARIANT=3.2 RUBY_LIBS_LOCAL_DIR=../ruby-for-android/target ./scripts/download-ruby-libs.sh linux-x86_64
+```
+
+A release holds the artifacts of every variant: `embedded-ruby-vm-<platform>-ruby<variant>.tar.gz`.
+
 ## Architecture
 
 Three-layer design: C Core -> Low-Level Kotlin -> High-Level Kotlin.

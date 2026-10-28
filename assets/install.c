@@ -60,7 +60,14 @@ extern const char _binary_libcurses_so_end[];
 // Manifest file configuration
 #define MANIFEST_FILE ".embedded_manifest"
 #define MANIFEST_FILE_JSON ".embedded_manifest.json"
-#define RUBY_VERSION "3.1.0"
+// Set by assets/CMakeLists.txt from the downloaded Ruby headers
+#ifndef EMBEDDED_RUBY_ABI_VERSION
+#error "EMBEDDED_RUBY_ABI_VERSION must be defined (e.g. \"3.0.0\")"
+#endif
+#ifndef EMBEDDED_RUBY_MINOR_VERSION
+#error "EMBEDDED_RUBY_MINOR_VERSION must be defined (e.g. \"3.0\")"
+#endif
+#define RUBY_VERSION EMBEDDED_RUBY_ABI_VERSION
 
 // Internal Manifest structure to track installed files
 // This extends the public AssetsLayout with embedded data tracking
@@ -114,7 +121,7 @@ static uint32_t compute_crc32(const void *data, size_t size) {
 }
 
 // Generate auto-version string from CRC32 hashes
-// Format: "3.1.0-auto-XXXXXXXX" where XXXXXXXX is XOR of all CRC32 values
+// Format: "<ruby ABI>-auto-XXXXXXXX" (e.g. "3.0.0-auto-XXXXXXXX") where XXXXXXXX is XOR of all CRC32 values
 static void generate_auto_version(char *version_buf, size_t buf_size,
                                    uint32_t crc1, uint32_t crc2) {
     // Combine all CRC32 values using XOR
@@ -610,14 +617,14 @@ static int extract_all_native_libraries(const char* install_dir, Manifest* manif
     ASSETS_INFO_LOG("Extracted %d native libraries", lib_count);
     
     // Create version-specific symlinks for libraries
-    // This allows binaries linked against libruby.so.3.1 to find libruby.so
+    // This allows binaries linked against libruby.so.<minor> to find libruby.so
     create_library_version_symlinks(native_libs_dir);
     
     return 0;
 }
 
 // Helper function to create version symlinks for shared libraries
-// E.g., creates libruby.so.3.1 -> libruby.so, libssl.so.3 -> libssl.so
+// E.g., creates libruby.so.3.0 -> libruby.so, libssl.so.3 -> libssl.so
 static void create_library_version_symlinks(const char* lib_dir) {
     // Common version suffix patterns for the libraries we embed
     // Format: {base_name, version_suffix}
@@ -625,7 +632,7 @@ static void create_library_version_symlinks(const char* lib_dir) {
         const char* base;
         const char* versions[3];  // Try multiple common versions
     } lib_versions[] = {
-        {"libruby.so", {"3.1", "3.1.0", NULL}},
+        {"libruby.so", {EMBEDDED_RUBY_MINOR_VERSION, EMBEDDED_RUBY_ABI_VERSION, NULL}},
         {"libssl.so", {"3", "1.1", NULL}},
         {"libcrypto.so", {"3", "1.1", NULL}},
         {"libreadline.so", {"8", "7", NULL}},
@@ -670,7 +677,7 @@ static void create_library_version_symlinks(const char* lib_dir) {
             // Remove existing symlink if present
             unlink(symlink_name);
 
-            // Create symlink: libruby.so.3.1 -> libruby.so
+            // Create symlink: libruby.so.<minor> -> libruby.so
             if (symlink(base_name, symlink_name) == 0) {
                 ASSETS_INFO_LOG("  Created symlink: %s.%s -> %s", base_name, version, base_name);
             } else {
@@ -943,7 +950,7 @@ AssetsLayout* assets_get_layout(const char* install_dir, AssetsError* error) {
     }
 
     // Populate paths
-    // NOTE: ruby_stdlib_path should be the base install directory, not including /ruby/3.1.0
+    // NOTE: ruby_stdlib_path should be the base install directory, not including /ruby/<ruby ABI>
     // The Ruby VM's SetupRubyEnv() function will append /ruby/<version>/ itself
     snprintf(layout->ruby_stdlib_path, sizeof(layout->ruby_stdlib_path),
              "%s", install_dir);

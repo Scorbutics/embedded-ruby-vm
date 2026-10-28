@@ -84,6 +84,14 @@ add_executable(test_listener_register_before_init
     test_listener_register_before_init.c
 )
 
+# Ruby variant: the stdlib extracts under the ABI directory install.c uses
+# (no longer hard-coded), the VM runs the configured Ruby minor, and psych /
+# fiddle / openssl / zlib load with the libraries folded into libruby-ext.a.
+add_executable(test_ruby_variant
+    test_ruby_variant.c
+)
+target_compile_definitions(test_ruby_variant PRIVATE EXPECTED_RUBY_MINOR="${RUBY_VARIANT}")
+
 # Link against assets library (static or shared depending on BUILD_SHARED_LIBS)
 # The ruby-api-loader handles dlopen/dlsym for libembedded-ruby.so
 # Link against embedded-ruby which combines logging, ruby-vm, and jni OBJECT libraries
@@ -142,6 +150,12 @@ target_link_libraries(test_interpreter_listener_routing
 )
 
 target_link_libraries(test_listener_register_before_init
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_ruby_variant
     assets
     embedded-ruby
     dl
@@ -208,6 +222,10 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_ruby_variant PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
     endif()
 endif()
 
@@ -249,6 +267,10 @@ target_include_directories(test_interpreter_listener_routing PRIVATE
     ${CMAKE_SOURCE_DIR}/include/public
 )
 target_include_directories(test_listener_register_before_init PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_ruby_variant PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -295,6 +317,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_ruby_variant PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
 endif()
 
 # Note: No RPATH needed since we're using static linking for libassets.a
@@ -314,6 +340,7 @@ add_test(NAME test_multi_interpreter COMMAND test_multi_interpreter WORKING_DIRE
 add_test(NAME test_same_id_fifo COMMAND test_same_id_fifo WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_interpreter_listener_routing COMMAND test_interpreter_listener_routing WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_listener_register_before_init COMMAND test_listener_register_before_init WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_ruby_variant COMMAND test_ruby_variant WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 set_tests_properties(
     test_core
@@ -326,5 +353,6 @@ set_tests_properties(
     test_same_id_fifo
     test_interpreter_listener_routing
     test_listener_register_before_init
+    test_ruby_variant
     PROPERTIES TIMEOUT 30
 )

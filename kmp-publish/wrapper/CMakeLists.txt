@@ -95,7 +95,7 @@ elseif(APPLE)
     # every system framework / library that any constituent library needs:
     #   SFML        → Cocoa, IOKit, CoreFoundation, CoreVideo, Carbon, OpenGL
     #   OpenAL-Soft → AudioToolbox, CoreAudio, AudioUnit
-    #   Ruby / misc → compression, iconv
+    #   Ruby / misc → compression, iconv, Security (Ruby 3.0 SecRandomCopyBytes)
     target_link_libraries(rgss_runtime PRIVATE
         -Wl,-force_load,${FAT_LIB_PATH}
         z m stdc++
@@ -108,6 +108,7 @@ elseif(APPLE)
         "-framework CoreVideo"
         "-framework Carbon"
         "-framework OpenGL"
+        "-framework Security"
         compression
         iconv
         bz2

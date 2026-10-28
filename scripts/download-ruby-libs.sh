@@ -15,7 +15,10 @@
 # Environment variables:
 #   GITHUB_TOKEN       Optional token for authenticated GitHub API requests
 #   RUBY_LIBS_REPO     Override the GitHub repo (default: Scorbutics/ruby-for-android)
-#   RUBY_LIBS_VERSION  Override the release tag (default: read from RUBY_LIBS_VERSION file)
+#   RUBY_VARIANT       Ruby minor version to download (default: 3.0), a key of RUBY_LIBS_VERSIONS
+#   RUBY_LIBS_VERSION  Override the release tag (default: the RUBY_VARIANT line of RUBY_LIBS_VERSIONS)
+#   RUBY_LIBS_LOCAL_DIR  Take the ruby_full-*.zip archives from this directory instead of
+#                        downloading them (e.g. a local ruby-for-android build's target/)
 #
 
 set -euo pipefail
@@ -25,17 +28,25 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Defaults
 REPO="${RUBY_LIBS_REPO:-Scorbutics/ruby-for-android}"
-VERSION_FILE="$PROJECT_ROOT/RUBY_LIBS_VERSION"
+VERSION_FILE="$PROJECT_ROOT/RUBY_LIBS_VERSIONS"
+VARIANT="${RUBY_VARIANT:-3.0}"
 
 if [ -n "${RUBY_LIBS_VERSION:-}" ]; then
     VERSION="$RUBY_LIBS_VERSION"
-elif [ -f "$VERSION_FILE" ]; then
-    VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
 else
-    echo "Error: No RUBY_LIBS_VERSION file found and RUBY_LIBS_VERSION env not set." >&2
-    exit 1
+    VERSION="$(awk -v v="$VARIANT" '$1 == v { print $2 }' "$VERSION_FILE")"
+    if [ -z "$VERSION" ]; then
+        echo "Error: Ruby variant '$VARIANT' has no line in $VERSION_FILE." >&2
+        exit 1
+    fi
+fi
+if [ -n "${RUBY_LIBS_LOCAL_DIR:-}" ]; then
+    # Never let a local build pass for the pinned release in the markers, and
+    # always reinstall it: the same tag may name several local builds.
+    VERSION="$VERSION-local"
 fi
 
+echo "Ruby variant: $VARIANT"
 echo "Ruby libs version: $VERSION"
 echo "Repository: $REPO"
 
@@ -93,7 +104,7 @@ for plat in "${REQUESTED_PLATFORMS[@]}"; do
 
     # Check if already downloaded for this version
     marker_file="$MARKER_DIR/${plat}.version"
-    if [ -f "$marker_file" ] && [ "$(cat "$marker_file")" = "$VERSION" ]; then
+    if [ -z "${RUBY_LIBS_LOCAL_DIR:-}" ] && [ -f "$marker_file" ] && [ "$(cat "$marker_file")" = "$VERSION" ]; then
         # Verify libs directory actually exists
         if [ -d "$PROJECT_ROOT/external/lib/$triplet" ]; then
             echo "[$plat] Already up to date ($VERSION), skipping."
@@ -101,11 +112,20 @@ for plat in "${REQUESTED_PLATFORMS[@]}"; do
         fi
     fi
 
-    echo "[$plat] Downloading $archive_name..."
-
-    url="https://github.com/$REPO/releases/download/$VERSION/$archive_name"
     zip_path="$DOWNLOAD_DIR/$plat-$archive_name"
-    download_url "$url" "$zip_path"
+    if [ -n "${RUBY_LIBS_LOCAL_DIR:-}" ]; then
+        local_zip="$(find "$RUBY_LIBS_LOCAL_DIR" -name "$archive_name" | head -1)"
+        if [ -z "$local_zip" ]; then
+            echo "Error: [$plat] $archive_name not found under $RUBY_LIBS_LOCAL_DIR" >&2
+            exit 1
+        fi
+        echo "[$plat] Using local $local_zip"
+        cp "$local_zip" "$zip_path"
+    else
+        echo "[$plat] Downloading $archive_name..."
+        url="https://github.com/$REPO/releases/download/$VERSION/$archive_name"
+        download_url "$url" "$zip_path"
+    fi
 
     echo "[$plat] Extracting..."
     extract_dir="$DOWNLOAD_DIR/$plat-extracted"
@@ -137,21 +157,27 @@ for plat in "${REQUESTED_PLATFORMS[@]}"; do
         echo "[$plat] Installed includes -> external/include/$triplet/"
     fi
 
-    # Copy generic includes (ruby/, openssl/, zlib.h, zconf.h, ruby.h) — only if not present
-    for item in ruby openssl; do
-        if [ -d "$extract_dir/external/include/$item" ]; then
-            if [ ! -d "$PROJECT_ROOT/external/include/$item" ]; then
+    # Generic files (ruby/, openssl/, ruby.h, zlib.h, zconf.h, ruby-stdlib.zip)
+    # are the same in every platform archive of a release: install them once,
+    # and replace them when the release changes (another Ruby variant has
+    # other headers and another stdlib).
+    generic_marker="$MARKER_DIR/generic.version"
+    if [ -n "${RUBY_LIBS_LOCAL_DIR:-}" ] && [ -z "${generic_done:-}" ] ||
+       [ ! -f "$generic_marker" ] || [ "$(cat "$generic_marker")" != "$VERSION" ]; then
+        generic_done=1
+        for item in ruby openssl ruby.h zlib.h zconf.h; do
+            if [ -e "$extract_dir/external/include/$item" ]; then
+                rm -rf "$PROJECT_ROOT/external/include/$item"
                 cp -r "$extract_dir/external/include/$item" "$PROJECT_ROOT/external/include/"
             fi
+        done
+        if [ -f "$extract_dir/assets/files/ruby-stdlib.zip" ]; then
+            mkdir -p "$PROJECT_ROOT/assets/files"
+            cp "$extract_dir/assets/files/ruby-stdlib.zip" "$PROJECT_ROOT/assets/files/"
         fi
-    done
-    for header in ruby.h zlib.h zconf.h; do
-        if [ -f "$extract_dir/external/include/$header" ]; then
-            if [ ! -f "$PROJECT_ROOT/external/include/$header" ]; then
-                cp "$extract_dir/external/include/$header" "$PROJECT_ROOT/external/include/"
-            fi
-        fi
-    done
+        echo "$VERSION" > "$generic_marker"
+        echo "[$plat] Installed generic includes and ruby-stdlib.zip"
+    fi
 
     # Copy asset files
     src_assets="$extract_dir/assets/files/$src_triplet"
@@ -160,13 +186,6 @@ for plat in "${REQUESTED_PLATFORMS[@]}"; do
         rm -rf "$dest_assets"
         mkdir -p "$(dirname "$dest_assets")"
         cp -r "$src_assets" "$dest_assets"
-    fi
-    # Copy generic ruby-stdlib.zip
-    if [ -f "$extract_dir/assets/files/ruby-stdlib.zip" ]; then
-        if [ ! -f "$PROJECT_ROOT/assets/files/ruby-stdlib.zip" ]; then
-            mkdir -p "$PROJECT_ROOT/assets/files"
-            cp "$extract_dir/assets/files/ruby-stdlib.zip" "$PROJECT_ROOT/assets/files/"
-        fi
     fi
 
     # Write version marker

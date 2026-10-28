@@ -432,6 +432,8 @@ val targetArch: String = findProperty("targetArch")?.toString() ?: run {
 val buildType: String = findProperty("buildType")?.toString() ?: "Release"
 val forceRebuild: Boolean = findProperty("forceRebuild")?.toString()?.toBoolean() ?: false
 val enableASAN: Boolean = findProperty("enableASAN")?.toString()?.toBoolean() ?: false
+// Ruby minor version to embed (a key of RUBY_LIBS_VERSIONS): -PrubyVariant=3.2 or RUBY_VARIANT
+val rubyVariant: String = findProperty("rubyVariant")?.toString() ?: System.getenv("RUBY_VARIANT") ?: "3.0"
 
 // Two-flag system for build control:
 // - buildWrapperShared: Controls output type of libassets and libembedded-ruby (.so vs .a)
@@ -442,6 +444,7 @@ val buildSharedLibs: Boolean = findProperty("buildSharedLibs")?.toString()?.toBo
 println("CMake Build Configuration:")
 println("  Target Architecture: $targetArch")
 println("  Build Type: $buildType")
+println("  Ruby Variant: $rubyVariant")
 println("  Build Wrapper Shared: $buildWrapperShared (libassets/libembedded-ruby as .so)")
 println("  Build Shared Libs: $buildSharedLibs (link against libruby.so)")
 if (forceRebuild) {
@@ -495,6 +498,7 @@ fun Project.runCMake(
     if (!allCMakeArgs.any { it.startsWith("-DBUILD_SHARED_LIBS=") }) {
         allCMakeArgs.add("-DBUILD_SHARED_LIBS=${if (buildSharedLibs) "ON" else "OFF"}")
     }
+    allCMakeArgs.add("-DRUBY_VARIANT=$rubyVariant")
 
     // Add AddressSanitizer flags if enabled
     if (enableASAN) {

@@ -115,13 +115,19 @@ if(NOT EXISTS "${EXTERNAL_LIBS_DIR}")
     endif()
 endif()
 
+# Ruby variant: the Ruby minor version to embed, one key of RUBY_LIBS_VERSIONS.
+# Pokemon Studio compiles game bytecode with Ruby 3.0, 3.2 or 3.3 depending on
+# the OS, and bytecode only loads on the minor that produced it.
+set(RUBY_VARIANT "3.0" CACHE STRING "Ruby minor version to embed (a key of RUBY_LIBS_VERSIONS)")
+
 # Auto-download Ruby libraries from GitHub Releases if not present
 if(NOT EXISTS "${EXTERNAL_LIBS_DIR}" AND NOT SKIP_RUBY_DOWNLOAD)
     find_program(BASH_PROGRAM bash)
     if(BASH_PROGRAM)
         message(STATUS "Ruby libs not found at ${EXTERNAL_LIBS_DIR}, attempting download...")
         execute_process(
-            COMMAND ${BASH_PROGRAM} ${CMAKE_SOURCE_DIR}/scripts/download-ruby-libs.sh
+            COMMAND ${CMAKE_COMMAND} -E env RUBY_VARIANT=${RUBY_VARIANT}
+                    ${BASH_PROGRAM} ${CMAKE_SOURCE_DIR}/scripts/download-ruby-libs.sh
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             RESULT_VARIABLE DOWNLOAD_RESULT
         )
@@ -139,6 +145,25 @@ if(NOT EXISTS "${EXTERNAL_LIBS_DIR}" AND NOT SKIP_RUBY_DOWNLOAD)
         )
     endif()
 endif()
+
+# The Ruby ABI version (e.g. 3.0.0) names the stdlib directory and the
+# libruby soname. Read it from the downloaded headers rather than hard-coding
+# it, and refuse libraries of another variant than the one requested.
+set(_RUBY_VERSION_H "${CMAKE_SOURCE_DIR}/external/include/ruby/version.h")
+if(NOT EXISTS "${_RUBY_VERSION_H}")
+    message(FATAL_ERROR "Ruby headers not found (${_RUBY_VERSION_H}). Run: RUBY_VARIANT=${RUBY_VARIANT} ./scripts/download-ruby-libs.sh")
+endif()
+file(STRINGS "${_RUBY_VERSION_H}" _RUBY_API_LINES REGEX "^#define RUBY_API_VERSION_(MAJOR|MINOR) [0-9]+")
+string(REGEX REPLACE ".*_MAJOR ([0-9]+).*" "\\1" _RUBY_API_MAJOR "${_RUBY_API_LINES}")
+string(REGEX REPLACE ".*_MINOR ([0-9]+).*" "\\1" _RUBY_API_MINOR "${_RUBY_API_LINES}")
+set(EMBEDDED_RUBY_MINOR_VERSION "${_RUBY_API_MAJOR}.${_RUBY_API_MINOR}")
+set(EMBEDDED_RUBY_ABI_VERSION "${EMBEDDED_RUBY_MINOR_VERSION}.0")
+if(NOT EMBEDDED_RUBY_MINOR_VERSION STREQUAL RUBY_VARIANT)
+    message(FATAL_ERROR
+        "Downloaded Ruby libraries are Ruby ${EMBEDDED_RUBY_MINOR_VERSION}, but RUBY_VARIANT is ${RUBY_VARIANT}.\n"
+        "Run: RUBY_VARIANT=${RUBY_VARIANT} ./scripts/download-ruby-libs.sh <platform>")
+endif()
+message(STATUS "Embedding Ruby ${EMBEDDED_RUBY_MINOR_VERSION} (ABI ${EMBEDDED_RUBY_ABI_VERSION})")
 
 message(STATUS "Using external libraries from: ${EXTERNAL_LIBS_DIR}")
 message(STATUS "Build wrapper as shared: ${BUILD_WRAPPER_SHARED}")

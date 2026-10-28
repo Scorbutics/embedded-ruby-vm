@@ -58,7 +58,7 @@ object RubyVMPaths {
 
         return Paths(
             installDir = installDir.absolutePath,
-            rubyBaseDir = installDir.absolutePath,  // Fixed: base directory, not /ruby/3.1.0
+            rubyBaseDir = installDir.absolutePath,  // Fixed: base directory, not /ruby/<ruby ABI>
             nativeLibsDir = nativeLibsDir.absolutePath
         )
     }

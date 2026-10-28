@@ -6,6 +6,10 @@ name: CI & Release
 # - Push to master  → snapshot release (vX.Y.Z-<sha>-snapshot)
 # - Tag push (v*)   → stable release (vX.Y.Z)
 # - Pull requests   → build & test only (no release)
+#
+# Every job runs once per Ruby variant (the Ruby minor version, a key of
+# RUBY_LIBS_VERSIONS): a release holds the artifacts of all variants, named
+# embedded-ruby-vm-<platform>-ruby<variant>.tar.gz.
 
 on:
   push:
@@ -16,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       ruby_libs_version:
-        description: "ruby-for-android release tag (e.g. v3.1.1-1). Leave empty to use RUBY_LIBS_VERSION file."
+        description: "ruby-for-android release tag (e.g. v3.0.7-2), used for the Ruby variant it belongs to. Leave empty to use RUBY_LIBS_VERSIONS."
         required: false
         type: string
       tag_name:
@@ -27,7 +31,13 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-    name: Build & Test (Linux x86_64)
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_variant: ["3.0", "3.2", "3.3"]
+    name: Build & Test (Linux x86_64, Ruby ${{ matrix.ruby_variant }})
+    env:
+      RUBY_VARIANT: ${{ matrix.ruby_variant }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,11 +55,12 @@ jobs:
             external/lib
             external/include
             assets/files
-          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-linux-x86_64
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSIONS') }}-ruby${{ matrix.ruby_variant }}-linux-x86_64
 
       - name: Download Ruby prebuilt libraries
         run: |
-          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+          # A manual ruby-for-android tag (vX.Y.Z-N) only replaces the pin of its own variant
+          if [[ "${{ inputs.ruby_libs_version }}" =~ ^v([0-9]+\.[0-9]+)\. ]] && [ "${BASH_REMATCH[1]}" = "$RUBY_VARIANT" ]; then
             export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
           fi
           ./scripts/download-ruby-libs.sh linux-x86_64
@@ -65,6 +76,7 @@ jobs:
             -DBUILD_JNI=OFF \
             -DBUILD_TESTS=ON \
             -DSKIP_RUBY_DOWNLOAD=ON \
+            -DRUBY_VARIANT=$RUBY_VARIANT \
             -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
@@ -152,28 +164,33 @@ jobs:
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
           cp -r include/public/embedded-ruby-vm artifacts/include/
-          tar czf embedded-ruby-vm-linux-x86_64.tar.gz -C artifacts .
+          tar czf embedded-ruby-vm-linux-x86_64-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: embedded-ruby-vm-linux-x86_64
-          path: embedded-ruby-vm-linux-x86_64.tar.gz
+          name: embedded-ruby-vm-linux-x86_64-ruby${{ matrix.ruby_variant }}
+          path: embedded-ruby-vm-linux-x86_64-ruby${{ matrix.ruby_variant }}.tar.gz
 
   build-android:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
+        ruby_variant: ["3.0", "3.2", "3.3"]
+        arch_label: [arm64, x86_64]
         include:
-          - abi: arm64-v8a
+          - arch_label: arm64
+            abi: arm64-v8a
             platform: android-arm64
-            arch_label: arm64
             triplet: aarch64-linux-android
-          - abi: x86_64
+          - arch_label: x86_64
+            abi: x86_64
             platform: android-x86_64
-            arch_label: x86_64
             triplet: x86_64-linux-android
-    name: Build (Android ${{ matrix.arch_label }})
+    name: Build (Android ${{ matrix.arch_label }}, Ruby ${{ matrix.ruby_variant }})
+    env:
+      RUBY_VARIANT: ${{ matrix.ruby_variant }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -191,11 +208,12 @@ jobs:
             external/lib
             external/include
             assets/files
-          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-${{ matrix.platform }}
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSIONS') }}-ruby${{ matrix.ruby_variant }}-${{ matrix.platform }}
 
       - name: Download Ruby prebuilt libraries
         run: |
-          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+          # A manual ruby-for-android tag (vX.Y.Z-N) only replaces the pin of its own variant
+          if [[ "${{ inputs.ruby_libs_version }}" =~ ^v([0-9]+\.[0-9]+)\. ]] && [ "${BASH_REMATCH[1]}" = "$RUBY_VARIANT" ]; then
             export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
           fi
           ./scripts/download-ruby-libs.sh ${{ matrix.platform }}
@@ -217,6 +235,7 @@ jobs:
             -DBUILD_JNI_ANDROID_LOG=ON \
             -DBUILD_TESTS=OFF \
             -DSKIP_RUBY_DOWNLOAD=ON \
+            -DRUBY_VARIANT=$RUBY_VARIANT \
             -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
@@ -231,18 +250,21 @@ jobs:
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
           cp -r include/public/embedded-ruby-vm artifacts/include/
-          tar czf embedded-ruby-vm-android-${{ matrix.arch_label }}.tar.gz -C artifacts .
+          tar czf embedded-ruby-vm-android-${{ matrix.arch_label }}-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: embedded-ruby-vm-android-${{ matrix.arch_label }}
-          path: embedded-ruby-vm-android-${{ matrix.arch_label }}.tar.gz
+          name: embedded-ruby-vm-android-${{ matrix.arch_label }}-ruby${{ matrix.ruby_variant }}
+          path: embedded-ruby-vm-android-${{ matrix.arch_label }}-ruby${{ matrix.ruby_variant }}.tar.gz
 
   build-ios:
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
+        ruby_variant: ["3.0", "3.2", "3.3"]
+        variant: [device, simulator]
         include:
           - variant: device
             sysroot: iphoneos
@@ -252,7 +274,9 @@ jobs:
             sysroot: iphonesimulator
             ruby_libs_platform: ios-simulator
             deployment_target: "14.0"
-    name: Build (iOS ${{ matrix.variant }} arm64)
+    name: Build (iOS ${{ matrix.variant }} arm64, Ruby ${{ matrix.ruby_variant }})
+    env:
+      RUBY_VARIANT: ${{ matrix.ruby_variant }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -264,11 +288,12 @@ jobs:
             external/lib
             external/include
             assets/files
-          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-${{ matrix.ruby_libs_platform }}
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSIONS') }}-ruby${{ matrix.ruby_variant }}-${{ matrix.ruby_libs_platform }}
 
       - name: Download Ruby prebuilt libraries
         run: |
-          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+          # A manual ruby-for-android tag (vX.Y.Z-N) only replaces the pin of its own variant
+          if [[ "${{ inputs.ruby_libs_version }}" =~ ^v([0-9]+\.[0-9]+)\. ]] && [ "${BASH_REMATCH[1]}" = "$RUBY_VARIANT" ]; then
             export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
           fi
           ./scripts/download-ruby-libs.sh ${{ matrix.ruby_libs_platform }}
@@ -289,6 +314,7 @@ jobs:
             -DBUILD_JNI=OFF \
             -DBUILD_TESTS=OFF \
             -DSKIP_RUBY_DOWNLOAD=ON \
+            -DRUBY_VARIANT=$RUBY_VARIANT \
             -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
@@ -303,17 +329,23 @@ jobs:
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
           cp -r include/public/embedded-ruby-vm artifacts/include/
-          tar czf embedded-ruby-vm-ios-${{ matrix.variant }}-arm64.tar.gz -C artifacts .
+          tar czf embedded-ruby-vm-ios-${{ matrix.variant }}-arm64-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: embedded-ruby-vm-ios-${{ matrix.variant }}-arm64
-          path: embedded-ruby-vm-ios-${{ matrix.variant }}-arm64.tar.gz
+          name: embedded-ruby-vm-ios-${{ matrix.variant }}-arm64-ruby${{ matrix.ruby_variant }}
+          path: embedded-ruby-vm-ios-${{ matrix.variant }}-arm64-ruby${{ matrix.ruby_variant }}.tar.gz
 
   build-macos:
     runs-on: macos-14
-    name: Build & Test (macOS arm64)
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby_variant: ["3.0", "3.2", "3.3"]
+    name: Build & Test (macOS arm64, Ruby ${{ matrix.ruby_variant }})
+    env:
+      RUBY_VARIANT: ${{ matrix.ruby_variant }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -328,11 +360,12 @@ jobs:
             external/lib
             external/include
             assets/files
-          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSION') }}-macos-arm64
+          key: ruby-libs-${{ hashFiles('RUBY_LIBS_VERSIONS') }}-ruby${{ matrix.ruby_variant }}-macos-arm64
 
       - name: Download Ruby prebuilt libraries
         run: |
-          if [ -n "${{ inputs.ruby_libs_version }}" ]; then
+          # A manual ruby-for-android tag (vX.Y.Z-N) only replaces the pin of its own variant
+          if [[ "${{ inputs.ruby_libs_version }}" =~ ^v([0-9]+\.[0-9]+)\. ]] && [ "${BASH_REMATCH[1]}" = "$RUBY_VARIANT" ]; then
             export RUBY_LIBS_VERSION="${{ inputs.ruby_libs_version }}"
           fi
           ./scripts/download-ruby-libs.sh macos-arm64
@@ -351,6 +384,7 @@ jobs:
             -DBUILD_JNI=OFF \
             -DBUILD_TESTS=ON \
             -DSKIP_RUBY_DOWNLOAD=ON \
+            -DRUBY_VARIANT=$RUBY_VARIANT \
             -DEMBEDDED_RUBY_VM_WITH_PHYSFS=ON
 
       - name: Build
@@ -368,13 +402,13 @@ jobs:
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
           cp -r include/public/embedded-ruby-vm artifacts/include/
-          tar czf embedded-ruby-vm-macos-arm64.tar.gz -C artifacts .
+          tar czf embedded-ruby-vm-macos-arm64-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: embedded-ruby-vm-macos-arm64
-          path: embedded-ruby-vm-macos-arm64.tar.gz
+          name: embedded-ruby-vm-macos-arm64-ruby${{ matrix.ruby_variant }}
+          path: embedded-ruby-vm-macos-arm64-ruby${{ matrix.ruby_variant }}.tar.gz
 
   release:
     needs: [build-linux, build-android, build-ios, build-macos]
@@ -432,10 +466,4 @@ jobs:
           name: ${{ steps.tag.outputs.tag }}
           prerelease: ${{ steps.tag.outputs.prerelease == 'true' }}
           generate_release_notes: true
-          files: |
-            artifacts/embedded-ruby-vm-linux-x86_64/embedded-ruby-vm-linux-x86_64.tar.gz
-            artifacts/embedded-ruby-vm-android-arm64/embedded-ruby-vm-android-arm64.tar.gz
-            artifacts/embedded-ruby-vm-android-x86_64/embedded-ruby-vm-android-x86_64.tar.gz
-            artifacts/embedded-ruby-vm-ios-device-arm64/embedded-ruby-vm-ios-device-arm64.tar.gz
-            artifacts/embedded-ruby-vm-ios-simulator-arm64/embedded-ruby-vm-ios-simulator-arm64.tar.gz
-            artifacts/embedded-ruby-vm-macos-arm64/embedded-ruby-vm-macos-arm64.tar.gz
+          files: artifacts/*/embedded-ruby-vm-*-ruby*.tar.gz
