@@ -259,77 +259,98 @@ begin
     { queue: queue, thread: thread }
   end
 
-  loop do
-    id_line = socket.gets
-    if id_line.nil?
-      VMLogger.info "[Ruby VM] Socket closed by peer, shutting down dispatcher"
-      break
-    end
-    id_str = id_line.strip
-    next if id_str.empty?
+  # The read loop runs in its own Thread so Thread.main does nothing but
+  # join it. Ruby raises into Thread.main whenever a thread with
+  # abort_on_exception dies (PSDK's title-screen data loaders, the debug
+  # gem's reader thread) and whenever any thread calls exit/abort (MRI
+  # forwards SystemExit to the main thread). Raised into the read loop,
+  # those unwound the dispatcher and took the whole VM down; here they
+  # are logged and absorbed. An exception of the dispatcher Thread itself
+  # is re-raised by join once it is dead, and still goes to the fatal
+  # handlers below.
+  dispatcher = Thread.new do
+    Thread.current.name = "rgss-dispatcher"
+    loop do
+      id_line = socket.gets
+      if id_line.nil?
+        VMLogger.info "[Ruby VM] Socket closed by peer, shutting down dispatcher"
+        break
+      end
+      id_str = id_line.strip
+      next if id_str.empty?
 
-    interpreter_id = begin
-      Integer(id_str)
-    rescue ArgumentError
-      VMLogger.error "[Ruby Error] Invalid interpreter id: '#{id_str}'"
-      # We cannot tag a response without a valid id, so the C side has to
-      # treat this as a protocol fatal. Drop the rest of the frame so we
-      # don't desync — read the length line and discard the body.
+      interpreter_id = begin
+        Integer(id_str)
+      rescue ArgumentError
+        VMLogger.error "[Ruby Error] Invalid interpreter id: '#{id_str}'"
+        # We cannot tag a response without a valid id, so the C side has to
+        # treat this as a protocol fatal. Drop the rest of the frame so we
+        # don't desync — read the length line and discard the body.
+        length_line = socket.gets
+        next if length_line.nil?
+        begin
+          n = Integer(length_line.strip)
+          socket.read(n) if n.positive?
+        rescue StandardError
+        end
+        next
+      end
+
       length_line = socket.gets
-      next if length_line.nil?
-      begin
-        n = Integer(length_line.strip)
-        socket.read(n) if n.positive?
-      rescue StandardError
+      if length_line.nil?
+        VMLogger.info "[Ruby VM] EOF after id #{interpreter_id}, shutting down"
+        break
       end
-      next
-    end
 
-    length_line = socket.gets
-    if length_line.nil?
-      VMLogger.info "[Ruby VM] EOF after id #{interpreter_id}, shutting down"
-      break
-    end
-
-    script_length = begin
-      Integer(length_line.strip)
-    rescue ArgumentError
-      VMLogger.error "[Ruby Error] interp=#{interpreter_id} invalid length: '#{length_line.strip}'"
-      write_response.call(interpreter_id, 1)
-      next
-    end
-
-    if script_length <= 0 || script_length > 10_000_000
-      VMLogger.error "[Ruby Error] interp=#{interpreter_id} invalid length: #{script_length}"
-      write_response.call(interpreter_id, 1)
-      next
-    end
-
-    script_content = socket.read(script_length)
-    if script_content.nil? || script_content.bytesize != script_length
-      VMLogger.error "[Ruby Error] interp=#{interpreter_id} short read (expected #{script_length} bytes)"
-      write_response.call(interpreter_id, 1)
-      next
-    end
-
-    # Stop sentinel: drain the matching worker's queue, then let it write
-    # exit_code=0 itself once it pops :stop. We immediately remove the
-    # entry from `workers` so a subsequent (illegal) request for the same
-    # id would spawn a fresh worker rather than feed the dying one.
-    if script_content == STOP_SENTINEL_SCRIPT
-      entry = workers.delete(interpreter_id)
-      if entry.nil?
-        # Worker never spawned for this id (no scripts were ever
-        # submitted). Reply on the dispatcher Thread directly.
-        write_response.call(interpreter_id, 0)
-      else
-        entry[:queue] << :stop
+      script_length = begin
+        Integer(length_line.strip)
+      rescue ArgumentError
+        VMLogger.error "[Ruby Error] interp=#{interpreter_id} invalid length: '#{length_line.strip}'"
+        write_response.call(interpreter_id, 1)
+        next
       end
-      next
-    end
 
-    entry = (workers[interpreter_id] ||= start_worker.call(interpreter_id))
-    entry[:queue] << script_content
+      if script_length <= 0 || script_length > 10_000_000
+        VMLogger.error "[Ruby Error] interp=#{interpreter_id} invalid length: #{script_length}"
+        write_response.call(interpreter_id, 1)
+        next
+      end
+
+      script_content = socket.read(script_length)
+      if script_content.nil? || script_content.bytesize != script_length
+        VMLogger.error "[Ruby Error] interp=#{interpreter_id} short read (expected #{script_length} bytes)"
+        write_response.call(interpreter_id, 1)
+        next
+      end
+
+      # Stop sentinel: drain the matching worker's queue, then let it write
+      # exit_code=0 itself once it pops :stop. We immediately remove the
+      # entry from `workers` so a subsequent (illegal) request for the same
+      # id would spawn a fresh worker rather than feed the dying one.
+      if script_content == STOP_SENTINEL_SCRIPT
+        entry = workers.delete(interpreter_id)
+        if entry.nil?
+          # Worker never spawned for this id (no scripts were ever
+          # submitted). Reply on the dispatcher Thread directly.
+          write_response.call(interpreter_id, 0)
+        else
+          entry[:queue] << :stop
+        end
+        next
+      end
+
+      entry = (workers[interpreter_id] ||= start_worker.call(interpreter_id))
+      entry[:queue] << script_content
+    end
+  end
+
+  begin
+    dispatcher.join
+  rescue Exception => error
+    raise unless dispatcher.alive?
+    VMLogger.error "[Ruby VM] #{error.class} raised into the VM main thread by a background thread, ignored: #{error.message}" rescue nil
+    error.backtrace&.each { |line| VMLogger.error "  #{line}" rescue nil }
+    retry
   end
 
   # Dispatcher exit path: politely ask every live worker to stop and join
