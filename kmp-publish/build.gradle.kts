@@ -175,6 +175,8 @@ kotlin {
                         "-framework", "CoreGraphics",
                         // General dependencies
                         "-framework", "CoreFoundation",
+                        // Ruby 3.0 reads random bytes with SecRandomCopyBytes
+                        "-framework", "Security",
                         // Compression and encoding libraries
                         "-lcompression",
                         "-liconv",
