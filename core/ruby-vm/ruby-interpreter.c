@@ -403,6 +403,7 @@ static int inject_remote_debug_listener(int interpreter_id, const RubyVMRemoteDe
      * require), so call DEBUGGER__.open directly. require 'debug/session'
      * makes sure the module is loaded before we touch it. */
     const char* src =
+        RUBY_VM_DEBUG_PORT_PROBE_SRC
         "require 'debug/session' unless defined?(DEBUGGER__)\n"
         "DEBUGGER__.open\n";
     RubyScript* script = ruby_script_create_from_content(src, strlen(src));

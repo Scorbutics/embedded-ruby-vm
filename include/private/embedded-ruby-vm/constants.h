@@ -35,3 +35,19 @@
 #define VMLOGGER_LEVEL_NAME_DEBUG  "DEBUG"
 #define VMLOGGER_LEVEL_NAME_INFO   "INFO"
 #define VMLOGGER_LEVEL_NAME_ERROR  "ERROR"
+
+// Ruby prelude run right before arming the `debug` gem's TCP listener
+// (pre-boot in exec-main-vm.c, post-boot in ruby-interpreter.c). The gem
+// binds its socket later, in its own session thread, which runs with
+// abort_on_exception: a port already taken (e.g. by another app built
+// from the same template, same fixed port) re-raises EADDRINUSE into the
+// VM main thread and the dispatcher exits the whole VM. Binding once here,
+// synchronously, makes a busy port raise in the caller's protected eval
+// instead, so the debugger is skipped and the VM keeps running.
+#define RUBY_VM_DEBUG_PORT_PROBE_SRC \
+    "require 'socket'\n" \
+    "begin\n" \
+    "  TCPServer.new(ENV['RUBY_DEBUG_HOST'], Integer(ENV['RUBY_DEBUG_PORT'])).close\n" \
+    "rescue SystemCallError => e\n" \
+    "  raise \"remote debugger not started: #{e.message}\"\n" \
+    "end\n"

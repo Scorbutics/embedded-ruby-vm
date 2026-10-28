@@ -305,10 +305,12 @@ static void setenv_remote_eval(const RubyVMRemoteEvalOptions* opts) {
 
 // Arm the Ruby `debug` gem's TCP listener now that $LOAD_PATH has been
 // built up by ruby_options. Failure is non-fatal — the VM continues even
-// if the debugger can't start.
+// if the debugger can't start (the bind probe raises in this protected
+// eval instead of in the debug gem's session thread, see
+// RUBY_VM_DEBUG_PORT_PROBE_SRC).
 static void arm_remote_debug_listener(const RubyVMRemoteDebugOptions* opts) {
     int state = 0;
-    rb_eval_string_protect("require 'debug/open'", &state);
+    rb_eval_string_protect(RUBY_VM_DEBUG_PORT_PROBE_SRC "require 'debug/open'", &state);
     if (state != 0) {
         report_ruby_eval_error("start remote debugger");
     } else {
