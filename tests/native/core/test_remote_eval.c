@@ -6,6 +6,8 @@
  *   - listener comes up + cookie handshake succeeds + a real expression evals
  *   - empty token is refused at the API surface
  *   - wrong-token client is dropped server-side (no OK line)
+ *   - a client resetting its connection mid-handshake does not kill the
+ *     listener
  *   - a second concurrent client gets BUSY and is closed
  *   - no listener exists when enable_remote_eval was never called
  *   - `expose` + `attach` lets a script-registered Binding be used as the
@@ -431,6 +433,36 @@ static int scenario_wrong_token_dropped(void) {
     return 0;
 }
 
+/* Regression: a client that resets its connection during the handshake used
+ * to raise ECONNRESET out of handle_connection and kill the whole listener
+ * thread, so every later client got no greeting. wait_for_listener's
+ * connect-then-close probes trigger exactly this on macOS (flaky
+ * listener_up_and_eval). Force the reset with SO_LINGER 0, then check a
+ * normal client is still served. */
+static int scenario_reset_client_keeps_listener(void) {
+    LOGF("[test_remote_eval] scenario_reset_client_keeps_listener START\n");
+
+    for (int i = 0; i < 3; i++) {
+        int fd = try_tcp_connect("127.0.0.1", TEST_EVAL_PORT, 1000);
+        if (fd < 0) { LOGF("  connect for reset #%d failed\n", i); return 51; }
+        struct linger lg = { .l_onoff = 1, .l_linger = 0 };
+        if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg)) < 0) {
+            LOGF("  SO_LINGER failed errno=%d (%s)\n", errno, strerror(errno));
+            close(fd); return 52;
+        }
+        close(fd);   /* RST instead of FIN */
+    }
+
+    int fd = connect_and_auth(TEST_EVAL_PORT, TEST_TOKEN);
+    if (fd < 0) {
+        LOGF("  listener did not survive the reset clients\n");
+        return 53;
+    }
+    LOGF("  OK: listener still serves clients after resets\n");
+    close(fd);
+    return 0;
+}
+
 /* Sends a Ruby script via the FIFO interpreter that calls
  * RemoteEval.expose(:probe, binding) where the binding has a local
  * variable `secret = 1337`. Then opens an eval session, runs
@@ -571,6 +603,9 @@ int main(void) {
 
     rc = scenario_wrong_token_dropped();
     if (rc != 0) { LOGF("FAIL: wrong_token_dropped (%d)\n", rc); goto done; }
+
+    rc = scenario_reset_client_keeps_listener();
+    if (rc != 0) { LOGF("FAIL: reset_client_keeps_listener (%d)\n", rc); goto done; }
 
     rc = scenario_expose_and_attach(interp);
     if (rc != 0) { LOGF("FAIL: expose_and_attach (%d)\n", rc); goto done; }

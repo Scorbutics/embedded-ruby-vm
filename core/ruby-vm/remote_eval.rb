@@ -135,7 +135,16 @@ module RemoteEval
       # cleans up sockets on Terminate-style exceptions automatically.
       Socket.tcp_server_sockets(host, port) do |socks|
         Socket.accept_loop(socks) do |sock, client_addr|
-          handle_connection(sock, client_addr, token)
+          begin
+            handle_connection(sock, client_addr, token)
+          rescue SystemCallError, IOError => e
+            # A client that resets or vanishes during the handshake (e.g. a
+            # connect-then-close port probe, which macOS turns into a reset)
+            # must only drop that connection: escaping here killed the whole
+            # listener thread.
+            VMLogger.error "[RemoteEval] connection dropped (peer=#{addr_for(client_addr)}): #{e.class}: #{e.message}"
+            sock.close rescue nil
+          end
         end
       end
     end
