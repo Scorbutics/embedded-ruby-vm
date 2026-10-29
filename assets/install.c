@@ -14,6 +14,27 @@
 #include "embedded-ruby-vm/assets-error.h"
 #include "embedded-ruby-vm/assets-logging.h"
 
+// Extra ZIPs registered by the host library (assets_register_extra_zip)
+typedef struct {
+    const char *name;
+    const char *data;
+    size_t size;
+} ExtraZip;
+
+static ExtraZip g_extra_zips[MAX_EXTRA_ZIPS];
+static int g_extra_zip_count = 0;
+
+int assets_register_extra_zip(const char *name, const void *data, size_t size) {
+    if (!name || !data || g_extra_zip_count >= MAX_EXTRA_ZIPS) {
+        return ASSETS_ERROR_INVALID_PARAM;
+    }
+    g_extra_zips[g_extra_zip_count].name = name;
+    g_extra_zips[g_extra_zip_count].data = (const char *)data;
+    g_extra_zips[g_extra_zip_count].size = size;
+    g_extra_zip_count++;
+    return ASSETS_OK;
+}
+
 #ifdef HAS_EMBEDDED_DATA
 #include "mz.h"
 #include "mz_zip.h"
@@ -120,12 +141,22 @@ static uint32_t compute_crc32(const void *data, size_t size) {
     return crc;
 }
 
+// Combined CRC32 of the registered extra ZIPs (0 when none)
+static uint32_t extra_zips_crc32(void) {
+    uint32_t crc = 0;
+    for (int i = 0; i < g_extra_zip_count; i++) {
+        crc ^= compute_crc32(g_extra_zips[i].data, g_extra_zips[i].size);
+    }
+    return crc;
+}
+
 // Generate auto-version string from CRC32 hashes
 // Format: "<ruby ABI>-auto-XXXXXXXX" (e.g. "3.0.0-auto-XXXXXXXX") where XXXXXXXX is XOR of all CRC32 values
+// (the stdlib ZIPs and the extra ZIPs: changing any of them installs again)
 static void generate_auto_version(char *version_buf, size_t buf_size,
                                    uint32_t crc1, uint32_t crc2) {
     // Combine all CRC32 values using XOR
-    uint32_t composite_hash = crc1 ^ crc2;
+    uint32_t composite_hash = crc1 ^ crc2 ^ extra_zips_crc32();
 
     // Format as version string
     snprintf(version_buf, buf_size, "%s-auto-%08X", RUBY_VERSION, composite_hash);
@@ -729,6 +760,15 @@ int install_embedded_files(const char *install_dir, AssetsError* error) {
         assets_error_set(error, ASSETS_ERROR_ZIP_EXTRACT, "ruby-stdlib-ext.zip",
                        "Failed to extract Ruby standard library extensions");
         result = ASSETS_ERROR_ZIP_EXTRACT;
+    }
+
+    for (int i = 0; i < g_extra_zip_count; i++) {
+        ASSETS_INFO_LOG("Extracting %s...", g_extra_zips[i].name);
+        if (extract_zip_from_memory(g_extra_zips[i].data, g_extra_zips[i].size, install_dir) != 0) {
+            assets_error_set(error, ASSETS_ERROR_ZIP_EXTRACT, g_extra_zips[i].name,
+                           "Failed to extract an extra ZIP");
+            result = ASSETS_ERROR_ZIP_EXTRACT;
+        }
     }
 
     if (result == 0) {

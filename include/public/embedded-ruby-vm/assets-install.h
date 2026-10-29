@@ -57,6 +57,33 @@ typedef struct {
 int install_embedded_files(const char *install_dir, AssetsError* error);
 
 /**
+ * Maximum number of extra ZIPs that can be registered.
+ */
+#define MAX_EXTRA_ZIPS 8
+
+/**
+ * Register an extra ZIP, embedded by the host library, to install with the
+ * Ruby standard library.
+ *
+ * Its entries are extracted at the root of the install directory, which is on
+ * the Ruby load path: a ZIP holding "mylib/feature.rb" makes
+ * `require 'mylib/feature'` work, with the files next to it on disk. Its
+ * CRC32 is part of the installation version, so a changed ZIP is installed
+ * again.
+ *
+ * Call it before the installation (install_embedded_files, assets_bootstrap),
+ * typically from a constructor of the host library. The data is not copied:
+ * it must stay valid for the life of the process (embedded data does).
+ *
+ * @param name Name used in logs and errors (e.g. "litergss-ruby.zip")
+ * @param data ZIP bytes
+ * @param size ZIP size in bytes
+ * @return ASSETS_OK (0), or ASSETS_ERROR_INVALID_PARAM (NULL argument, or
+ *         MAX_EXTRA_ZIPS already registered)
+ */
+int assets_register_extra_zip(const char *name, const void *data, size_t size);
+
+/**
  * Set the Android app data directory for use as the installation base.
  *
  * This function should be called early during Android initialization (via JNI)

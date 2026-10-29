@@ -161,6 +161,22 @@ target_link_libraries(test_ruby_variant
     dl
 )
 
+# Extra ZIPs (assets_register_extra_zip): extracted at the load path root, part
+# of the installation version. The ZIP is made from extra_zip/ at configure.
+set(EXTRA_ZIP_TEST_ZIP "${CMAKE_CURRENT_BINARY_DIR}/extra-zip-test.zip")
+file(ARCHIVE_CREATE OUTPUT "${EXTRA_ZIP_TEST_ZIP}"
+     PATHS "${CMAKE_CURRENT_SOURCE_DIR}/extra_zip/extra_zip_test"
+     FORMAT zip)
+add_executable(test_extra_zip
+    test_extra_zip.c
+)
+target_compile_definitions(test_extra_zip PRIVATE EXTRA_ZIP_PATH="${EXTRA_ZIP_TEST_ZIP}")
+target_link_libraries(test_extra_zip
+    assets
+    embedded-ruby
+    dl
+)
+
 # For static builds, ensure libcrypt's dependency on libbsd is satisfied
 # libcrypt requires arc4random_buf from libbsd, which requires libmd
 # These are already linked via embedded-ruby's dependencies (from ruby-vm), but we need them AFTER -lcrypt
@@ -226,6 +242,10 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_extra_zip PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
     endif()
 endif()
 
@@ -271,6 +291,10 @@ target_include_directories(test_listener_register_before_init PRIVATE
     ${CMAKE_SOURCE_DIR}/include/public
 )
 target_include_directories(test_ruby_variant PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_extra_zip PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -321,6 +345,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_extra_zip PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
 endif()
 
 # Note: No RPATH needed since we're using static linking for libassets.a
@@ -341,6 +369,7 @@ add_test(NAME test_same_id_fifo COMMAND test_same_id_fifo WORKING_DIRECTORY ${CM
 add_test(NAME test_interpreter_listener_routing COMMAND test_interpreter_listener_routing WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_listener_register_before_init COMMAND test_listener_register_before_init WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_ruby_variant COMMAND test_ruby_variant WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_extra_zip COMMAND test_extra_zip WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 set_tests_properties(
     test_core
@@ -354,5 +383,6 @@ set_tests_properties(
     test_interpreter_listener_routing
     test_listener_register_before_init
     test_ruby_variant
+    test_extra_zip
     PROPERTIES TIMEOUT 30
 )
