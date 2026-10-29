@@ -384,7 +384,25 @@ static int verify_installation(const char *install_dir) {
 }
 
 // Extract a zip file from memory to a directory
+// An entry path must stay inside the extraction directory: no absolute path,
+// no ".." component (a ZIP made from absolute paths stores "../../..")
+static int entry_path_is_safe(const char *path) {
+    if (path[0] == '/' || path[0] == '\\') {
+        return 0;
+    }
+    for (const char *p = path; *p; ) {
+        size_t len = strcspn(p, "/\\");
+        if (len == 2 && p[0] == '.' && p[1] == '.') {
+            return 0;
+        }
+        p += len;
+        if (*p) p++;
+    }
+    return 1;
+}
+
 static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const char *extract_dir) {
+    int unsafe_entries = 0;
     void *zip_handle = NULL;
     void *stream = NULL;
     int32_t err = MZ_OK;
@@ -438,6 +456,12 @@ static int extract_zip_from_memory(const char *zip_data, size_t zip_size, const 
         if (err != MZ_OK) {
             ASSETS_ERROR_LOG("Failed to get zip entry info: %d", err);
             goto cleanup;
+        }
+
+        if (!entry_path_is_safe(file_info->filename)) {
+            ASSETS_ERROR_LOG("Refusing zip entry outside the extraction directory: %s", file_info->filename);
+            unsafe_entries++;
+            goto next_entry;
         }
 
         // Skip directories (check if filename ends with '/')
@@ -512,7 +536,7 @@ cleanup:
     }
     mz_stream_mem_delete(&stream);
 
-    return (err == MZ_OK) ? 0 : -1;
+    return (err == MZ_OK && unsafe_entries == 0) ? 0 : -1;
 }
 
 #ifdef HAS_EMBEDDED_NATIVE_LIBS

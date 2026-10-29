@@ -3,9 +3,12 @@
  *   - registering one changes the installation version, so an existing
  *     installation is installed again;
  *   - its entries are extracted at the root of the install directory;
- *   - that root is on the Ruby load path: the VM requires the extracted file.
+ *   - that root is on the Ruby load path: the VM requires the extracted file;
+ *   - entries escaping the install directory ("../..", what a ZIP made from
+ *     absolute paths stores) are refused, the installation reports the error.
  *
- * EXTRA_ZIP_PATH is a ZIP made by CMake from extra_zip/ (extra_zip_test/hello.rb).
+ * EXTRA_ZIP_PATH is a ZIP made by CMake from extra_zip/ (extra_zip_test/hello.rb),
+ * EXTRA_ZIP_UNSAFE_PATH the same file stored as "../../../<absolute path>".
  */
 
 #include <stdarg.h>
@@ -20,8 +23,8 @@
 #include "embedded-ruby-vm/log-listener.h"
 #include "embedded-ruby-vm/ruby-api-loader.h"
 
-#ifndef EXTRA_ZIP_PATH
-#error "EXTRA_ZIP_PATH must be defined"
+#if !defined(EXTRA_ZIP_PATH) || !defined(EXTRA_ZIP_UNSAFE_PATH)
+#error "EXTRA_ZIP_PATH and EXTRA_ZIP_UNSAFE_PATH must be defined"
 #endif
 
 #define INSTALL_DIR "./test-ruby-install-extra-zip"
@@ -161,6 +164,22 @@ int main(void) {
         diag("FAIL: requiring the extracted file exited with %d", rc);
         goto cleanup;
     }
+
+    /* Last: an unsafe ZIP stays registered for the rest of the process */
+    size_t unsafe_size = 0;
+    char* unsafe_zip = read_file(EXTRA_ZIP_UNSAFE_PATH, &unsafe_size);
+    if (unsafe_zip == NULL || assets_register_extra_zip("extra-zip-test-unsafe.zip", unsafe_zip, unsafe_size) != ASSETS_OK) {
+        diag("FAIL: cannot register %s", EXTRA_ZIP_UNSAFE_PATH);
+        free(unsafe_zip);
+        goto cleanup;
+    }
+    assets_error_init(&assets_error);
+    if (install_embedded_files(INSTALL_DIR, &assets_error) != ASSETS_ERROR_ZIP_EXTRACT) {
+        diag("FAIL: a ZIP with entries outside the install directory must be refused");
+        free(unsafe_zip);
+        goto cleanup;
+    }
+    free(unsafe_zip);
 
     diag("PASS: an extra ZIP installs at the load path root and changes the installation version");
     test_rc = 0;

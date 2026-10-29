@@ -163,14 +163,23 @@ target_link_libraries(test_ruby_variant
 
 # Extra ZIPs (assets_register_extra_zip): extracted at the load path root, part
 # of the installation version. The ZIP is made from extra_zip/ at configure.
+# Entries relative to extra_zip/ (extra_zip_test/hello.rb)
 set(EXTRA_ZIP_TEST_ZIP "${CMAKE_CURRENT_BINARY_DIR}/extra-zip-test.zip")
-file(ARCHIVE_CREATE OUTPUT "${EXTRA_ZIP_TEST_ZIP}"
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E tar cf "${EXTRA_ZIP_TEST_ZIP}" --format=zip extra_zip_test
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extra_zip")
+# Entries escaping the install directory: ARCHIVE_CREATE stores absolute PATHS
+# as "../../.." relative paths
+set(EXTRA_ZIP_TEST_UNSAFE_ZIP "${CMAKE_CURRENT_BINARY_DIR}/extra-zip-test-unsafe.zip")
+file(ARCHIVE_CREATE OUTPUT "${EXTRA_ZIP_TEST_UNSAFE_ZIP}"
      PATHS "${CMAKE_CURRENT_SOURCE_DIR}/extra_zip/extra_zip_test"
      FORMAT zip)
 add_executable(test_extra_zip
     test_extra_zip.c
 )
-target_compile_definitions(test_extra_zip PRIVATE EXTRA_ZIP_PATH="${EXTRA_ZIP_TEST_ZIP}")
+target_compile_definitions(test_extra_zip PRIVATE
+    EXTRA_ZIP_PATH="${EXTRA_ZIP_TEST_ZIP}"
+    EXTRA_ZIP_UNSAFE_PATH="${EXTRA_ZIP_TEST_UNSAFE_ZIP}")
 target_link_libraries(test_extra_zip
     assets
     embedded-ruby
