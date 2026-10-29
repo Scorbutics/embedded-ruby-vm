@@ -182,6 +182,18 @@ target_link_libraries(test_extra_zip
     dl
 )
 
+# The released include directory alone (packaged_headers, what CI ships):
+# compiled apart so that no include directory of the libraries leaks in
+add_library(test_packaged_headers_obj OBJECT test_packaged_headers.c)
+target_include_directories(test_packaged_headers_obj PRIVATE ${EMBEDDED_RUBY_VM_PACKAGED_INCLUDE_DIR})
+add_dependencies(test_packaged_headers_obj packaged_headers)
+add_executable(test_packaged_headers $<TARGET_OBJECTS:test_packaged_headers_obj>)
+target_link_libraries(test_packaged_headers
+    assets
+    embedded-ruby
+    dl
+)
+
 # For static builds, ensure libcrypt's dependency on libbsd is satisfied
 # libcrypt requires arc4random_buf from libbsd, which requires libmd
 # These are already linked via embedded-ruby's dependencies (from ruby-vm), but we need them AFTER -lcrypt
@@ -248,6 +260,10 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${MD_LIB_TEST}"
         )
         target_link_options(test_extra_zip PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
+        target_link_options(test_packaged_headers PRIVATE
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
@@ -354,6 +370,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_packaged_headers PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
 endif()
 
 # Note: No RPATH needed since we're using static linking for libassets.a
@@ -375,6 +395,7 @@ add_test(NAME test_interpreter_listener_routing COMMAND test_interpreter_listene
 add_test(NAME test_listener_register_before_init COMMAND test_listener_register_before_init WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_ruby_variant COMMAND test_ruby_variant WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_extra_zip COMMAND test_extra_zip WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_packaged_headers COMMAND test_packaged_headers WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 set_tests_properties(
     test_core
@@ -389,5 +410,6 @@ set_tests_properties(
     test_listener_register_before_init
     test_ruby_variant
     test_extra_zip
+    test_packaged_headers
     PROPERTIES TIMEOUT 30
 )

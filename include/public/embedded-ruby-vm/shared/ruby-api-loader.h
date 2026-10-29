@@ -18,12 +18,8 @@ typedef struct RubyScript RubyScript;
 /* LogListener struct, log_stream_t enum, and callback typedefs */
 #include "embedded-ruby-vm/log-listener.h"
 
-typedef void (*RubyCompletionCallback)(void* user_data, int result);
-
-typedef struct {
-    RubyCompletionCallback callback;
-    void* user_data;
-} RubyCompletionTask;
+/* RubyCompletionTask and its helpers */
+#include "embedded-ruby-vm/completion-task.h"
 
 /**
  * Custom Ruby Extension Callback API
@@ -52,37 +48,6 @@ typedef void (*RubyCustomExtInit)(void);
  */
 typedef void (*RubySetCustomExtInitFunc)(RubyCustomExtInit init_func);
 
-
-/* Helper functions for dynamic builds */
-
-/**
- * Helper to create a completion task.
- * @param callback Function to call on completion (can be NULL)
- * @param user_data Context data to pass to callback (can be NULL)
- * @return Initialized RubyCompletionTask
- */
-static inline RubyCompletionTask ruby_completion_task_create(
-        RubyCompletionCallback callback,
-        void* user_data
-) {
-    RubyCompletionTask task = {
-            .callback = callback,
-            .user_data = user_data
-    };
-    return task;
-}
-
-/**
- * Helper to invoke a completion task.
- * Safe to call even if callback is NULL.
- * @param task The task to invoke
- * @param result The completion result code
- */
-static inline void ruby_completion_task_invoke(RubyCompletionTask* task, int result) {
-    if (task && task->callback) {
-        task->callback(task->user_data, result);
-    }
-}
 
 /**
  * Struct containing all dynamically loaded Ruby API function pointers.
@@ -297,11 +262,9 @@ static inline int ruby_api_bootstrap(
     /* ========================================================================
      * Load dependencies from .deps file
      * ======================================================================== */
-    int deps_loaded = 0;
     if (deps_file_paths) {
         for (const char** path = deps_file_paths; *path != NULL; path++) {
             if (load_dependencies_from_file(*path, native_libs_dir) == 0) {
-                deps_loaded = 1;
                 break;
             }
         }

@@ -59,6 +59,22 @@ configure_file(
     @ONLY
 )
 
+# Include directory of the released artifacts (packaged from build/include):
+# the public headers and the generated ruby-api-loader.h, no private header.
+set(EMBEDDED_RUBY_VM_PACKAGED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/include" CACHE INTERNAL "")
+add_custom_target(packaged_headers ALL
+    COMMAND ${CMAKE_COMMAND} -E rm -rf ${EMBEDDED_RUBY_VM_PACKAGED_INCLUDE_DIR}/embedded-ruby-vm
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${EMBEDDED_RUBY_VM_MAIN_INCLUDE_DIR}/public/embedded-ruby-vm
+        ${EMBEDDED_RUBY_VM_PACKAGED_INCLUDE_DIR}/embedded-ruby-vm
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${EMBEDDED_RUBY_VM_PACKAGED_INCLUDE_DIR}/embedded-ruby-vm/ruby-api-loader.h.in
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/embedded-ruby-vm/ruby-api-loader.h
+        ${EMBEDDED_RUBY_VM_PACKAGED_INCLUDE_DIR}/embedded-ruby-vm/ruby-api-loader.h
+    COMMENT "Assembling the packaged include directory"
+    VERBATIM
+)
+
 # Ruby headers are third-party: SYSTEM keeps their warnings out of -Werror
 # (e.g. newer Apple clang's -Wdefault-const-init-field-unsafe in rstring.h).
 target_include_directories(ruby-vm SYSTEM PRIVATE ${IMPORT_DIR})

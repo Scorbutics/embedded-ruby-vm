@@ -163,7 +163,7 @@ jobs:
           cp build/lib/libminizip.a artifacts/
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
-          cp -r include/public/embedded-ruby-vm artifacts/include/
+          cp -r build/include/embedded-ruby-vm artifacts/include/
           tar czf embedded-ruby-vm-linux-x86_64-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact
@@ -249,7 +249,7 @@ jobs:
           cp build/lib/libminizip.a artifacts/
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
-          cp -r include/public/embedded-ruby-vm artifacts/include/
+          cp -r build/include/embedded-ruby-vm artifacts/include/
           tar czf embedded-ruby-vm-android-${{ matrix.arch_label }}-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact
@@ -328,7 +328,7 @@ jobs:
           cp build/lib/libminizip.a artifacts/
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
-          cp -r include/public/embedded-ruby-vm artifacts/include/
+          cp -r build/include/embedded-ruby-vm artifacts/include/
           tar czf embedded-ruby-vm-ios-${{ matrix.variant }}-arm64-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact
@@ -401,7 +401,7 @@ jobs:
           cp build/lib/libminizip.a artifacts/
           cp build/lib/libphysfs.a artifacts/
           cp build/lib/libphysfs-ruby.a artifacts/
-          cp -r include/public/embedded-ruby-vm artifacts/include/
+          cp -r build/include/embedded-ruby-vm artifacts/include/
           tar czf embedded-ruby-vm-macos-arm64-ruby${{ matrix.ruby_variant }}.tar.gz -C artifacts .
 
       - name: Upload artifact

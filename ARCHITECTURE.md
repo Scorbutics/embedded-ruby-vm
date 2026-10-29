@@ -56,6 +56,10 @@ endif()
 
 Enabled by defining `RUBY_STATIC` at compile time. Same `ruby_api_load()` signature — function pointers are assigned directly instead of via dlsym. Use for pure C apps or platforms without dynamic loading.
 
+### Released Headers
+
+A release ships `build/include` (the `packaged_headers` target): the headers of `include/public` and the generated `ruby-api-loader.h`, never `include/private`. Public headers include only public headers; the functions both loaders reach are declared in `ruby-api.h`, which the private headers include. `test_packaged_headers` builds a consumer against that directory alone.
+
 ### Architecture Constraints
 
 - Ruby runtime (`libruby.so`) must be deployed at runtime, not hardcoded at build time

@@ -11,34 +11,9 @@
 extern "C" {
 #endif
 
-// Forward declarations - opaque types (library users don't need internal structure)
-typedef struct RubyInterpreter RubyInterpreter;
-typedef struct RubyScript RubyScript;
-
 /* Static build - include actual function declarations */
-#include "embedded-ruby-vm/ruby-interpreter.h"
-#include "embedded-ruby-vm/ruby-script.h"
-
-/**
- * Custom Ruby Extension Callback API
- * Allows external projects to register statically-linked Ruby extensions
- * that will be resolvable via require statements.
- */
-
-/**
- * Function pointer type for custom Ruby extension initialization.
- * This callback is invoked after Init_ext() and before Ruby starts executing scripts.
- */
-typedef void (*RubyCustomExtInit)(void);
-
-/**
- * Set the custom extension initialization callback.
- * Must be called BEFORE creating the Ruby interpreter.
- * 
- * @param init_func Function pointer to your custom extension init, or NULL to clear
- */
-void ruby_set_custom_ext_init(RubyCustomExtInit init_func);
-
+#include "embedded-ruby-vm/ruby-api.h"
+#include "embedded-ruby-vm/ruby-custom-ext.h"
 
 /**
  * Struct containing all Ruby API function pointers.

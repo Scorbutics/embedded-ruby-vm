@@ -5,18 +5,19 @@ package = com.scorbutics.rubyvm.native
 
 # C headers to expose to Kotlin
 # We expose:
-#  - ruby-interpreter.h: Core interpreter functions
-#  - ruby-script.h: Script management functions
+#  - ruby-api.h: Core interpreter and script functions
+#  - ruby-interpreter.h: Interpreter structure
+#  - ruby-script.h: Script structure
 #  - log-listener.h: Logging callback types
 #  - completion-task.h: Completion callback types
 #  - ruby-script-location.h: Script location types
 #  - assets-install.h: For assets extraction and path management
 #  - assets-error.h: For error handling in assets operations
-headers = embedded-ruby-vm/ruby-interpreter.h embedded-ruby-vm/ruby-script.h embedded-ruby-vm/log-listener.h embedded-ruby-vm/completion-task.h embedded-ruby-vm/ruby-script-location.h embedded-ruby-vm/assets-install.h embedded-ruby-vm/assets-error.h
+headers = embedded-ruby-vm/ruby-api.h embedded-ruby-vm/ruby-interpreter.h embedded-ruby-vm/ruby-script.h embedded-ruby-vm/log-listener.h embedded-ruby-vm/completion-task.h embedded-ruby-vm/ruby-script-location.h embedded-ruby-vm/assets-install.h embedded-ruby-vm/assets-error.h
 
 # Filter which headers are processed (allow all from ruby-vm and assets directories)
 # IMPORTANT: Include both static/ and shared/ subdirectories so cinterop can process them
-headerFilter = ruby-api-loader.h static/ruby-api-loader.h shared/ruby-api-loader.h embedded-ruby-vm/log-listener.h embedded-ruby-vm/completion-task.h embedded-ruby-vm/ruby-script-location.h embedded-ruby-vm/ruby-interpreter.h embedded-ruby-vm/ruby-script.h embedded-ruby-vm/assets-install.h embedded-ruby-vm/assets-error.h
+headerFilter = ruby-api-loader.h static/ruby-api-loader.h shared/ruby-api-loader.h embedded-ruby-vm/log-listener.h embedded-ruby-vm/completion-task.h embedded-ruby-vm/ruby-script-location.h embedded-ruby-vm/ruby-api.h embedded-ruby-vm/ruby-interpreter.h embedded-ruby-vm/ruby-script.h embedded-ruby-vm/assets-install.h embedded-ruby-vm/assets-error.h
 
 # Compiler options for finding headers
 # NOTE: Include paths are configured in build.gradle.kts via includeDirs.headerFilterOnly()
