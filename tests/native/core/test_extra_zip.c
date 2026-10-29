@@ -8,7 +8,7 @@
  *     absolute paths stores) are refused, the installation reports the error.
  *
  * EXTRA_ZIP_PATH is a ZIP made by CMake from extra_zip/ (extra_zip_test/hello.rb),
- * EXTRA_ZIP_UNSAFE_PATH the same file stored as "../../../<absolute path>".
+ * EXTRA_ZIP_UNSAFE_PATH extra_zip/unsafe.zip ("../extra_zip_escape.rb").
  */
 
 #include <stdarg.h>
@@ -176,6 +176,11 @@ int main(void) {
     assets_error_init(&assets_error);
     if (install_embedded_files(INSTALL_DIR, &assets_error) != ASSETS_ERROR_ZIP_EXTRACT) {
         diag("FAIL: a ZIP with entries outside the install directory must be refused");
+        free(unsafe_zip);
+        goto cleanup;
+    }
+    if (stat(INSTALL_DIR "/../extra_zip_escape.rb", &st) == 0) {
+        diag("FAIL: extra_zip_escape.rb was written outside the install directory");
         free(unsafe_zip);
         goto cleanup;
     }

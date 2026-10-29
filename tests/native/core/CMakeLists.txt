@@ -168,12 +168,8 @@ set(EXTRA_ZIP_TEST_ZIP "${CMAKE_CURRENT_BINARY_DIR}/extra-zip-test.zip")
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E tar cf "${EXTRA_ZIP_TEST_ZIP}" --format=zip extra_zip_test
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extra_zip")
-# Entries escaping the install directory: ARCHIVE_CREATE stores absolute PATHS
-# as "../../.." relative paths
-set(EXTRA_ZIP_TEST_UNSAFE_ZIP "${CMAKE_CURRENT_BINARY_DIR}/extra-zip-test-unsafe.zip")
-file(ARCHIVE_CREATE OUTPUT "${EXTRA_ZIP_TEST_UNSAFE_ZIP}"
-     PATHS "${CMAKE_CURRENT_SOURCE_DIR}/extra_zip/extra_zip_test"
-     FORMAT zip)
+# An entry escaping the install directory ("../extra_zip_escape.rb")
+set(EXTRA_ZIP_TEST_UNSAFE_ZIP "${CMAKE_CURRENT_SOURCE_DIR}/extra_zip/unsafe.zip")
 add_executable(test_extra_zip
     test_extra_zip.c
 )
