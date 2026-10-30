@@ -17,6 +17,9 @@
  *   4. Malformed tags (truncated, non-numeric, missing closing brace) are
  *      treated as untagged — the line is delivered intact instead of
  *      dropped, and routes to the native fallback.
+ *   5. VMLogger lines (level tag, then interpreter tag, as safe_runner.rb
+ *      writes them from a worker) route to their interpreter's listener
+ *      with their level: a script's uncaught error reaches its own host.
  */
 
 #include <errno.h>
@@ -55,6 +58,7 @@ typedef struct {
     char line[256];
     int  interpreter_id;
     log_stream_t source;
+    log_level_t level;
 } record_t;
 
 typedef struct {
@@ -82,7 +86,6 @@ static void on_log(LogListener* listener,
                    log_stream_t source,
                    log_level_t level,
                    int interpreter_id) {
-    (void)level;
     if (!listener || !listener->user_data || !message) return;
     listener_state_t* s = (listener_state_t*)listener->user_data;
 
@@ -92,6 +95,7 @@ static void on_log(LogListener* listener,
                  "%s", message);
         s->records[s->count].interpreter_id = interpreter_id;
         s->records[s->count].source         = source;
+        s->records[s->count].level          = level;
         s->count++;
     }
     pthread_mutex_unlock(&s->mutex);
@@ -215,6 +219,16 @@ int main(void) {
         goto cleanup;
     }
 
+    /* --- Case 5: VMLogger line tagged for B (level tag first). ------- */
+    int vmlogger_fd = logging_get_stream_fd(LOG_STREAM_VMLOGGER);
+    char vm_line[256];
+    snprintf(vm_line, sizeof(vm_line), "<<<VMLOG:ERROR>>> %svmlogger-error-for-B\n", prefix_b);
+    if (vmlogger_fd < 0 || write_line(vmlogger_fd, vm_line) != 0) {
+        diag("FAIL: writing the tagged VMLogger line (fd=%d)", vmlogger_fd);
+        rc = 1;
+        goto cleanup;
+    }
+
     /* Drain so every line above has been dispatched before we inspect
      * the recorded ring. 2s matches test_vmlogger_level. */
     if (logging_drain(2000) != 0) {
@@ -270,6 +284,21 @@ int main(void) {
     }
     if (find_record(&state_b, "native-untagged-line") != NULL) {
         diag("FAIL: native line ALSO reached listener B — should be head-only");
+        rc = 1;
+    }
+
+    /* Tagged VMLogger line → listener B only, level ERROR, both tags stripped. */
+    r = find_record(&state_b, "vmlogger-error-for-B");
+    if (r == NULL) {
+        diag("FAIL: listener B did not receive its tagged VMLogger line");
+        rc = 1;
+    } else if (r->interpreter_id != 202 || r->level != LOG_LEVEL_ERROR) {
+        diag("FAIL: tagged VMLogger line carried interpreter_id=%d level=%d, expected 202 / ERROR",
+             r->interpreter_id, (int) r->level);
+        rc = 1;
+    }
+    if (find_record(&state_a, "vmlogger-error-for-B") != NULL) {
+        diag("FAIL: listener A received the VMLogger line tagged for listener B");
         rc = 1;
     }
 

@@ -42,6 +42,15 @@ module VMLogger
   TAG_INFO  = "<<<VMLOG:INFO>>> ".freeze
   TAG_ERROR = "<<<VMLOG:ERROR>>> ".freeze
 
+  # Thread-local interpreter id of the fifo_interpreter.rb worker running the
+  # current script (its THREAD_INTERP_KEY). Lines logged from a worker carry
+  # its in-band interpreter tag ("\x01[<id>]\x01", fifo_interpreter.rb's
+  # TaggedIO format) after the level tag, the order write_full_log_line parses
+  # them in: the host routes them to that interpreter's LogListener. Untagged,
+  # they only reach the native fallback listener, so a host showing the logs of
+  # one script (e.g. a compile screen) missed its errors and their backtraces.
+  INTERPRETER_KEY = :rgss_interpreter_id
+
   @log_level = if ENV['RUBY_VM_LOG_LEVEL']
                  ENV['RUBY_VM_LOG_LEVEL'].to_i
                elsif ENV['NDEBUG'] == '1'
@@ -90,7 +99,7 @@ module VMLogger
 
   def self.error(message)
     if @output_io
-      @output_io.puts("#{TAG_ERROR}#{message}")
+      @output_io.puts(tagged_lines(message, TAG_ERROR))
       @output_io.flush
     else
       STDERR.puts(message)
@@ -122,13 +131,23 @@ module VMLogger
   # already carried by the FD).
   def self.write_out(message, tag)
     if @output_io
-      @output_io.puts("#{tag}#{message}")
+      @output_io.puts(tagged_lines(message, tag))
       @output_io.flush
     else
       STDOUT.puts(message)
       STDOUT.flush
       write_to_log(message)
     end
+  end
+
+  # Prefix every line of the message (the host reads the pipe line by line)
+  # with the level tag, then the interpreter tag of the current worker if any.
+  def self.tagged_lines(message, tag)
+    id = Thread.current[INTERPRETER_KEY]
+    prefix = id ? "#{tag}\x01[#{id}]\x01" : tag
+    lines = message.to_s.split("\n")
+    lines = [''] if lines.empty?
+    lines.map { |line| "#{prefix}#{line}" }
   end
 
   def self.write_to_log(message)
