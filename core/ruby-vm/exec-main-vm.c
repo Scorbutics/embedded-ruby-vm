@@ -35,6 +35,10 @@ void ruby_set_custom_ext_init(RubyCustomExtInit init_func) {
 }
 
 
+// Set by SetupRubyEnv when SSL_CERT_FILE points to the CA bundle of the
+// system, to be loaded into OpenSSL's default stores once Ruby is up.
+static int g_ca_certificates_bundle = 0;
+
 static void SetupRubyEnv(const char* baseDirectory, const char* extraLoadPath)
 {
 #define RUBY_BUFFER_PATH_SIZE (256)
@@ -63,7 +67,8 @@ static void SetupRubyEnv(const char* baseDirectory, const char* extraLoadPath)
     setenv("RUBYLIB", rubyBufferDir, 1);
 
     // TLS root certificates of the system (Android: OpenSSL can't find them by itself)
-    if (ca_certificates_setup(baseDirectory) != 0) {
+    g_ca_certificates_bundle = ca_certificates_setup(baseDirectory);
+    if (g_ca_certificates_bundle < 0) {
         fprintf(stderr, "[Ruby VM] Could not set up the system CA certificates, TLS verification will fail\n");
     }
 
@@ -339,6 +344,18 @@ static void preload_remote_eval_module(void) {
     }
 }
 
+// Add the system CA bundle to OpenSSL's default stores (see
+// ca_certificates.rb). Failure is non-fatal: TLS verification fails, as
+// without the bundle.
+static void load_ca_certificates(void) {
+    int state = 0;
+    if (eval_embedded_script("ca_certificates.rb", &state) != 0) {
+        fprintf(stderr, "[Ruby VM] ca_certificates.rb not embedded, TLS verification will fail\n");
+    } else if (state != 0) {
+        report_ruby_eval_error("load the system CA certificates");
+    }
+}
+
 // Boot-time arming of the eval listener; only called if remote_eval was
 // configured before ruby_vm_start. Post-boot enables go through the
 // inject path in ruby-interpreter.c.
@@ -433,6 +450,8 @@ static int run_main_vm_node(const char* baseDirectory,
         if (remote_eval  != NULL) setenv_remote_eval(remote_eval);
 
         void* options = ruby_options(argc, argv);
+
+        if (g_ca_certificates_bundle > 0) load_ca_certificates();
 
         // Listener arming (post-ruby_options). The eval module is always
         // pre-loaded so post-boot inject (from ruby-interpreter.c) can call

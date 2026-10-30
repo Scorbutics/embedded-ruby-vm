@@ -112,7 +112,7 @@ int ca_certificates_setup(const char* baseDirectory) {
     if (ca_certificates_write_bundle(certificatesDirectory, bundlePath) != 0) {
         return -1;
     }
-    return setenv("SSL_CERT_FILE", bundlePath, 1) == 0 ? 0 : -1;
+    return setenv("SSL_CERT_FILE", bundlePath, 1) == 0 ? 1 : -1;
 #else
     (void) baseDirectory;
     return 0;

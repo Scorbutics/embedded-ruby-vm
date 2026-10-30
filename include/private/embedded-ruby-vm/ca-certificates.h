@@ -10,12 +10,15 @@
  * own certificate directory can't be used as an OpenSSL CA path either: its
  * files are named with the old subject hash (subject_hash_old), that OpenSSL 1.1+
  * doesn't look up. The certificates are concatenated into a single PEM bundle
- * instead, and SSL_CERT_FILE points to it (OpenSSL's default store reads it).
+ * instead, and SSL_CERT_FILE points to it. OpenSSL itself ignores SSL_CERT_FILE
+ * in an Android app process (AT_SECURE): once Ruby is up, ca_certificates.rb
+ * adds the bundle to OpenSSL's default stores.
  *
  * Does nothing outside Android, or when SSL_CERT_FILE is already set.
  *
  * @param baseDirectory writable directory where the bundle is written
- * @return 0 on success or when there is nothing to do, -1 on error
+ * @return 1 when SSL_CERT_FILE points to the bundle, 0 when there is nothing
+ *         to do, -1 on error
  */
 int ca_certificates_setup(const char* baseDirectory);
 
