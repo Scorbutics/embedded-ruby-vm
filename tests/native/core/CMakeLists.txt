@@ -323,6 +323,10 @@ target_include_directories(test_listener_register_before_init PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
+target_include_directories(test_ca_certificates PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
 target_include_directories(test_ruby_variant PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
