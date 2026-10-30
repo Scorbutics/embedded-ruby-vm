@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+#include "embedded-ruby-vm/ca-certificates.h"
 #include "embedded-ruby-vm/constants.h"
 #include "embedded-ruby-vm/exec-main-vm.h"
 #include "embedded-ruby-vm/ruby-vm.h"
@@ -60,6 +61,11 @@ static void SetupRubyEnv(const char* baseDirectory, const char* extraLoadPath)
 
     snprintf(rubyBufferDir, maxRubyDirBufferSize, "%s:%s/ruby/%s/:%s/ruby/%s/"RUBY_PLATFORM"/:%s", baseDirectory, baseDirectory, rubyVersion, baseDirectory, rubyVersion, extraLoadPath);
     setenv("RUBYLIB", rubyBufferDir, 1);
+
+    // TLS root certificates of the system (Android: OpenSSL can't find them by itself)
+    if (ca_certificates_setup(baseDirectory) != 0) {
+        fprintf(stderr, "[Ruby VM] Could not set up the system CA certificates, TLS verification will fail\n");
+    }
 
     // Set NDEBUG environment variable for Ruby VM logging control
 #ifdef NDEBUG

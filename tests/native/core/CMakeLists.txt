@@ -84,6 +84,12 @@ add_executable(test_listener_register_before_init
     test_listener_register_before_init.c
 )
 
+# CA certificates bundle (SSL_CERT_FILE on Android): every certificate file of a
+# directory is concatenated, the bundle is rebuilt only when the directory changed.
+add_executable(test_ca_certificates
+    test_ca_certificates.c
+)
+
 # Ruby variant: the stdlib extracts under the ABI directory install.c uses
 # (no longer hard-coded), the VM runs the configured Ruby minor, and psych /
 # fiddle / openssl / zlib load with the libraries folded into libruby-ext.a.
@@ -150,6 +156,12 @@ target_link_libraries(test_interpreter_listener_routing
 )
 
 target_link_libraries(test_listener_register_before_init
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_ca_certificates
     assets
     embedded-ruby
     dl
@@ -396,6 +408,7 @@ add_test(NAME test_listener_register_before_init COMMAND test_listener_register_
 add_test(NAME test_ruby_variant COMMAND test_ruby_variant WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_extra_zip COMMAND test_extra_zip WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_packaged_headers COMMAND test_packaged_headers WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_ca_certificates COMMAND test_ca_certificates WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 set_tests_properties(
     test_core
@@ -411,5 +424,6 @@ set_tests_properties(
     test_ruby_variant
     test_extra_zip
     test_packaged_headers
+    test_ca_certificates
     PROPERTIES TIMEOUT 30
 )

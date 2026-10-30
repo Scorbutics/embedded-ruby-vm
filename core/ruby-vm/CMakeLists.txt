@@ -21,6 +21,7 @@ set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} ${EMBEDDED_SAFE_RUN
 set(DEPENDENCY_LIST "    /* Dependencies will be populated in embedded-ruby library */")
 
 add_library(ruby-vm OBJECT
+    ca-certificates.c
     ruby-comm-channel.c
     env.c
     exec-main-vm.c
