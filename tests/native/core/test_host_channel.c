@@ -161,15 +161,16 @@ int main(void) {
         goto cleanup;
     }
 
-    /* Case 4 */
-    if (run_sync(game,
-                 "begin\n"
-                 "  Thread.new { VMHost.emit('t.thread', '') }.join\n"
-                 "  raise 'emit from a spawned Thread accepted'\n"
-                 "rescue ThreadError\n"
-                 "end\n"
-                 "Fiber.new { VMHost.emit('t.fiber', '') }.resume\n") != 0 ||
-        !wait_events(&g_game_events, 3) || !check_event(&g_game_events, 2, "t.fiber ")) {
+    /* Case 4, split for the macOS Ruby 3.0 crash investigation */
+    diag("DEBUG 4a: thread raising a plain error");
+    diag("DEBUG 4a rc=%d", run_sync(game, "begin\n  Thread.new { raise ThreadError, 'x' }.join\nrescue ThreadError\nend\n"));
+    diag("DEBUG 4b: thread calling VMHost.emit");
+    diag("DEBUG 4b rc=%d", run_sync(game, "begin\n  Thread.new { VMHost.emit('t.thread', '') }.join\nrescue ThreadError\nend\n"));
+    diag("DEBUG 4c: plain fiber");
+    diag("DEBUG 4c rc=%d", run_sync(game, "Fiber.new { 1 + 1 }.resume\n"));
+    diag("DEBUG 4d: fiber calling VMHost.emit");
+    diag("DEBUG 4d rc=%d", run_sync(game, "Fiber.new { VMHost.emit('t.fiber', '') }.resume\n"));
+    if (!wait_events(&g_game_events, 3) || !check_event(&g_game_events, 2, "t.fiber ")) {
         diag("FAIL: fiber event (%d events)", atomic_load(&g_game_events.count));
         goto cleanup;
     }
