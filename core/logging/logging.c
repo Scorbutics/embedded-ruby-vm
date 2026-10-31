@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
@@ -78,8 +79,16 @@ typedef struct custom_output_node {
 typedef struct interpreter_listener_node {
     int interpreter_id;
     LogListener listener;
+    /* Host event calls running outside the lock (see
+     * dispatch_invoke_host_event): unregister and replace wait for them;
+     * while unregister waits (closing), no new call starts. */
+    int in_flight;
+    int closing;
     struct interpreter_listener_node* next;
 } interpreter_listener_node_t;
+
+/* Signalled under g_logging_state.lock when a node's in_flight drops to 0 */
+static pthread_cond_t g_listener_idle_cond = PTHREAD_COND_INITIALIZER;
 
 /**
  * Main logging state structure
@@ -145,12 +154,13 @@ static __thread logging_error_t g_last_error = LOGGING_ERROR_NONE;
 // Drain barrier queue
 // ============================================================================
 //
-// FIFO queue of one-shot callbacks fired when LOGGING_DRAIN_BARRIER lines are
-// observed on the VMLOGGER pipe. logging_drain_async() must atomically append
-// to this queue AND write the barrier marker so pipe order matches queue
-// order across concurrent callers — g_drain_mutex provides that atomicity.
+// One-shot callbacks fired when their LOGGING_DRAIN_BARRIER line, "<marker>
+// <id>", is observed on the VMLOGGER pipe. The id pairs a marker with its
+// node, so the marker is written outside g_drain_mutex: a write blocked on a
+// full socket never holds the mutex the logger thread needs to read on.
 
 typedef struct drain_node {
+    unsigned long id;
     logging_drain_cb_t cb;
     void* user_data;
     struct drain_node* next;
@@ -158,30 +168,25 @@ typedef struct drain_node {
 
 static drain_node_t* g_drain_queue_head = NULL;
 static drain_node_t* g_drain_queue_tail = NULL;
+static unsigned long g_drain_next_id = 0;
 static pthread_mutex_t g_drain_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Pop the head node. Caller must hold g_drain_mutex. Returns NULL when empty.
-static drain_node_t* drain_queue_pop_head_locked(void) {
-    drain_node_t* node = g_drain_queue_head;
-    if (node == NULL) return NULL;
-    g_drain_queue_head = node->next;
-    if (g_drain_queue_head == NULL) g_drain_queue_tail = NULL;
-    return node;
-}
-
-// write() wrapper that retries on partial writes and EINTR. Returns 0 on
-// success, -1 on error (errno preserved).
-static int write_all_bytes(int fd, const void* buf, size_t count) {
-    size_t total = 0;
-    while (total < count) {
-        ssize_t n = write(fd, (const char*)buf + total, count - total);
-        if (n < 0) {
-            if (errno == EINTR) continue;
-            return -1;
-        }
-        total += (size_t)n;
+// Unlink the node [id]. Caller must hold g_drain_mutex. Returns NULL when absent.
+static drain_node_t* drain_queue_remove_locked(unsigned long id) {
+    drain_node_t* previous = NULL;
+    drain_node_t* current = g_drain_queue_head;
+    while (current != NULL && current->id != id) {
+        previous = current;
+        current = current->next;
     }
-    return 0;
+    if (current == NULL) return NULL;
+    if (previous == NULL) {
+        g_drain_queue_head = current->next;
+    } else {
+        previous->next = current->next;
+    }
+    if (g_drain_queue_tail == current) g_drain_queue_tail = previous;
+    return current;
 }
 
 // ============================================================================
@@ -245,7 +250,46 @@ void logging_swap_listener(LogListener* dest, LogListener src) {
     pthread_mutex_unlock(&g_logging_state.lock);
 }
 
-int logging_drain_async(logging_drain_cb_t cb, void* user_data) {
+#ifdef MSG_NOSIGNAL
+#define DRAIN_SEND_FLAGS (MSG_DONTWAIT | MSG_NOSIGNAL)
+#else  /* Darwin: no MSG_NOSIGNAL, SO_NOSIGPIPE instead (create_stream_socketpair) */
+#define DRAIN_SEND_FLAGS MSG_DONTWAIT
+#endif
+
+/* Send a drain marker without blocking past timeout_ms (<= 0: no limit) on
+ * a full socket, nor raising SIGPIPE. Once part of it is out, the rest is
+ * sent whatever the time: a cut marker would corrupt the next line.
+ * 0 on success, -2 on error, -3 on timeout. */
+static int send_marker(int fd, const char* marker, size_t length, int timeout_ms) {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    size_t sent = 0;
+    while (sent < length) {
+        ssize_t n = send(fd, marker + sent, length - sent, DRAIN_SEND_FLAGS);
+        if (n > 0) {
+            sent += (size_t)n;
+            continue;
+        }
+        if (n < 0 && errno == EINTR) continue;
+        if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) return -2;
+        int wait_ms = -1;
+        if (timeout_ms > 0 && sent == 0) {
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            long elapsed = (now.tv_sec - start.tv_sec) * 1000L + (now.tv_nsec - start.tv_nsec) / 1000000L;
+            if (elapsed >= timeout_ms) return -3;
+            wait_ms = (int)(timeout_ms - elapsed);
+        }
+        struct pollfd writable = { .fd = fd, .events = POLLOUT, .revents = 0 };
+        if (poll(&writable, 1, wait_ms) < 0 && errno != EINTR) return -2;
+    }
+    return 0;
+}
+
+/* logging_drain_async, waiting at most timeout_ms (<= 0: no limit) for room
+ * to write the marker: a socket full while the logger thread waits for the
+ * dispatch worker must not hold a timed drain. -3 on that timeout. */
+static int drain_async(logging_drain_cb_t cb, void* user_data, int timeout_ms) {
     if (cb == NULL) return -1;
 
     drain_node_t* node = malloc(sizeof(drain_node_t));
@@ -254,9 +298,7 @@ int logging_drain_async(logging_drain_cb_t cb, void* user_data) {
     node->user_data = user_data;
     node->next = NULL;
 
-    /* Snapshot the VMLOGGER write end without holding g_drain_mutex (a write()
-     * under that lock would serialize all drains and could starve callers
-     * if the pipe buffer fills). */
+    /* The VMLOGGER write end, written below outside every lock */
     pthread_mutex_lock(&g_logging_state.lock);
     int running = g_logging_state.is_running;
     int write_fd = running ? g_logging_state.stream_pfd[VMLOGGER_INDEX][1] : -1;
@@ -267,87 +309,100 @@ int logging_drain_async(logging_drain_cb_t cb, void* user_data) {
         return -1;
     }
 
-    /* g_drain_mutex provides FIFO ordering: enqueue and pipe-write must be
-     * atomic relative to other concurrent drain_async callers, so the head
-     * of the queue always matches the next barrier marker the logging
-     * thread will read out of the pipe. */
+    /* The node belongs to the queue once unlocked (logging_shutdown may
+     * fire and free it): only its id is used afterwards. */
     pthread_mutex_lock(&g_drain_mutex);
+    unsigned long id = node->id = ++g_drain_next_id;
     if (g_drain_queue_tail == NULL) {
         g_drain_queue_head = g_drain_queue_tail = node;
     } else {
         g_drain_queue_tail->next = node;
         g_drain_queue_tail = node;
     }
-
-    static const char marker[] = LOGGING_DRAIN_BARRIER "\n";
-    int rc = write_all_bytes(write_fd, marker, sizeof(marker) - 1);
     pthread_mutex_unlock(&g_drain_mutex);
 
+    char marker[sizeof(LOGGING_DRAIN_BARRIER) + 24];
+    int length = snprintf(marker, sizeof(marker), LOGGING_DRAIN_BARRIER " %lu\n", id);
+    int rc = send_marker(write_fd, marker, (size_t)length, timeout_ms);
     if (rc != 0) {
-        /* Pipe write failed — best-effort attempt to remove the node we just
-         * enqueued so a future barrier doesn't dispatch a stale callback. */
+        /* No marker: remove the node so it never fires. Not found: shutdown
+         * took it and fires (or fired) its callback, as on success. */
         pthread_mutex_lock(&g_drain_mutex);
-        drain_node_t** link = &g_drain_queue_head;
-        while (*link != NULL && *link != node) link = &(*link)->next;
-        if (*link == node) {
-            *link = node->next;
-            if (g_drain_queue_tail == node) g_drain_queue_tail = (*link == NULL) ? NULL : g_drain_queue_tail;
-        }
+        drain_node_t* removed = drain_queue_remove_locked(id);
         pthread_mutex_unlock(&g_drain_mutex);
-        free(node);
-        return -2;
+        if (removed == NULL) return 0;
+        free(removed);
+        return rc;
     }
     return 0;
 }
 
-/* Sync wrapper helper state — stack-allocated by logging_drain(). */
+int logging_drain_async(logging_drain_cb_t cb, void* user_data) {
+    return drain_async(cb, user_data, 0);
+}
+
+/* Sync wrapper helper state, shared by logging_drain() and its callback:
+ * after a timeout the callback may still fire, so the last of the two to
+ * be done with it frees it. */
 typedef struct {
     pthread_mutex_t mutex;
     pthread_cond_t  cond;
     int             done;
+    int             references;
 } drain_sync_t;
+
+static void drain_sync_release_locked(drain_sync_t* s) {
+    int last = --s->references == 0;
+    pthread_mutex_unlock(&s->mutex);
+    if (last) {
+        pthread_cond_destroy(&s->cond);
+        pthread_mutex_destroy(&s->mutex);
+        free(s);
+    }
+}
 
 static void drain_sync_signal(void* user_data) {
     drain_sync_t* s = (drain_sync_t*)user_data;
     pthread_mutex_lock(&s->mutex);
     s->done = 1;
     pthread_cond_broadcast(&s->cond);
-    pthread_mutex_unlock(&s->mutex);
+    drain_sync_release_locked(s);
 }
 
 int logging_drain(int timeout_ms) {
-    drain_sync_t sync;
-    pthread_mutex_init(&sync.mutex, NULL);
-    pthread_cond_init(&sync.cond, NULL);
-    sync.done = 0;
+    drain_sync_t* sync = malloc(sizeof(*sync));
+    if (sync == NULL) return -2;
+    pthread_mutex_init(&sync->mutex, NULL);
+    pthread_cond_init(&sync->cond, NULL);
+    sync->done = 0;
+    sync->references = 2;
 
-    int rc = logging_drain_async(drain_sync_signal, &sync);
+    struct timespec deadline;
+    clock_gettime(CLOCK_REALTIME, &deadline);
+    int rc = drain_async(drain_sync_signal, sync, timeout_ms);
     if (rc != 0) {
-        pthread_cond_destroy(&sync.cond);
-        pthread_mutex_destroy(&sync.mutex);
-        return -2;  /* logging not running — also "nothing to drain" */
+        /* The callback never fires: both references are ours */
+        pthread_cond_destroy(&sync->cond);
+        pthread_mutex_destroy(&sync->mutex);
+        free(sync);
+        return rc == -3 ? -1 : -2;  /* -2: logging not running, nothing to drain */
     }
 
     int result = 0;
-    pthread_mutex_lock(&sync.mutex);
+    pthread_mutex_lock(&sync->mutex);
     if (timeout_ms <= 0) {
-        while (!sync.done) pthread_cond_wait(&sync.cond, &sync.mutex);
+        while (!sync->done) pthread_cond_wait(&sync->cond, &sync->mutex);
     } else {
-        struct timespec ts;
-        clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec  += timeout_ms / 1000;
-        ts.tv_nsec += (timeout_ms % 1000) * 1000000L;
-        if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+        deadline.tv_sec  += timeout_ms / 1000;
+        deadline.tv_nsec += (timeout_ms % 1000) * 1000000L;
+        if (deadline.tv_nsec >= 1000000000L) { deadline.tv_sec++; deadline.tv_nsec -= 1000000000L; }
         int wrc = 0;
-        while (!sync.done && wrc == 0) {
-            wrc = pthread_cond_timedwait(&sync.cond, &sync.mutex, &ts);
+        while (!sync->done && wrc == 0) {
+            wrc = pthread_cond_timedwait(&sync->cond, &sync->mutex, &deadline);
         }
-        if (!sync.done) result = -1;
+        if (!sync->done) result = -1;
     }
-    pthread_mutex_unlock(&sync.mutex);
-
-    pthread_cond_destroy(&sync.cond);
-    pthread_mutex_destroy(&sync.mutex);
+    drain_sync_release_locked(sync);
     return result;
 }
 
@@ -378,11 +433,17 @@ int logging_drain(int timeout_ms) {
 // host/VM synchronization.
 
 #define DISPATCH_QUEUE_MAX_LOG_LINES 1024
+/* Host events are never dropped: beyond this many queued, the logger
+ * thread waits for the worker. That stalls VMHost.emit, and meanwhile no
+ * stream is read: every interpreter's logs wait, and the host's own fd 1/2
+ * writes fail (O_NONBLOCK). */
+#define DISPATCH_QUEUE_MAX_HOST_EVENTS 256
 
 typedef enum {
     DISPATCH_LOG_LINE = 0,
     DISPATCH_DRAIN_BARRIER = 1,
-    DISPATCH_SENTINEL = 2
+    DISPATCH_SENTINEL = 2,
+    DISPATCH_HOST_EVENT = 3
 } dispatch_item_type_t;
 
 typedef struct dispatch_item {
@@ -397,6 +458,9 @@ typedef struct dispatch_item {
             logging_drain_cb_t cb;
             void* user_data;
         } drain;
+        struct {
+            char* line;        /* "<interpreter tag><topic> <base64>", heap copy */
+        } host_event;
         /* SENTINEL has no payload */
     } data;
     struct dispatch_item* next;
@@ -405,6 +469,8 @@ typedef struct dispatch_item {
 static dispatch_item_t* g_dispatch_head = NULL;
 static dispatch_item_t* g_dispatch_tail = NULL;
 static int g_dispatch_log_line_count = 0;
+static int g_dispatch_host_event_count = 0;
+static pthread_cond_t g_dispatch_space_cond = PTHREAD_COND_INITIALIZER;
 static unsigned long g_dispatch_dropped_total = 0;
 static int g_dispatch_thread_continue = 0;
 static int g_dispatch_thread_started = 0;
@@ -422,6 +488,7 @@ static void dispatch_enqueue_locked(dispatch_item_t* item) {
         g_dispatch_tail = item;
     }
     if (item->type == DISPATCH_LOG_LINE) g_dispatch_log_line_count++;
+    if (item->type == DISPATCH_HOST_EVENT) g_dispatch_host_event_count++;
     pthread_cond_signal(&g_dispatch_cond);
 }
 
@@ -487,6 +554,29 @@ static void dispatch_enqueue_sentinel(void) {
     pthread_mutex_unlock(&g_dispatch_mutex);
 }
 
+/* Enqueue a complete host event line (see VMHOST_EVENT_TAG), taking
+ * ownership of the heap string. Never dropped but on OOM: while
+ * DISPATCH_QUEUE_MAX_HOST_EVENTS are queued, waits for the worker to deliver
+ * some (backpressure up to the emitting script). Runs on the logger thread,
+ * which starts after the worker and is joined before it stops. */
+static void dispatch_enqueue_host_event(char* line) {
+    dispatch_item_t* item = malloc(sizeof(*item));
+    if (item == NULL) {
+        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "Host event dropped (out of memory): %.64s", line);
+        free(line);
+        return;
+    }
+    item->type = DISPATCH_HOST_EVENT;
+    item->data.host_event.line = line;
+
+    pthread_mutex_lock(&g_dispatch_mutex);
+    while (g_dispatch_host_event_count >= DISPATCH_QUEUE_MAX_HOST_EVENTS) {
+        pthread_cond_wait(&g_dispatch_space_cond, &g_dispatch_mutex);
+    }
+    dispatch_enqueue_locked(item);
+    pthread_mutex_unlock(&g_dispatch_mutex);
+}
+
 /* ============================================================================
  * Feedback-loop detection
  *
@@ -534,6 +624,7 @@ static int loop_detect_stream_index(log_stream_t stream) {
         case LOG_STREAM_VMLOGGER:      return VMLOGGER_INDEX;
         case LOG_STREAM_NATIVE_STDOUT: return NATIVE_STDOUT_INDEX;
         case LOG_STREAM_NATIVE_STDERR: return NATIVE_STDERR_INDEX;
+        case LOG_STREAM_HOST_EVENT:    break;  /* not a pipe: never fed back */
     }
     return -1;
 }
@@ -545,6 +636,7 @@ static const char* loop_detect_stream_name(log_stream_t stream) {
         case LOG_STREAM_VMLOGGER:      return "vmlogger";
         case LOG_STREAM_NATIVE_STDOUT: return "native_stdout";
         case LOG_STREAM_NATIVE_STDERR: return "native_stderr";
+        case LOG_STREAM_HOST_EVENT:    break;
     }
     return "unknown";
 }
@@ -629,6 +721,31 @@ static int parse_interpreter_id_prefix(const char* line, const char** body_out) 
     return id;
 }
 
+/* The registry node of [interpreter_id] itself, NULL if absent. Caller
+ * holds g_logging_state.lock. */
+static interpreter_listener_node_t* find_interpreter_listener_node_locked(int interpreter_id) {
+    interpreter_listener_node_t* n = g_logging_state.interpreter_listeners;
+    while (n != NULL && n->interpreter_id != interpreter_id) n = n->next;
+    return n;
+}
+
+/* Wait until no host event call uses the node of [interpreter_id], so its
+ * listener can be replaced or freed. When [closing], new calls skip it
+ * meanwhile (unregister: no wait for the whole backlog); otherwise they
+ * still start, on the old listener until the swap (replace: nothing is
+ * lost, but a script emitting without pause can delay it). Returns the
+ * node, NULL if absent. Caller holds g_logging_state.lock and is not in a
+ * host event call of that interpreter (it would wait for itself). */
+static interpreter_listener_node_t* quiesce_interpreter_listener_locked(int interpreter_id, int closing) {
+    interpreter_listener_node_t* node = find_interpreter_listener_node_locked(interpreter_id);
+    while (node != NULL && node->in_flight > 0) {
+        if (closing) node->closing = 1;
+        pthread_cond_wait(&g_listener_idle_cond, &g_logging_state.lock);
+        node = find_interpreter_listener_node_locked(interpreter_id);
+    }
+    return node;
+}
+
 /* Look up the listener for [interpreter_id]; falls back to the head of
  * the registry (the first-registered listener, oldest = natural sink) if
  * no exact match. Returns 1 if a listener was found, 0 otherwise. Caller
@@ -638,14 +755,11 @@ static int find_interpreter_listener_locked(int interpreter_id, LogListener* out
     /* Native lines (id==NATIVE) and unmatched ids both route to the head
      * (oldest registration) — typically the long-running persistent
      * interpreter, which is the right sink for native printf output. */
-    if (interpreter_id != LOG_NATIVE_INTERPRETER_ID) {
-        for (interpreter_listener_node_t* n = g_logging_state.interpreter_listeners;
-             n != NULL; n = n->next) {
-            if (n->interpreter_id == interpreter_id) {
-                *out = n->listener;
-                return 1;
-            }
-        }
+    interpreter_listener_node_t* node = interpreter_id != LOG_NATIVE_INTERPRETER_ID
+        ? find_interpreter_listener_node_locked(interpreter_id) : NULL;
+    if (node != NULL) {
+        *out = node->listener;
+        return 1;
     }
     if (g_logging_state.interpreter_listeners != NULL) {
         *out = g_logging_state.interpreter_listeners->listener;
@@ -703,6 +817,39 @@ static void dispatch_invoke_custom_callbacks(log_stream_t stream, log_level_t le
     pthread_mutex_unlock(&g_logging_state.lock);
 }
 
+/* Deliver a host event to the LogListener of its interpreter only, as
+ * LOG_STREAM_HOST_EVENT: no custom output, no fallback to another
+ * interpreter (handing an event to another consumer is worse than losing
+ * it). An untagged event has no owner: dropped.
+ *
+ * The call runs outside the logging lock, which stays free while a
+ * listener waits for room in its own queue or creates interpreters (see
+ * LOG_STREAM_HOST_EVENT for what it must not do). Its node is pinned
+ * instead: unregistering that interpreter waits for the call to end. */
+static void dispatch_invoke_host_event(const char* line) {
+    const char* body = NULL;
+    int interpreter_id = parse_interpreter_id_prefix(line, &body);
+    if (interpreter_id == LOG_NATIVE_INTERPRETER_ID) {
+        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "Host event of no interpreter dropped: %.64s", body);
+        return;
+    }
+    pthread_mutex_lock(&g_logging_state.lock);
+    interpreter_listener_node_t* node = find_interpreter_listener_node_locked(interpreter_id);
+    if (node == NULL || node->closing || node->listener.on_log_message == NULL) {
+        pthread_mutex_unlock(&g_logging_state.lock);
+        return;
+    }
+    LogListener listener = node->listener;
+    node->in_flight++;
+    pthread_mutex_unlock(&g_logging_state.lock);
+
+    listener.on_log_message(&listener, body, LOG_STREAM_HOST_EVENT, LOG_LEVEL_INFO, interpreter_id);
+
+    pthread_mutex_lock(&g_logging_state.lock);
+    if (--node->in_flight == 0) pthread_cond_broadcast(&g_listener_idle_cond);
+    pthread_mutex_unlock(&g_logging_state.lock);
+}
+
 /* Worker thread: pure callback dispatcher. Reads the queue, invokes the
  * appropriate callback per item, never touches any pipe FD. */
 static void* dispatch_thread_function(void* arg) {
@@ -722,6 +869,10 @@ static void* dispatch_thread_function(void* arg) {
         g_dispatch_head = item->next;
         if (g_dispatch_head == NULL) g_dispatch_tail = NULL;
         if (item->type == DISPATCH_LOG_LINE) g_dispatch_log_line_count--;
+        if (item->type == DISPATCH_HOST_EVENT) {
+            g_dispatch_host_event_count--;
+            pthread_cond_signal(&g_dispatch_space_cond);
+        }
         pthread_mutex_unlock(&g_dispatch_mutex);
 
         switch (item->type) {
@@ -738,6 +889,10 @@ static void* dispatch_thread_function(void* arg) {
                 break;
             case DISPATCH_SENTINEL:
                 logging_signal_sentinel();
+                break;
+            case DISPATCH_HOST_EVENT:
+                dispatch_invoke_host_event(item->data.host_event.line);
+                free(item->data.host_event.line);
                 break;
         }
         free(item);
@@ -793,10 +948,12 @@ static void dispatch_thread_stop(void) {
         dispatch_item_t* it = g_dispatch_head;
         g_dispatch_head = it->next;
         if (it->type == DISPATCH_LOG_LINE) free(it->data.log_line.line);
+        if (it->type == DISPATCH_HOST_EVENT) free(it->data.host_event.line);
         free(it);
     }
     g_dispatch_tail = NULL;
     g_dispatch_log_line_count = 0;
+    g_dispatch_host_event_count = 0;
     pthread_mutex_unlock(&g_dispatch_mutex);
 }
 
@@ -1007,6 +1164,83 @@ static int native_priority_for_level(log_level_t level) {
     }
 }
 
+/* A host event sent in PART lines (see VMHOST_PART_TAG), being joined:
+ * "<interpreter tag><topic> <base64 so far>". The logger thread alone
+ * touches it. VMHost.emit writes an event's lines under VMLogger's write
+ * lock, so no other Ruby line comes between them; a line of another event
+ * means this one was cut short (dropped). */
+static char* g_host_event_parts = NULL;
+static size_t g_host_event_header_length = 0;  /* up to and including the space */
+static size_t g_host_event_parts_length = 0;
+static size_t g_host_event_parts_capacity = 0;
+/* An event lost to OOM midway: its remaining lines are skipped, up to its
+ * EVENT line (else that rest would arrive as a truncated event). */
+static int g_host_event_skipping = 0;
+
+static void drop_host_event_parts(const char* reason) {
+    if (g_host_event_parts == NULL) return;
+    jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "Host event dropped (%s): %.64s",
+                   reason, g_host_event_parts);
+    free(g_host_event_parts);
+    g_host_event_parts = NULL;
+}
+
+/* One VMHOST_EVENT_TAG (is_part = 0) or VMHOST_PART_TAG line, tag
+ * stripped: "<interpreter tag><topic> <base64>". */
+static void handle_host_event_line(const char* body, int is_part) {
+    const char* separator = strchr(body, ' ');
+    if (separator == NULL) {
+        jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "Malformed host event dropped: %.64s", body);
+        return;
+    }
+    size_t header_length = (size_t)(separator - body) + 1;
+    if (g_host_event_skipping) {
+        if (!is_part) g_host_event_skipping = 0;
+        return;
+    }
+    if (g_host_event_parts != NULL &&
+        (header_length != g_host_event_header_length || memcmp(body, g_host_event_parts, header_length) != 0)) {
+        drop_host_event_parts("cut short");
+    }
+
+    if (g_host_event_parts == NULL) {
+        char* copy = strdup(body);
+        if (copy == NULL) {
+            jni_log_printf(JNI_LOG_ERROR, g_logging_state.log_tag, "Host event dropped (out of memory): %.64s", body);
+        }
+        if (!is_part) {
+            if (copy != NULL) dispatch_enqueue_host_event(copy);
+            return;
+        }
+        g_host_event_parts = copy;
+        g_host_event_header_length = header_length;
+        g_host_event_parts_length = copy ? strlen(copy) : 0;
+        g_host_event_parts_capacity = copy ? g_host_event_parts_length + 1 : 0;
+        g_host_event_skipping = (copy == NULL);
+        return;
+    }
+
+    size_t data_length = strlen(body + header_length);
+    size_t needed = g_host_event_parts_length + data_length + 1;
+    if (needed > g_host_event_parts_capacity) {
+        size_t capacity = needed > 2 * g_host_event_parts_capacity ? needed : 2 * g_host_event_parts_capacity;
+        char* grown = realloc(g_host_event_parts, capacity);
+        if (grown == NULL) {
+            drop_host_event_parts("out of memory");
+            g_host_event_skipping = is_part;
+            return;
+        }
+        g_host_event_parts = grown;
+        g_host_event_parts_capacity = capacity;
+    }
+    memcpy(g_host_event_parts + g_host_event_parts_length, body + header_length, data_length + 1);
+    g_host_event_parts_length += data_length;
+    if (!is_part) {
+        dispatch_enqueue_host_event(g_host_event_parts);  /* takes it */
+        g_host_event_parts = NULL;
+    }
+}
+
 /**
  * Output a complete log line to all configured outputs
  * Returns 0 on success, negative if any output fails
@@ -1022,14 +1256,16 @@ static int write_full_log_line(const char* line, log_stream_t stream) {
         return 0;
     }
 
-    /* Drain barrier: pop the head of the FIFO drain queue and forward its
+    /* Drain barrier: take its node out of the drain queue and forward its
      * callback to the dispatch worker, where it fires AFTER all preceding
      * LOG_LINE items. No FD swap — drain callbacks run on the worker, not
      * the logger thread, and callbacks must follow the no-stdout/stderr
      * contract documented in logging.h. */
-    if (stream == LOG_STREAM_VMLOGGER && strstr(line, LOGGING_DRAIN_BARRIER) != NULL) {
+    const char* barrier = stream == LOG_STREAM_VMLOGGER ? strstr(line, LOGGING_DRAIN_BARRIER) : NULL;
+    if (barrier != NULL) {
+        unsigned long id = strtoul(barrier + sizeof(LOGGING_DRAIN_BARRIER) - 1, NULL, 10);
         pthread_mutex_lock(&g_drain_mutex);
-        drain_node_t* node = drain_queue_pop_head_locked();
+        drain_node_t* node = drain_queue_remove_locked(id);
         pthread_mutex_unlock(&g_drain_mutex);
 
         if (node != NULL) {
@@ -1037,6 +1273,20 @@ static int write_full_log_line(const char* line, log_stream_t stream) {
             free(node);
         }
         return 0;
+    }
+
+    /* Host event (VMHost.emit): to its interpreter's listener, never to
+     * the logs. Through the dispatch queue, so after the script's earlier
+     * log lines. */
+    if (stream == LOG_STREAM_VMLOGGER) {
+        if (strncmp(line, VMHOST_EVENT_TAG, sizeof(VMHOST_EVENT_TAG) - 1) == 0) {
+            handle_host_event_line(line + sizeof(VMHOST_EVENT_TAG) - 1, 0);
+            return 0;
+        }
+        if (strncmp(line, VMHOST_PART_TAG, sizeof(VMHOST_PART_TAG) - 1) == 0) {
+            handle_host_event_line(line + sizeof(VMHOST_PART_TAG) - 1, 1);
+            return 0;
+        }
     }
 
     /* Recover the per-VMLogger-call severity that the single pipe would
@@ -1316,12 +1566,24 @@ static void* logging_function_thread(void* unused) {
 }
 
 
+/* The socketpair of a log stream. Where the platform allows it per socket
+ * (Darwin: SO_NOSIGPIPE; it has no MSG_NOSIGNAL), a write after its reader
+ * closed fails with EPIPE instead of raising SIGPIPE. */
+static int create_stream_socketpair(int stream_index) {
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[stream_index]) == -1) return -1;
+#ifdef SO_NOSIGPIPE
+    int on = 1;
+    (void) setsockopt(g_logging_state.stream_pfd[stream_index][1], SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+#endif
+    return 0;
+}
+
 /**
  * Create a socketpair and redirect a file descriptor
  * Note: This is called from internal_start_logging_thread which holds the mutex
  */
 static int create_and_redirect_stream(int stream_index, int target_fd) {
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[stream_index]) == -1) {
+    if (create_stream_socketpair(stream_index) == -1) {
         set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
         // Note: Cannot call call_native_logging_function here - called with mutex held
         return -1;
@@ -1393,21 +1655,21 @@ static int internal_start_logging_thread(void) {
     // Ruby streams and VMLogger get their own FDs that can be retrieved via logging_get_stream_fd()
 
     // Ruby stdout - just create socketpair, no redirect
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[RUBY_STDOUT_INDEX]) == -1) {
+    if (create_stream_socketpair(RUBY_STDOUT_INDEX) == -1) {
         set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
         cleanup_streams();
         return LOGGING_ERROR_SOCKETPAIR_FAILED;
     }
 
     // Ruby stderr - just create socketpair, no redirect
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[RUBY_STDERR_INDEX]) == -1) {
+    if (create_stream_socketpair(RUBY_STDERR_INDEX) == -1) {
         set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
         cleanup_streams();
         return LOGGING_ERROR_SOCKETPAIR_FAILED;
     }
 
     // VMLogger - just create socketpair, no redirect
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_logging_state.stream_pfd[VMLOGGER_INDEX]) == -1) {
+    if (create_stream_socketpair(VMLOGGER_INDEX) == -1) {
         set_last_error(LOGGING_ERROR_SOCKETPAIR_FAILED);
         cleanup_streams();
         return LOGGING_ERROR_SOCKETPAIR_FAILED;
@@ -1638,8 +1900,9 @@ int logging_shutdown(void) {
     }
 
     // Stop thread if running
+    int stop_result = 0;
     if (g_logging_state.is_running) {
-        internal_stop_logging_thread();
+        stop_result = internal_stop_logging_thread();
     }
 
     // Free all native loggers
@@ -1672,6 +1935,13 @@ int logging_shutdown(void) {
     }
     g_logging_state.interpreter_listeners = NULL;
     g_logging_state.interpreter_listener_count = 0;
+
+    // Once the logger thread is gone, nothing joins host event parts
+    if (stop_result == 0) {
+        free(g_host_event_parts);
+        g_host_event_parts = NULL;
+        g_host_event_skipping = 0;
+    }
 
     // Free log tag
     if (g_logging_state.log_tag != NULL) {
@@ -1927,14 +2197,11 @@ int logging_register_interpreter_listener(int interpreter_id, LogListener listen
      * destroy left a stale-but-soon-to-be-overwritten slot). Walking the
      * list keeps insertion order stable, which preserves the "head =
      * oldest = fallback" property the dispatcher relies on. */
-    interpreter_listener_node_t* node = g_logging_state.interpreter_listeners;
-    while (node != NULL) {
-        if (node->interpreter_id == interpreter_id) {
-            node->listener = listener;
-            pthread_mutex_unlock(&g_logging_state.lock);
-            return 0;
-        }
-        node = node->next;
+    interpreter_listener_node_t* node = quiesce_interpreter_listener_locked(interpreter_id, 0);
+    if (node != NULL) {
+        node->listener = listener;
+        pthread_mutex_unlock(&g_logging_state.lock);
+        return 0;
     }
 
     interpreter_listener_node_t* new_node = malloc(sizeof(*new_node));
@@ -1945,6 +2212,8 @@ int logging_register_interpreter_listener(int interpreter_id, LogListener listen
     }
     new_node->interpreter_id = interpreter_id;
     new_node->listener       = listener;
+    new_node->in_flight      = 0;
+    new_node->closing        = 0;
     new_node->next           = NULL;
 
     /* Append at tail so the head stays the first-ever-registered listener
@@ -2000,6 +2269,9 @@ int logging_unregister_interpreter_listener(int interpreter_id) {
     }
 
     pthread_mutex_lock(&g_logging_state.lock);
+
+    /* A host event call of this interpreter may be running outside the lock */
+    (void) quiesce_interpreter_listener_locked(interpreter_id, 1);
 
     interpreter_listener_node_t** link = &g_logging_state.interpreter_listeners;
     while (*link != NULL) {

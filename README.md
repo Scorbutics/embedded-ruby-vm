@@ -195,6 +195,31 @@ RubyInterpreter.create(...).use { interpreter ->
 }
 ```
 
+#### Messages Between the Host and the Scripts
+
+A long-running script (a game loop) and the host exchange messages through the `VMHost` module, loaded in every VM. A topic is 1 to 128 characters among `[A-Za-z0-9_.:-]`; give each consumer its own prefix.
+
+```kotlin
+// Ruby -> host: the events of the scripts this interpreter runs, in order,
+// off the logging threads (see HostEventListener: a listener 256 events
+// behind holds the script and the logging back)
+game.setHostEventListener { event -> println("${event.topic}: ${event.payload}") }
+
+// Host -> Ruby: from an interpreter of the host's own (scripts of one
+// interpreter run one after the other: a post on `game` would wait for its
+// loop to end). Blocks until the VM queued the message: call it off the UI
+// thread. Non-zero when the VM refused it (too many messages waiting).
+host.post("overlay.reload", json)
+```
+
+```ruby
+# In the game loop
+VMHost.each_message('overlay.') { |topic, payload| reload(payload) }
+VMHost.emit('overlay.edited', layout.to_json)
+```
+
+In C, events reach the interpreter's `LogListener` as `LOG_STREAM_HOST_EVENT` messages, `"<topic> <payload as base64>"` (see `log-listener.h`).
+
 #### Low-Level API (For Advanced Use Cases)
 
 ```kotlin

@@ -75,6 +75,18 @@ expect class RubyInterpreter : AutoCloseable {
     fun disableLogging()
 
     /**
+     * Set the listener receiving the [HostEvent]s (`VMHost.emit`) of the
+     * scripts this interpreter runs: they come with its log lines, so they
+     * need the logging pipes the VM starts with once logging is enabled
+     * (without them, `VMHost.emit` returns false). Replaces the previous
+     * listener; null removes it: events not delivered yet go to the next
+     * listener set, or nowhere if none is set when their turn comes.
+     *
+     * @throws IllegalStateException if interpreter has been destroyed
+     */
+    fun setHostEventListener(listener: HostEventListener?)
+
+    /**
      * Arm the Ruby `debug` gem's DAP listener so a DAP client (VS Code's
      * rdbg extension, `rdbg --attach`, JetBrains) can attach for live
      * debugging — breakpoints, step in/over/out, locals, exceptions.

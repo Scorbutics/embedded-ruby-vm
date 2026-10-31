@@ -84,6 +84,18 @@ add_executable(test_listener_register_before_init
     test_listener_register_before_init.c
 )
 
+# Host events (VMHost.emit), C side: routing by interpreter, payload
+# decoding, malformed lines, and no event dropped under log backpressure.
+add_executable(test_host_events
+    test_host_events.c
+)
+
+# VMHost round trip on a real VM: emit, and messages delivered by the
+# host's own interpreter to a long-running script.
+add_executable(test_host_channel
+    test_host_channel.c
+)
+
 # CA certificates bundle (SSL_CERT_FILE on Android): every certificate file of a
 # directory is concatenated, the bundle is rebuilt only when the directory changed.
 add_executable(test_ca_certificates
@@ -156,6 +168,18 @@ target_link_libraries(test_interpreter_listener_routing
 )
 
 target_link_libraries(test_listener_register_before_init
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_host_events
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_host_channel
     assets
     embedded-ruby
     dl
@@ -267,6 +291,14 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_host_events PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
+        target_link_options(test_host_channel PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
         target_link_options(test_ruby_variant PRIVATE
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
@@ -320,6 +352,14 @@ target_include_directories(test_interpreter_listener_routing PRIVATE
     ${CMAKE_SOURCE_DIR}/include/public
 )
 target_include_directories(test_listener_register_before_init PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_host_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_host_channel PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -378,6 +418,14 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_host_events PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
+    set_target_properties(test_host_channel PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
     set_target_properties(test_ruby_variant PROPERTIES
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
@@ -409,6 +457,8 @@ add_test(NAME test_multi_interpreter COMMAND test_multi_interpreter WORKING_DIRE
 add_test(NAME test_same_id_fifo COMMAND test_same_id_fifo WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_interpreter_listener_routing COMMAND test_interpreter_listener_routing WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_listener_register_before_init COMMAND test_listener_register_before_init WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_host_events COMMAND test_host_events WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+add_test(NAME test_host_channel COMMAND test_host_channel WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_ruby_variant COMMAND test_ruby_variant WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_extra_zip COMMAND test_extra_zip WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_test(NAME test_packaged_headers COMMAND test_packaged_headers WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
@@ -425,6 +475,8 @@ set_tests_properties(
     test_same_id_fifo
     test_interpreter_listener_routing
     test_listener_register_before_init
+    test_host_events
+    test_host_channel
     test_ruby_variant
     test_extra_zip
     test_packaged_headers

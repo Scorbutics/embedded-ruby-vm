@@ -35,26 +35,13 @@
 
 STOP_SENTINEL_SCRIPT = "__RGSS_STOP_INTERPRETER__".freeze
 
-# In-band tag emitted at the start of every line written to $stdout / $stderr
-# from inside a worker Thread. The C dispatcher (see
-# logging.c::parse_interpreter_id_prefix) parses these markers to route the
-# line to the matching per-interpreter LogListener registered via
-# logging_register_interpreter_listener.
-#
-# Format: "\x01[<decimal-id>]\x01<line>". \x01 (SOH) was chosen because it
-# never appears in normal Ruby script output, so a parse failure can only
-# come from a malformed tag (which falls back to LOG_NATIVE_INTERPRETER_ID
-# routing on the C side, not from a missed-routing-on-real-content edge).
-TAG_BOUNDARY = "\x01".freeze
-THREAD_INTERP_KEY = :rgss_interpreter_id
-
 # Per-worker tagged IO wrapper. Wraps the real ruby_stdout / ruby_stderr FDs
-# and, for every Ruby write, prepends the producing worker's interpreter id
-# to each line. Writes are serialized through a single mutex because $stdout
+# and, for every Ruby write, prepends the producing worker's interpreter tag
+# (VMLogger.interpreter_tag) to each line. Writes are serialized through a single mutex because $stdout
 # and $stderr are process-global — concurrent worker writes would otherwise
 # interleave at the byte level and corrupt the tag.
 #
-# Outside a worker Thread (Thread.current[THREAD_INTERP_KEY] is nil),
+# Outside a worker Thread (no VMLogger::INTERPRETER_KEY thread variable),
 # writes pass through untagged; the C dispatcher routes them as native
 # logs to the first-registered listener (per the registry fallback rule).
 class TaggedIO
@@ -112,9 +99,7 @@ class TaggedIO
       # is empty here, but a bare `print` without trailing \n is legal Ruby
       # and would otherwise leak the line until the next write.
       unless @pending.empty?
-        id = Thread.current[THREAD_INTERP_KEY]
-        prefix = id ? "#{TAG_BOUNDARY}[#{id}]#{TAG_BOUNDARY}" : ""
-        @inner.write("#{prefix}#{@pending}")
+        @inner.write("#{VMLogger.interpreter_tag}#{@pending}")
         @pending.clear
       end
     end
@@ -130,8 +115,7 @@ class TaggedIO
   # written to the inner IO so callers using the return value of #write
   # (e.g. IO copy machinery) see plausible numbers.
   def write_tagged_locked(s)
-    id = Thread.current[THREAD_INTERP_KEY]
-    prefix = id ? "#{TAG_BOUNDARY}[#{id}]#{TAG_BOUNDARY}" : ""
+    prefix = VMLogger.interpreter_tag
     written = 0
     rest = @pending + s
     @pending = +""
@@ -210,15 +194,14 @@ begin
     queue = SizedQueue.new(64)
     thread = Thread.new do
       Thread.current.name = "rgss-worker-#{interp_id}"
-      # Stamp the thread-local key TaggedIO reads to build the in-band tag.
-      # Set once at worker birth: every script this worker subsequently evals
-      # runs in this Thread, so any `puts` / `warn` they emit (including
-      # from spawned sub-threads that inherit Thread.current via Thread.new
-      # — Ruby doesn't propagate locals, but PSDK code rarely spawns; if a
-      # script DOES spawn a thread that logs, those writes fall back to the
-      # native id, which is the desired behaviour for "I don't know where
-      # this came from").
-      Thread.current[THREAD_INTERP_KEY] = interp_id
+      # Stamp the thread variable TaggedIO, VMLogger and VMHost read to build
+      # the in-band tag. Set once at worker birth: every script this worker
+      # subsequently evals runs in this Thread, and its Fibers share thread
+      # variables, so any `puts` / `warn` they emit is tagged. A Thread the
+      # script spawns has no tag: its logs fall back to the native id, which
+      # is the desired behaviour for "I don't know where this came from"
+      # (its host events are dropped, they have no owner).
+      Thread.current.thread_variable_set(VMLogger::INTERPRETER_KEY, interp_id)
       loop do
         script = queue.pop
 

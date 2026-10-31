@@ -405,6 +405,10 @@ static void initialize_ruby_runtime(void) {
     if (eval_embedded_script("safe_runner.rb", NULL) == 0) {
         rb_provide("safe_runner");
     }
+    // VMHost (host <-> scripts messages) relies on safe_runner's VMLogger.
+    if (eval_embedded_script("vm_host.rb", NULL) == 0) {
+        rb_provide("vm_host");
+    }
 }
 
 static int run_main_vm_node(const char* baseDirectory,

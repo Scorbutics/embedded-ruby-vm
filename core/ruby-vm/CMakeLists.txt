@@ -14,11 +14,14 @@ embed_script(safe_runner.rb EMBEDDED_SAFE_RUNNER)
 # Embed remote_eval.rb (line-eval console served alongside the DAP debug listener)
 embed_script(remote_eval.rb EMBEDDED_REMOTE_EVAL)
 
+# Embed vm_host.rb (VMHost: messages between the host and the scripts)
+embed_script(vm_host.rb EMBEDDED_VM_HOST)
+
 # Embed ca_certificates.rb (loads the Android CA bundle into OpenSSL's default stores)
 embed_script(ca_certificates.rb EMBEDDED_CA_CERTIFICATES)
 
 # Export the embedded script object files to CACHE so embedded-ruby can access them
-set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} ${EMBEDDED_SAFE_RUNNER} ${EMBEDDED_REMOTE_EVAL} ${EMBEDDED_CA_CERTIFICATES} CACHE INTERNAL "Embedded script object files from ruby-vm")
+set(RUBY_VM_EMBEDDED_SCRIPT_OBJ ${EMBEDDED_FIFO_INTERPRETER} ${EMBEDDED_SAFE_RUNNER} ${EMBEDDED_REMOTE_EVAL} ${EMBEDDED_VM_HOST} ${EMBEDDED_CA_CERTIFICATES} CACHE INTERNAL "Embedded script object files from ruby-vm")
 
 # This will be populated after embedded-ruby is built
 set(DEPENDENCY_LIST "    /* Dependencies will be populated in embedded-ruby library */")
@@ -37,6 +40,7 @@ add_library(ruby-vm OBJECT
     ${EMBEDDED_FIFO_INTERPRETER}
     ${EMBEDDED_SAFE_RUNNER}
     ${EMBEDDED_REMOTE_EVAL}
+    ${EMBEDDED_VM_HOST}
     ${EMBEDDED_CA_CERTIFICATES}
     ${DEPS_C_OUT}
 )

@@ -69,7 +69,8 @@ typedef enum {
     LOG_STREAM_RUBY_STDERR_M = 2,
     LOG_STREAM_VMLOGGER_M = 3,
     LOG_STREAM_NATIVE_STDOUT_M = 4,
-    LOG_STREAM_NATIVE_STDERR_M = 5
+    LOG_STREAM_NATIVE_STDERR_M = 5,
+    LOG_STREAM_HOST_EVENT_M = 6
 } log_stream_main_t;
 
 /* Mirror of log_level_t (log-listener.h). Kept inline so this standalone

@@ -192,6 +192,21 @@ fun RubyInterpreter.executeSync(scriptContent: String, timeoutSeconds: Long = 30
 }
 
 /**
+ * Send a message to the scripts, which read it with `VMHost.each_message`
+ * (see [HostEvent]). Call it on an interpreter of the host's own, never on
+ * the one running a long script: its scripts run one after the other, the
+ * message would wait for the loop to end. Blocks until the VM queued it
+ * (that needs the GVL): call it off the UI thread. Messages posted from one
+ * thread arrive in order. After a timeout, the message may still arrive.
+ *
+ * @return 0 once queued; non-zero when the VM refused it (too many waiting)
+ * @throws IllegalArgumentException for an invalid topic
+ * @throws IllegalStateException on timeout
+ */
+fun RubyInterpreter.post(topic: String, payload: String = "", timeoutSeconds: Long = 30): Int =
+    executeSync(hostDeliverScript(topic, payload), timeoutSeconds)
+
+/**
  * Execute a Ruby script and return a detailed result.
  *
  * This method provides more information than just an exit code, including
