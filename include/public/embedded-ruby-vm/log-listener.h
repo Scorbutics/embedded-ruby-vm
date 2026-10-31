@@ -19,13 +19,27 @@ extern "C" {
  * LOG_STREAM_VMLOGGER: VMLogger output (VMLogger.debug/info/error)
  * LOG_STREAM_NATIVE_STDOUT: Native C code stdout
  * LOG_STREAM_NATIVE_STDERR: Native C code stderr
+ * LOG_STREAM_HOST_EVENT: not a log line, an event a script sent the host
+ *   with VMHost.emit (vm_host.rb). The message is "<topic> <payload as
+ *   base64>"; it goes only to the listener of the interpreter that ran the
+ *   script (never to another one, nor to the native logs), and is never
+ *   dropped for lack of queue space: the logger thread waits instead,
+ *   holding back every stream. It needs the logging pipes, which a VM has
+ *   when the interpreter starting it was created with a LogListener.
+ *   Unlike log lines, it is delivered outside the logging lock, on the
+ *   dispatch thread: the callback may take its time (meanwhile nothing else
+ *   is delivered) or create interpreters, but must not destroy its own
+ *   interpreter (that waits for the callback to end), and destroying
+ *   another one waits up to 5 s for a log flush this thread would deliver.
+ *   A listener that only wants logs ignores this source.
  */
 typedef enum {
     LOG_STREAM_RUBY_STDOUT = 1,
     LOG_STREAM_RUBY_STDERR = 2,
     LOG_STREAM_VMLOGGER = 3,
     LOG_STREAM_NATIVE_STDOUT = 4,
-    LOG_STREAM_NATIVE_STDERR = 5
+    LOG_STREAM_NATIVE_STDERR = 5,
+    LOG_STREAM_HOST_EVENT = 6
 } log_stream_t;
 
 /**

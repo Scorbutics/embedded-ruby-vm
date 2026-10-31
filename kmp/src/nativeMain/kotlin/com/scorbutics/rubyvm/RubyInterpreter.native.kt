@@ -2,6 +2,7 @@ package com.scorbutics.rubyvm
 
 import com.scorbutics.rubyvm.native.*
 import kotlinx.cinterop.*
+import kotlin.concurrent.AtomicInt
 import kotlin.native.Platform
 import kotlin.experimental.ExperimentalNativeApi
 
@@ -15,9 +16,12 @@ import kotlin.experimental.ExperimentalNativeApi
 actual class RubyInterpreter private constructor(
     private val interpreterPtr: COpaquePointer?,
     private val listener: com.scorbutics.rubyvm.LogListener,
+    private val hostEvents: HostEventRouter,
     private val stableRefHolder: StableRefHolder
 ) : AutoCloseable {
-    private var isDestroyed = false
+    // Atomic: a host event listener may destroy the interpreter while another thread does
+    private val destroyed = AtomicInt(0)
+    private val isDestroyed get() = destroyed.value != 0
 
     actual fun enqueue(script: RubyScript, onComplete: (exitCode: Int) -> Unit) {
         check(!isDestroyed) { "Interpreter has been destroyed" }
@@ -58,6 +62,11 @@ actual class RubyInterpreter private constructor(
         ruby_interpreter_disable_logging(interpreterPtr?.reinterpret())
     }
 
+    actual fun setHostEventListener(listener: HostEventListener?) {
+        check(!isDestroyed) { "Interpreter has been destroyed" }
+        hostEvents.setListener(listener)
+    }
+
     actual fun enableRemoteDebug(host: String?, port: Int, token: String, sessionName: String?): Int {
         check(!isDestroyed) { "Interpreter has been destroyed" }
         return memScoped {
@@ -83,7 +92,10 @@ actual class RubyInterpreter private constructor(
     }
 
     actual fun destroy() {
-        if (!isDestroyed && interpreterPtr != null) {
+        if (interpreterPtr != null && destroyed.compareAndSet(0, 1)) {
+            // First: frees a dispatch thread waiting for room for an event
+            hostEvents.close()
+
             // Disable logging BEFORE destroying the interpreter and disposing the
             // StableRef. The logging thread runs independently and would otherwise
             // call the Kotlin callback via the StableRef after it has been disposed,
@@ -92,7 +104,6 @@ actual class RubyInterpreter private constructor(
 
             // Call C function directly (works for static builds)
             ruby_interpreter_destroy(interpreterPtr.reinterpret())
-            isDestroyed = true
 
             // Dispose stable references — now safe because the logging thread
             // can no longer invoke the callback
@@ -112,8 +123,10 @@ actual class RubyInterpreter private constructor(
             nativeLibsDir: String,
             listener: com.scorbutics.rubyvm.LogListener
         ): RubyInterpreter {
-            // Create stable reference for the listener
-            val listenerRef = StableRef.create(listener)
+            // Create stable reference for the listener (and the host events
+            // its log messages may carry)
+            val hostEvents = HostEventRouter()
+            val listenerRef = StableRef.create(NativeLogContext(listener, hostEvents))
             val holder = StableRefHolder(listenerRef, listenerRef) // Same ref for both
 
             // Create log listener structure
@@ -126,9 +139,13 @@ actual class RubyInterpreter private constructor(
                 logListener.user_data = null
                 logListener.on_log_message = staticCFunction { listenerPtr, message, source, level, interpreterId ->
                     if (listenerPtr == null || message == null) return@staticCFunction
-                    val ktListener = listenerPtr.pointed.context
-                        ?.asStableRef<com.scorbutics.rubyvm.LogListener>()
+                    val context = listenerPtr.pointed.context
+                        ?.asStableRef<NativeLogContext>()
                         ?.get() ?: return@staticCFunction
+                    if (source.toInt() == HOST_EVENT_SOURCE) {
+                        context.hostEvents.onHostEventMessage(message.toKString())
+                        return@staticCFunction
+                    }
                     val logSource = when (source.toInt()) {
                         1 -> LogSource.RUBY_STDOUT
                         2 -> LogSource.RUBY_STDERR
@@ -143,7 +160,7 @@ actual class RubyInterpreter private constructor(
                         3 -> LogLevel.ERROR
                         else -> LogLevel.INFO // matches derive_default_level_for_stream
                     }
-                    ktListener.onLogMessage(LogMessage(message.toKString(), logSource, logLevel, interpreterId))
+                    context.listener.onLogMessage(LogMessage(message.toKString(), logSource, logLevel, interpreterId))
                 }
 
                 // Call C function directly (works for static builds)
@@ -159,18 +176,24 @@ actual class RubyInterpreter private constructor(
                 // Mark as initialized
                 RubyAPIHolder.setInitialized()
 
-                return RubyInterpreter(interpreterPtr, listener, holder)
+                return RubyInterpreter(interpreterPtr, listener, hostEvents, holder)
             }
         }
     }
 }
+
+/** What the C log listener's context points to */
+private class NativeLogContext(
+    val listener: com.scorbutics.rubyvm.LogListener,
+    val hostEvents: HostEventRouter
+)
 
 /**
  * Helper class to hold stable references and dispose them together
  */
 @OptIn(ExperimentalForeignApi::class)
 private class StableRefHolder(
-    private val listenerRef: StableRef<com.scorbutics.rubyvm.LogListener>,
+    private val listenerRef: StableRef<NativeLogContext>,
     @Suppress("UNUSED_PARAMETER") private val unused: StableRef<*>? = null
 ) {
     fun dispose() {

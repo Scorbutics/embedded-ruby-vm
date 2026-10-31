@@ -16,6 +16,10 @@ extern const char _binary_safe_runner_rb_end[];
 extern const char _binary_remote_eval_rb_start[];
 extern const char _binary_remote_eval_rb_end[];
 
+// For vm_host.rb
+extern const char _binary_vm_host_rb_start[];
+extern const char _binary_vm_host_rb_end[];
+
 // For ca_certificates.rb
 extern const char _binary_ca_certificates_rb_start[];
 extern const char _binary_ca_certificates_rb_end[];
@@ -43,6 +47,11 @@ static const embedded_script_t embedded_scripts[] = {
         .script_name = "remote_eval.rb",
         .start = _binary_remote_eval_rb_start,
         .end = _binary_remote_eval_rb_end
+    },
+    {
+        .script_name = "vm_host.rb",
+        .start = _binary_vm_host_rb_start,
+        .end = _binary_vm_host_rb_end
     },
     {
         .script_name = "ca_certificates.rb",

@@ -149,7 +149,7 @@ int main(void) {
     }
 
     /* "\x01[42]\x01" matches the TaggedIO prefix the Ruby side emits when
-     * the producing worker's Thread.current[THREAD_INTERP_KEY] is 42. */
+     * the producing worker's VMLogger::INTERPRETER_KEY thread variable is 42. */
     if (write_line(stdout_fd, "\x01[42]\x01hello-after-deferred-init\n") != 0) {
         diag("FAIL: writing tagged line to RUBY_STDOUT pipe");
         rc = 1;

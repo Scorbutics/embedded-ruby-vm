@@ -18,7 +18,8 @@ import kotlin.concurrent.thread
 @OptIn(ExperimentalStdlibApi::class)
 actual class RubyInterpreter private constructor(
     private val interpreterPtr: Long,
-    private val listener: LogListener
+    private val listener: LogListener,
+    private val hostEvents: HostEventRouter
 ) : Closeable, AutoCloseable {
     private val isDestroyed = AtomicBoolean(false)
     private val destroyLock = Any()
@@ -52,6 +53,11 @@ actual class RubyInterpreter private constructor(
         check(!isDestroyed.get()) { "Interpreter has been destroyed" }
 
         RubyVMNative.disableLogging(interpreterPtr)
+    }
+
+    actual fun setHostEventListener(listener: HostEventListener?) {
+        check(!isDestroyed.get()) { "Interpreter has been destroyed" }
+        hostEvents.setListener(listener)
     }
 
     actual fun enableRemoteDebug(host: String?, port: Int, token: String, sessionName: String?): Int {
@@ -96,6 +102,8 @@ actual class RubyInterpreter private constructor(
     actual fun destroy() {
         // Use compareAndSet to atomically check and set the flag
         if (isDestroyed.compareAndSet(false, true)) {
+            // First: frees a dispatch thread waiting for room for an event
+            hostEvents.close()
             synchronized(destroyLock) {
                 RubyVMNative.destroyInterpreter(interpreterPtr)
             }
@@ -114,8 +122,10 @@ actual class RubyInterpreter private constructor(
             nativeLibsDir: String,
             listener: LogListener
         ): RubyInterpreter {
+            val hostEvents = HostEventRouter()
             val jniListener = object : JNILogListener {
                 override fun onLogMessage(message: String, source: Int, level: Int, interpreterId: Int) {
+                    if (source == HOST_EVENT_SOURCE) return hostEvents.onHostEventMessage(message)
                     val logSource = when (source) {
                         1 -> LogSource.RUBY_STDOUT
                         2 -> LogSource.RUBY_STDERR
@@ -143,7 +153,7 @@ actual class RubyInterpreter private constructor(
 
             require(interpreterPtr != 0L) { "Failed to create Ruby interpreter" }
 
-            return RubyInterpreter(interpreterPtr, listener)
+            return RubyInterpreter(interpreterPtr, listener, hostEvents)
         }
     }
 }

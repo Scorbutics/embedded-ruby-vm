@@ -42,8 +42,8 @@ module VMLogger
   TAG_INFO  = "<<<VMLOG:INFO>>> ".freeze
   TAG_ERROR = "<<<VMLOG:ERROR>>> ".freeze
 
-  # Thread-local interpreter id of the fifo_interpreter.rb worker running the
-  # current script (its THREAD_INTERP_KEY). Lines logged from a worker carry
+  # Thread variable holding the interpreter id of the fifo_interpreter.rb
+  # worker running the current script. Lines logged from a worker carry
   # its in-band interpreter tag ("\x01[<id>]\x01", fifo_interpreter.rb's
   # TaggedIO format) after the level tag, the order write_full_log_line parses
   # them in: the host routes them to that interpreter's LogListener. Untagged,
@@ -62,6 +62,10 @@ module VMLogger
   @log_file = nil
   @error_log_file = nil
   @output_io = nil
+  # The C side reads @output_io line by line: every write to it holds this
+  # lock, so no other thread's bytes come inside a line (so VMLogger cannot
+  # be called from a Signal.trap handler, where a Mutex cannot be locked).
+  @output_mutex = Mutex.new
 
   # Redirect all VMLogger output to a dedicated IO (e.g. a pipe FD).
   # When set, STDOUT/STDERR and file-based outputs are bypassed.
@@ -78,6 +82,31 @@ module VMLogger
   rescue => e
     STDERR.puts "[VMLogger] Failed to open log files: #{e.message}"
     STDERR.flush
+  end
+
+  # The dedicated IO of set_output (the vmlogger pipe), nil without one.
+  # VMHost.emit writes its events there.
+  def self.output_io
+    @output_io
+  end
+
+  # Write lines to @output_io under @output_mutex: no other thread's line
+  # comes between them (VMHost.emit writes an event's lines in one call).
+  def self.write_output(lines)
+    @output_mutex.synchronize do
+      @output_io.puts(lines)
+      @output_io.flush
+    end
+  end
+
+  # In-band interpreter tag of the current worker ("\x01[<id>]\x01", empty
+  # outside one), read by the C dispatcher (logging.c's
+  # parse_interpreter_id_prefix) to route the line to that interpreter's
+  # LogListener. \x01 (SOH) never appears in normal script output. A thread
+  # variable, so the Fibers of a worker share it.
+  def self.interpreter_tag
+    id = Thread.current.thread_variable_get(INTERPRETER_KEY)
+    id ? "\x01[#{id}]\x01" : ''
   end
 
   def self.close
@@ -99,8 +128,7 @@ module VMLogger
 
   def self.error(message)
     if @output_io
-      @output_io.puts(tagged_lines(message, TAG_ERROR))
-      @output_io.flush
+      write_output(tagged_lines(message, TAG_ERROR))
     else
       STDERR.puts(message)
       STDERR.flush
@@ -115,8 +143,7 @@ module VMLogger
   # break host/VM synchronization, not just suppress logs.
   def self.protocol(message)
     if @output_io
-      @output_io.puts(message)
-      @output_io.flush
+      write_output(message)
     else
       STDOUT.puts(message)
       STDOUT.flush
@@ -131,8 +158,7 @@ module VMLogger
   # already carried by the FD).
   def self.write_out(message, tag)
     if @output_io
-      @output_io.puts(tagged_lines(message, tag))
-      @output_io.flush
+      write_output(tagged_lines(message, tag))
     else
       STDOUT.puts(message)
       STDOUT.flush
@@ -143,8 +169,7 @@ module VMLogger
   # Prefix every line of the message (the host reads the pipe line by line)
   # with the level tag, then the interpreter tag of the current worker if any.
   def self.tagged_lines(message, tag)
-    id = Thread.current[INTERPRETER_KEY]
-    prefix = id ? "#{tag}\x01[#{id}]\x01" : tag
+    prefix = "#{tag}#{interpreter_tag}"
     lines = message.to_s.split("\n")
     lines = [''] if lines.empty?
     lines.map { |line| "#{prefix}#{line}" }

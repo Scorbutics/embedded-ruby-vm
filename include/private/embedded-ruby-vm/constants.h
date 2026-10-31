@@ -36,6 +36,19 @@
 #define VMLOGGER_LEVEL_NAME_INFO   "INFO"
 #define VMLOGGER_LEVEL_NAME_ERROR  "ERROR"
 
+// Host event lines written by VMHost.emit (vm_host.rb) on the vmlogger
+// pipe. write_full_log_line hands them to the interpreter's LogListener as
+// LOG_STREAM_HOST_EVENT, never to the logs.
+//
+// Format: <TAG><interpreter tag><topic> <base64 payload>\n
+//   e.g. "<<<VMHOST:EVENT>>> \x01[3]\x01overlay.edited eyJ4IjoxfQ=="
+// Lines stay short (see VMHost::LINE_MAX), so a longer event comes as PART
+// lines carrying the start of its base64, then an EVENT line with the
+// rest; the C side joins them.
+// Must mirror VMHost::EVENT_TAG / PART_TAG in vm_host.rb.
+#define VMHOST_EVENT_TAG "<<<VMHOST:EVENT>>> "
+#define VMHOST_PART_TAG  "<<<VMHOST:PART>>> "
+
 // Ruby prelude run right before arming the `debug` gem's TCP listener
 // (pre-boot in exec-main-vm.c, post-boot in ruby-interpreter.c). The gem
 // binds its socket later, in its own session thread, which runs with
