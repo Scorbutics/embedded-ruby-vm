@@ -1445,11 +1445,16 @@ static ssize_t process_stream_data(stream_buffer_t* sb) {
 static void* logging_function_thread(void* unused) {
     (void)unused;
 
-    // Block all signals to prevent Ruby's GC signal handlers (SIGPROF/SIGALRM)
-    // from being delivered to this thread. While the logging thread doesn't
-    // interact with Ruby objects, blocking signals is defense-in-depth.
+    // Block every signal but the faults: this thread needs none, and on
+    // Linux a fault on a thread blocking it kills the process silently,
+    // without any handler or report (same as ruby-vm.c's
+    // block_signals_but_faults).
     sigset_t set;
     sigfillset(&set);
+    sigdelset(&set, SIGSEGV);
+    sigdelset(&set, SIGBUS);
+    sigdelset(&set, SIGILL);
+    sigdelset(&set, SIGFPE);
     pthread_sigmask(SIG_BLOCK, &set, NULL);
 
     stream_buffer_t streams[NUM_STREAMS];

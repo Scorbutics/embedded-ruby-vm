@@ -96,6 +96,12 @@ add_executable(test_host_channel
     test_host_channel.c
 )
 
+# The host's fault handlers (SIGSEGV...) survive the VM boot: a JVM faults
+# on purpose, Ruby's handlers would abort it.
+add_executable(test_fault_handlers
+    test_fault_handlers.c
+)
+
 # CA certificates bundle (SSL_CERT_FILE on Android): every certificate file of a
 # directory is concatenated, the bundle is rebuilt only when the directory changed.
 add_executable(test_ca_certificates
@@ -180,6 +186,12 @@ target_link_libraries(test_host_events
 )
 
 target_link_libraries(test_host_channel
+    assets
+    embedded-ruby
+    dl
+)
+
+target_link_libraries(test_fault_handlers
     assets
     embedded-ruby
     dl
@@ -299,6 +311,10 @@ if(NOT BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
         )
+        target_link_options(test_fault_handlers PRIVATE
+            "${BSD_LIB_TEST}"
+            "${MD_LIB_TEST}"
+        )
         target_link_options(test_ruby_variant PRIVATE
             "${BSD_LIB_TEST}"
             "${MD_LIB_TEST}"
@@ -360,6 +376,10 @@ target_include_directories(test_host_events PRIVATE
     ${CMAKE_SOURCE_DIR}/include/public
 )
 target_include_directories(test_host_channel PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/private
+    ${CMAKE_SOURCE_DIR}/include/public
+)
+target_include_directories(test_fault_handlers PRIVATE
     ${CMAKE_SOURCE_DIR}/include/private
     ${CMAKE_SOURCE_DIR}/include/public
 )
@@ -426,6 +446,10 @@ if(UNIX)
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
     )
+    set_target_properties(test_fault_handlers PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        INSTALL_RPATH "$ORIGIN/../lib"
+    )
     set_target_properties(test_ruby_variant PROPERTIES
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
         INSTALL_RPATH "$ORIGIN/../lib"
@@ -483,3 +507,9 @@ set_tests_properties(
     test_ca_certificates
     PROPERTIES TIMEOUT 30
 )
+
+# Android keeps Ruby's fault handlers on purpose (exec-main-vm.c)
+if(NOT ANDROID)
+    add_test(NAME test_fault_handlers COMMAND test_fault_handlers WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+    set_tests_properties(test_fault_handlers PROPERTIES TIMEOUT 30)
+endif()

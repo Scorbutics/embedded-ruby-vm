@@ -5,10 +5,7 @@
 #include <stdarg.h>
 #include <dirent.h>
 #include <unistd.h>
-// TODO: add a way to enable/disable this via CMake
-#ifdef RUBY_REDIRECT_SIGNALS
 #include <signal.h>
-#endif
 #include <sys/stat.h>
 #include <errno.h>
 
@@ -200,72 +197,46 @@ static void free_ruby_argv(char** argv, int argc) {
     free(argv);
 }
 
-#ifdef RUBY_REDIRECT_SIGNALS
-// Store original signal handlers
-static struct sigaction original_sigpipe;
-static struct sigaction original_sigchld;
-static struct sigaction original_sigsegv;
+// Fault signals ruby_init (Init_signal) takes over: Ruby's handlers print a
+// [BUG] report, call the previous handler without its siginfo, then die. A
+// host that handles them itself keeps its handlers: a JVM (HotSpot) faults
+// on purpose (implicit null checks, stack guard pages), and with Ruby's
+// handlers that aborted the process, on any thread. A host without a
+// handler keeps Ruby's [BUG] reports.
+//
+// What the host's handlers cost: Ruby no longer turns a machine stack
+// overflow in C code into SystemStackError (its own depth checks still
+// catch deep Ruby recursion). Not covered: the boot itself (until
+// restore_host_fault_handlers), and GC.compact / GC.auto_compact, which
+// install read barrier handlers while compacting.
+//
+// Android: libsigchain already runs ART's handlers before Ruby's, so there
+// is nothing to fix, and the handlers found there are debuggerd's: they
+// would replace Ruby's reports with tombstones. Left as Ruby sets them.
+#ifndef __ANDROID__
+static const int HOST_FAULT_SIGNALS[] = { SIGSEGV, SIGBUS, SIGILL };
+#define HOST_FAULT_SIGNAL_COUNT (sizeof(HOST_FAULT_SIGNALS) / sizeof(HOST_FAULT_SIGNALS[0]))
+static struct sigaction g_host_fault_handlers[HOST_FAULT_SIGNAL_COUNT];
 
-/**
- * Save original Android signal handlers before Ruby overwrites them
- */
-static void SaveOriginalSignalHandlers(void) {
-    sigaction(SIGPIPE, NULL, &original_sigpipe);
-    sigaction(SIGCHLD, NULL, &original_sigchld);
-    sigaction(SIGSEGV, NULL, &original_sigsegv);
-}
-
-/**
- * Restore critical signal handlers after Ruby initialization
- */
-static void RestoreCriticalSignalHandlers(void) {
-    // Restore SIGPIPE - critical for Android's Binder IPC
-    if (sigaction(SIGPIPE, &original_sigpipe, NULL) != 0) {
-        fprintf(stderr, "Failed to restore SIGPIPE handler\n");
+static void save_host_fault_handlers(void) {
+    for (size_t i = 0; i < HOST_FAULT_SIGNAL_COUNT; i++) {
+        sigaction(HOST_FAULT_SIGNALS[i], NULL, &g_host_fault_handlers[i]);
     }
-
-    // For SIGCHLD, we need a compromise - chain handlers
-    // (Ruby needs it for Process.wait, Android needs it for Runtime.exec)
 }
 
-/**
- * Custom SIGCHLD handler that chains to both Ruby and Android
- */
-static void ChainedSigchldHandler(int sig, siginfo_t *info, void *context) {
-    // Call original Android handler first
-    if (original_sigchld.sa_flags & SA_SIGINFO) {
-        if (original_sigchld.sa_sigaction != NULL) {
-            original_sigchld.sa_sigaction(sig, info, context);
-        }
-    } else {
-        if (original_sigchld.sa_handler != NULL &&
-            original_sigchld.sa_handler != SIG_DFL &&
-            original_sigchld.sa_handler != SIG_IGN) {
-            original_sigchld.sa_handler(sig);
+static void restore_host_fault_handlers(void) {
+    for (size_t i = 0; i < HOST_FAULT_SIGNAL_COUNT; i++) {
+        const struct sigaction* saved = &g_host_fault_handlers[i];
+        // sa_handler and sa_sigaction share their storage (as Ruby assumes)
+        if (saved->sa_handler != SIG_DFL && saved->sa_handler != SIG_IGN &&
+            sigaction(HOST_FAULT_SIGNALS[i], saved, NULL) != 0) {
+            fprintf(stderr, "[Ruby VM] Failed to restore the host's handler of signal %d\n", HOST_FAULT_SIGNALS[i]);
         }
     }
-
-    // Let Ruby also handle it (it will reap its own child processes)
-    // Ruby's handler is now installed - we don't call it directly,
-    // just let signal propagate if needed
 }
-
-/**
- * Setup compromise signal handling
- */
-static void SetupCompromiseSignalHandlers(void) {
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-
-    // Setup chained SIGCHLD handler
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_sigaction = ChainedSigchldHandler;
-
-    if (sigaction(SIGCHLD, &sa, NULL) != 0) {
-        fprintf(stderr, "Failed to setup chained SIGCHLD handler\n");
-    }
-}
+#else
+static void save_host_fault_handlers(void) {}
+static void restore_host_fault_handlers(void) {}
 #endif
 
 // Fetch the three Ruby log-stream FDs from the logging subsystem; on any
@@ -375,22 +346,12 @@ static void start_remote_eval_listener(const RubyVMRemoteEvalOptions* opts) {
     }
 }
 
-// Bring the Ruby C-API into a usable state: ruby_init, restore signal
-// handlers we saved before (Android), wire static extensions, and load
-// safe_runner. Must run inside the RUBY_INIT_STACK scope opened by the
-// caller.
+// Bring the Ruby C-API into a usable state: ruby_init, give the host back
+// its fault handlers, wire static extensions, and load safe_runner. Must run
+// inside the RUBY_INIT_STACK scope opened by the caller.
 static void initialize_ruby_runtime(void) {
     ruby_init();
-
-#ifdef RUBY_REDIRECT_SIGNALS
-    // ruby_init overwrote signal handlers; restore Android-critical ones
-    // and install our compromise handlers for shared signals.
-    RestoreCriticalSignalHandlers();
-    SetupCompromiseSignalHandlers();
-    // Disable Ruby's SIGPIPE handler so writes to a closed peer fail with
-    // EPIPE rather than killing the VM.
-    rb_eval_string("Signal.trap('PIPE', 'SYSTEM_DEFAULT')\n");
-#endif
+    restore_host_fault_handlers();
 
     // CRITICAL: static-linked extensions need their Init_<name> called.
     // With --with-static-linked-ext (and no dynamic dlopen), `require 'X'`
@@ -421,11 +382,8 @@ static int run_main_vm_node(const char* baseDirectory,
 {
     SetupRubyEnv(baseDirectory, rubyExtraLoadPath);
 
-#ifdef RUBY_REDIRECT_SIGNALS
-    // Save handlers BEFORE ruby_sysinit/ruby_init clobber them, so we can
-    // re-install the ones Android needs (in initialize_ruby_runtime).
-    SaveOriginalSignalHandlers();
-#endif
+    // Before ruby_sysinit / ruby_init take them over (initialize_ruby_runtime)
+    save_host_fault_handlers();
 
     int ruby_stdout_fd, ruby_stderr_fd, vmlogger_fd;
     setup_log_fds(&ruby_stdout_fd, &ruby_stderr_fd, &vmlogger_fd);
