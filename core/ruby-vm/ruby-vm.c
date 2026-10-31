@@ -17,6 +17,20 @@
 #include "embedded-ruby-vm/exec-main-vm.h"
 #include "embedded-ruby-vm/debug.h"
 
+/* Block every signal on this thread but the faults. Ruby does not need the
+ * helper threads here (reader, script waiter) nor a host thread waiting on
+ * a script to receive signals. Faults stay deliverable: on Linux, a fault on a thread blocking
+ * it kills the process silently, without any handler or report. */
+static void block_signals_but_faults(sigset_t* previous) {
+    sigset_t set;
+    sigfillset(&set);
+    sigdelset(&set, SIGSEGV);
+    sigdelset(&set, SIGBUS);
+    sigdelset(&set, SIGILL);
+    sigdelset(&set, SIGFPE);
+    pthread_sigmask(SIG_BLOCK, &set, previous);
+}
+
 /**
  * Helper structure for thread communication
  */
@@ -271,13 +285,7 @@ static int waiter_wait_and_destroy(result_waiter_t* w) {
 static void* reader_thread_func(void* arg) {
     RubyVM* vm = (RubyVM*) arg;
 
-    /* Block all signals on this thread too — same reasoning as
-     * script_execution_thread_func: Ruby's GC may target a random pthread
-     * with SIGPROF/SIGALRM and we don't want this background reader
-     * sucking those up. */
-    sigset_t set;
-    sigfillset(&set);
-    pthread_sigmask(SIG_BLOCK, &set, NULL);
+    block_signals_but_faults(NULL);
 
     int fd = vm->commands_channel.main_fd;
     char id_buf[32];
@@ -389,11 +397,7 @@ static void* script_execution_thread_func(void* arg) {
     // Free args immediately since we've copied what we need
     free(exec_args);
 
-    // Block all signals to prevent Ruby's signal handlers from affecting this thread
-    // Ruby's GC uses signals to stop threads, but this is a native thread, not a Ruby thread
-    sigset_t set;
-    sigfillset(&set);
-    pthread_sigmask(SIG_BLOCK, &set, NULL);
+    block_signals_but_faults(NULL);
 
     DEBUG_LOG("Script execution thread started");
 
@@ -920,21 +924,8 @@ int ruby_vm_execute_sync(RubyVM* vm, int interpreter_id, RubyScript* script) {
     // Reset the sentinel before execution so we can wait for a fresh one
     logging_reset_sentinel();
 
-    // Block all signals before entering Ruby execution context
-    // This prevents Ruby's GC signals (SIGPROF/SIGALRM) from hitting JVM threads
-    // which can cause segmentation faults when Ruby's signal handler tries to
-    // interact with JVM-managed memory.
-    //
-    // Context: Ruby's GC uses signals to coordinate thread pausing during the
-    // marking phase. When a JVM thread calls this function and Ruby's GC runs,
-    // the signal can be delivered to the JVM thread. Ruby's signal handler may
-    // attempt to scan the thread's stack for Ruby objects, but the JVM thread
-    // has a JVM-managed stack, not a Ruby thread stack. This mismatch causes
-    // a segmentation fault, typically manifesting AFTER the native call returns
-    // and the JVM thread continues execution.
-    sigset_t new_set, old_set;
-    sigfillset(&new_set);
-    pthread_sigmask(SIG_BLOCK, &new_set, &old_set);
+    sigset_t old_set;
+    block_signals_but_faults(&old_set);
 
     // Execute the script using shared internal implementation
     const int result = execute_script_internal(vm, interpreter_id, script);
