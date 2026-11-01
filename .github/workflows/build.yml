@@ -338,7 +338,7 @@ jobs:
           path: embedded-ruby-vm-ios-${{ matrix.variant }}-arm64-ruby${{ matrix.ruby_variant }}.tar.gz
 
   build-macos:
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
