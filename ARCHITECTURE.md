@@ -66,6 +66,48 @@ A release ships `build/include` (the `packaged_headers` target): the headers of 
 - `libembedded-ruby.so` cannot statically link Ruby (would create circular dependency)
 - Asset system handles runtime extraction of Ruby and its dependencies
 
+## Logging Pipeline
+
+Everything the scripts and the native code print reaches the host's listeners through the logging system (`core/logging/`), started with the first interpreter created with a `LogListener`.
+
+```
+Ruby $stdout / $stderr ─┐
+VMLogger               ─┼─▶ 5 socket pairs ─▶ logger thread ─▶ dispatch queue ─▶ dispatch thread ─▶ per-interpreter LogListener
+native fd 1 / fd 2     ─┘   (one per stream)   (read, cut      (FIFO, bounded)    (calls back)       native log (logcat, os_log...)
+                                                into lines)                                           drain callbacks, sentinels
+```
+
+### Streams
+
+Five streams, each its own socket pair: Ruby's stdout and stderr, `VMLogger`, and the process's native stdout and stderr (fd 1 / 2 are redirected into theirs; the original terminal descriptors are kept aside). The Ruby side tags each line with the id of the interpreter that wrote it, so a line reaches that interpreter's listener only; untagged native lines go to the first registered listener. `VMLogger` lines also carry their level, and carry the protocol lines: host events (`VMHost.emit`), the end-of-script sentinel, drain barriers.
+
+Writers never wait on the logging system: a socket's buffer takes a line as soon as it is written, and only a full buffer (a reader stuck for long) would hold a writer back.
+
+### Two threads
+
+- **The logger thread** only reads: it waits in `select()` on the five sockets (and a wake pipe for its stop, so an idle app has no periodic wake-up), cuts the bytes into lines, parses their tags and queues them. It never runs host code, so it never stalls.
+- **The dispatch thread** takes the queue in order and calls the listeners, the native log, drain callbacks and sentinel waiters.
+
+They were one thread once: a listener that was slow, waited on another thread, or printed to stdout (which feeds the very sockets that thread had to empty) stopped the reading, the socket buffers filled up, and every `puts` of every interpreter waited — a deadlock as soon as the script held something the listener needed. Split, a slow listener only delays the delivery of the lines after it.
+
+### Ordering and synchronization points
+
+Lines of one stream arrive in order. Across streams, the logger thread reads at most a chunk per stream and `select()` round, so a line written later on a stream can be read before an earlier one on another. To keep the protocol lines meaningful, a `VMLogger` chunk ending a line first lets the other streams catch up: what they hold at that moment (everything written before that line) is read and queued ahead of it. Only what is already there is read — the other streams are never waited on, nor emptied for good.
+
+Two synchronization points rely on it:
+- **End-of-script sentinel** (`<<<LOGS_FLUSHED>>>`): written by the Ruby side after each script. A synchronous execution (`executeSync`, an interpreter's destruction) waits for it (up to 5 s), so it returns once the script's output was delivered, not while it is still in transit.
+- **Drain barrier** (`logging_drain`): a marker the caller writes to the `VMLogger` stream, with a callback queued under the same number; the callback runs once every line queued before the marker was delivered. Used by the tests ("output delivered, now check it") through a test-only JNI entry.
+
+### Bounds
+
+- Log lines: up to 1024 queued; beyond, new ones are dropped with a periodic warning in the native log (a runaway producer must not eat the memory).
+- Protocol items (drain barriers, sentinels) are never dropped: the host waits for them.
+- Host events are never dropped either: beyond 256 queued, the logger thread waits for the dispatch thread — a listener that far behind holds back the scripts' logs and `VMHost.emit`.
+
+### Listener contract
+
+Listeners run on the dispatch thread and must not write to stdout / stderr: fd 1 / 2 feed the logging system itself, so each line a listener prints comes back to it as a new line — an endless loop, capped only by the queue bound (and a write to the full, non-blocking socket fails). Use the platform's log (`__android_log_print` / `android.util.Log`, `os_log`, `sd_journal_print`) or the original terminal descriptors (`logging_get_original_stdout_fd()` / `_stderr_fd()`, see `log-listener.h`).
+
 ## Design Decisions
 
 ### Why Kotlin Wrappers Instead of C Extensions?
