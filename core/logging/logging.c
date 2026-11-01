@@ -99,6 +99,9 @@ typedef struct {
     pthread_t logging_thread;
     volatile int thread_continue;
     int stream_pfd[NUM_STREAMS][2];
+    /* Written once by internal_stop_logging_thread: the logging thread
+     * blocks in select() with no timeout, this wakes it to stop */
+    int wake_pfd[2];
 
     native_logger_node_t* native_loggers;
     custom_output_node_t* custom_outputs;
@@ -131,6 +134,7 @@ static logging_state_t g_logging_state = {
     .logging_thread = 0,
     .thread_continue = 0,
     .stream_pfd = {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}},
+    .wake_pfd = {-1, -1},
     .native_loggers = NULL,
     .custom_outputs = NULL,
     .custom_output_count = 0,
@@ -1530,8 +1534,9 @@ static void* logging_function_thread(void* unused) {
     }
 
     // Find max fd for select()
-    int max_fd = streams[RUBY_STDOUT_INDEX].fd;
-    for (int i = 1; i < NUM_STREAMS; i++) {
+    const int wake_fd = g_logging_state.wake_pfd[0];
+    int max_fd = wake_fd;
+    for (int i = 0; i < NUM_STREAMS; i++) {
         if (streams[i].fd > max_fd) {
             max_fd = streams[i].fd;
         }
@@ -1551,6 +1556,7 @@ static void* logging_function_thread(void* unused) {
 
         fd_set readfds;
         FD_ZERO(&readfds);
+        FD_SET(wake_fd, &readfds);
 
         // Add all open streams to fd_set
         for (int i = 0; i < NUM_STREAMS; i++) {
@@ -1559,12 +1565,9 @@ static void* logging_function_thread(void* unused) {
             }
         }
 
-        // Wait for data on any descriptor
-        struct timeval timeout;
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
-
-        int select_result = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
+        // Wait for data on any descriptor, or the stop request: no timeout,
+        // an idle process is not woken up
+        int select_result = select(max_fd + 1, &readfds, NULL, NULL, NULL);
 
         if (select_result < 0) {
             if (errno == EINTR) {
@@ -1578,9 +1581,7 @@ static void* logging_function_thread(void* unused) {
             break;
         }
 
-        if (select_result == 0) {
-            continue; // Timeout
-        }
+        if (FD_ISSET(wake_fd, &readfds)) break;
 
         // Process all ready streams
         for (int i = 0; i < NUM_STREAMS; i++) {
@@ -1615,6 +1616,15 @@ static void* logging_function_thread(void* unused) {
     return NULL;
 }
 
+
+static void close_wake_pipe(void) {
+    for (int i = 0; i < 2; i++) {
+        if (g_logging_state.wake_pfd[i] != -1) {
+            close(g_logging_state.wake_pfd[i]);
+            g_logging_state.wake_pfd[i] = -1;
+        }
+    }
+}
 
 /* The socketpair of a log stream. Where the platform allows it per socket
  * (Darwin: SO_NOSIGPIPE; it has no MSG_NOSIGNAL), a write after its reader
@@ -1797,8 +1807,10 @@ static int internal_start_logging_thread(void) {
 
     // Start logging thread
     g_logging_state.thread_continue = 1;
-    if (pthread_create(&g_logging_state.logging_thread, NULL, logging_function_thread, NULL) != 0) {
+    if (pipe(g_logging_state.wake_pfd) != 0 ||
+        pthread_create(&g_logging_state.logging_thread, NULL, logging_function_thread, NULL) != 0) {
         set_last_error(LOGGING_ERROR_THREAD_CREATE_FAILED);
+        close_wake_pipe();
         // Note: Cannot call call_native_logging_function here - called with mutex held
         dispatch_thread_stop();
         close(g_logging_state.original_stdout_fd);
@@ -1830,13 +1842,11 @@ static int internal_stop_logging_thread(void) {
 
     g_logging_state.thread_continue = 0;
 
-    // Close read ends to unblock the thread
-    for (int i = 0; i < NUM_STREAMS; i++) {
-        if (g_logging_state.stream_pfd[i][0] != -1) {
-            close(g_logging_state.stream_pfd[i][0]);
-            g_logging_state.stream_pfd[i][0] = -1;
-        }
-    }
+    // Wake the thread out of select()
+    ssize_t woken;
+    do {
+        woken = write(g_logging_state.wake_pfd[1], "", 1);
+    } while (woken < 0 && errno == EINTR);
 
     // Unlock before joining to allow thread to complete
     pthread_mutex_unlock(&g_logging_state.lock);
@@ -1852,6 +1862,15 @@ static int internal_stop_logging_thread(void) {
     }
 
     pthread_mutex_lock(&g_logging_state.lock);
+
+    // The thread no longer reads them
+    close_wake_pipe();
+    for (int i = 0; i < NUM_STREAMS; i++) {
+        if (g_logging_state.stream_pfd[i][0] != -1) {
+            close(g_logging_state.stream_pfd[i][0]);
+            g_logging_state.stream_pfd[i][0] = -1;
+        }
+    }
 
     if (result != 0) {
         set_last_error(LOGGING_ERROR_THREAD_JOIN_FAILED);
