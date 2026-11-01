@@ -163,6 +163,8 @@ RubyInterpreter.create(
 }
 ```
 
+The listener is called on the logging system's dispatch thread, never the script's: it must not print to stdout / stderr (that output comes back to it as new log lines) — use the platform's log instead. See [Logging Pipeline](ARCHITECTURE.md#logging-pipeline) for how output travels, its ordering and its limits.
+
 #### Advanced Usage - Builder Pattern with Named Scripts
 
 ```kotlin
