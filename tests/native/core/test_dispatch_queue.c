@@ -26,6 +26,16 @@
  *      cleanly. The callback caps its own recursion at a small N so the test
  *      eventually quiesces.
  *
+ *   4. test_drain_covers_other_streams:
+ *      logging_drain()'s barrier travels on the VMLOGGER stream; lines
+ *      written to another stream before it must all be dispatched once it
+ *      returns, even when they were still waiting in their socket (the
+ *      logger reads LOG_BUFFER_SIZE bytes at a time). Then many rounds of a
+ *      line on fd 1 (native stdout, read after VMLOGGER in a select round),
+ *      a VMLOGGER line and a drain: a stream the drain caught up must not be
+ *      read again from the same round (its read blocks, every drain after it
+ *      times out).
+ *
  * The tests do NOT load the Ruby VM — they exercise logging.c directly via
  * its private API and write to LOG_STREAM_RUBY_STDOUT through
  * logging_get_stream_fd(). That keeps each test fast and isolated from
@@ -327,11 +337,77 @@ static int test_callback_no_deadlock(void) {
     return 0;
 }
 
+static int test_drain_covers_other_streams(void) {
+    diag("=== test_drain_covers_other_streams ===");
+    if (logging_init("test_dispatch") != 0) {
+        diag("FAIL: logging_init");
+        return 1;
+    }
+    if (logging_add_custom_output(counter_callback, &g_callback_context) != 0) {
+        diag("FAIL: logging_add_custom_output");
+        logging_shutdown();
+        return 1;
+    }
+    int fd = logging_get_stream_fd(LOG_STREAM_RUBY_STDOUT);
+
+    /* One write of many lines: the logger finds them all waiting at once */
+    enum { LINES = 64, ROUNDS = 20 };
+    char burst[LINES * 64];
+    size_t length = 0;
+    for (int i = 0; i < LINES; i++) {
+        length += (size_t)snprintf(burst + length, sizeof(burst) - length,
+                                   "line %02d of a burst written before the drain\n", i);
+    }
+
+    int rc = 0;
+    for (int round = 0; round < ROUNDS && rc == 0; round++) {
+        atomic_store(&g_invocation_count, 0);
+        if (fd < 0 || write(fd, burst, length) != (ssize_t)length) {
+            diag("FAIL: write to stream FD: %s", strerror(errno));
+            rc = 1;
+        } else if (logging_drain(5000) != 0) {
+            diag("FAIL: logging_drain timed out");
+            rc = 1;
+        } else if (atomic_load(&g_invocation_count) != LINES) {
+            diag("FAIL: round %d: %d of %d lines dispatched when logging_drain returned",
+                 round, atomic_load(&g_invocation_count), LINES);
+            rc = 1;
+        }
+    }
+
+    int vmlogger_fd = logging_get_stream_fd(LOG_STREAM_VMLOGGER);
+    for (int round = 0; round < 10000 && rc == 0; round++) {
+        /* Numbered: identical lines would look like a callback feedback loop */
+        char native_line[32];
+        char vmlogger_line[32];
+        int native_length = snprintf(native_line, sizeof(native_line), "native %d\n", round);
+        int vmlogger_length = snprintf(vmlogger_line, sizeof(vmlogger_line), "vmlogger %d\n", round);
+        atomic_store(&g_invocation_count, 0);
+        if (write(STDOUT_FILENO, native_line, (size_t)native_length) != native_length || vmlogger_fd < 0 ||
+            write(vmlogger_fd, vmlogger_line, (size_t)vmlogger_length) != vmlogger_length) {
+            diag("FAIL: round %d: writes: %s", round, strerror(errno));
+            rc = 1;
+        } else if (logging_drain(2000) != 0) {
+            diag("FAIL: round %d: logging_drain timed out (the logger thread is stuck)", round);
+            rc = 1;
+        } else if (atomic_load(&g_invocation_count) != 2) {
+            diag("FAIL: round %d: %d of 2 lines dispatched", round, atomic_load(&g_invocation_count));
+            rc = 1;
+        }
+    }
+
+    logging_remove_custom_output(counter_callback, &g_callback_context);
+    logging_shutdown();
+    if (rc == 0) diag("PASS: drain covers other streams");
+    return rc;
+}
+
 int main(void) {
     int rc = 0;
     rc |= test_basic_dispatch();
     rc |= test_flood_with_drops();
     rc |= test_callback_no_deadlock();
+    rc |= test_drain_covers_other_streams();
     if (rc == 0) {
         diag("=== all dispatch-queue tests PASSED ===");
     } else {

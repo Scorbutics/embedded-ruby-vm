@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <poll.h>
@@ -1406,20 +1407,14 @@ static void free_stream_buffer(stream_buffer_t* sb) {
 }
 
 /**
- * Process data from a file descriptor
- * Returns number of bytes processed, -1 on error, 0 on EOF
+ * Split data read from a stream into lines, sent as they complete; the last
+ * one may stay incomplete in the stream buffer until the next read.
+ * Returns 0, -1 on error
  */
-static ssize_t process_stream_data(stream_buffer_t* sb) {
-    char buf[LOG_BUFFER_SIZE];
-    ssize_t readSize = read(sb->fd, buf, sizeof(buf));
-
-    if (readSize <= 0) {
-        return readSize;
-    }
-
+static int consume_stream_data(stream_buffer_t* sb, const char* buf, ssize_t size) {
     size_t lineStart = 0;
 
-    for (ssize_t i = 0; i < readSize; i++) {
+    for (ssize_t i = 0; i < size; i++) {
         if (buf[i] == '\n') {
             if (append_to_stream_buffer(sb, buf + lineStart, i - lineStart) != 0) {
                 return -1;
@@ -1430,13 +1425,77 @@ static ssize_t process_stream_data(stream_buffer_t* sb) {
     }
 
     // Append remaining incomplete line
-    if (readSize > (ssize_t)lineStart) {
-        if (append_to_stream_buffer(sb, buf + lineStart, readSize - lineStart) != 0) {
+    if (size > (ssize_t)lineStart) {
+        if (append_to_stream_buffer(sb, buf + lineStart, size - lineStart) != 0) {
             return -1;
         }
     }
+    return 0;
+}
 
-    return readSize;
+static void catch_up_other_streams(stream_buffer_t* streams, int except, fd_set* ready);
+
+/** A stream whose read failed (or whose data could not be kept): reported, no longer read */
+static void close_failed_stream(stream_buffer_t* sb, int index) {
+    set_last_error(LOGGING_ERROR_READ_FAILED);
+    const char* stream_name;
+    switch (index) {
+        case RUBY_STDOUT_INDEX: stream_name = "ruby_stdout"; break;
+        case RUBY_STDERR_INDEX: stream_name = "ruby_stderr"; break;
+        case VMLOGGER_INDEX: stream_name = "vmlogger"; break;
+        case NATIVE_STDOUT_INDEX: stream_name = "native_stdout"; break;
+        case NATIVE_STDERR_INDEX: stream_name = "native_stderr"; break;
+        default: stream_name = "unknown"; break;
+    }
+    char errorMessage[256];
+    snprintf(errorMessage, sizeof(errorMessage), "Error reading %s: %s", stream_name, strerror(errno));
+    call_native_logging_function(LOG_ERROR, g_logging_state.log_tag, errorMessage);
+    sb->is_open = 0;
+}
+
+/**
+ * Process data from the file descriptor of streams[index]. A VMLOGGER chunk
+ * ending a line (a drain barrier is one) first lets the other streams catch
+ * up (catch_up_other_streams).
+ * Returns number of bytes processed, -1 on error, 0 on EOF
+ */
+static ssize_t process_stream_data(stream_buffer_t* streams, int index, fd_set* ready) {
+    stream_buffer_t* sb = &streams[index];
+    char buf[LOG_BUFFER_SIZE];
+    ssize_t readSize = read(sb->fd, buf, sizeof(buf));
+
+    if (readSize <= 0) {
+        return readSize;
+    }
+    if (index == VMLOGGER_INDEX && memchr(buf, '\n', (size_t)readSize) != NULL) {
+        catch_up_other_streams(streams, VMLOGGER_INDEX, ready);
+    }
+    return consume_stream_data(sb, buf, readSize) == 0 ? readSize : -1;
+}
+
+/**
+ * What the other streams hold once a chunk of the VMLOGGER stream was read
+ * includes everything written to them before that chunk: read it first. A
+ * drain barrier in the chunk (logging_drain) then fires only after every
+ * line written before logging_drain, on any stream, was sent. Reading
+ * LOG_BUFFER_SIZE bytes per stream and select() round left them behind.
+ * A stream emptied here leaves `ready`: a further read of its socket would
+ * block, the main loop must not read it again this round. An EOF shows again
+ * to the main loop (the stream stays in `ready`); a read or allocation error
+ * closes the stream, as it does there.
+ */
+static void catch_up_other_streams(stream_buffer_t* streams, int except, fd_set* ready) {
+    for (int i = 0; i < NUM_STREAMS; i++) {
+        if (i == except || !streams[i].is_open) continue;
+        int pending = 0;
+        if (ioctl(streams[i].fd, FIONREAD, &pending) != 0 || pending <= 0) continue;
+        ssize_t result = 1;
+        while (pending > 0 && (result = process_stream_data(streams, i, ready)) > 0) {
+            pending -= (int)result;
+        }
+        if (result < 0) close_failed_stream(&streams[i], i);
+        if (result != 0) FD_CLR(streams[i].fd, ready);
+    }
 }
 
 /**
@@ -1526,27 +1585,13 @@ static void* logging_function_thread(void* unused) {
         // Process all ready streams
         for (int i = 0; i < NUM_STREAMS; i++) {
             if (streams[i].is_open && FD_ISSET(streams[i].fd, &readfds)) {
-                ssize_t result = process_stream_data(&streams[i]);
+                ssize_t result = process_stream_data(streams, i, &readfds);
                 if (result == 0) {
                     // EOF
                     send_stream_buffer_to_output_as_line(&streams[i]);
                     streams[i].is_open = 0;
                 } else if (result < 0) {
-                    set_last_error(LOGGING_ERROR_READ_FAILED);
-                    const char* stream_name;
-                    switch (i) {
-                        case RUBY_STDOUT_INDEX: stream_name = "ruby_stdout"; break;
-                        case RUBY_STDERR_INDEX: stream_name = "ruby_stderr"; break;
-                        case VMLOGGER_INDEX: stream_name = "vmlogger"; break;
-                        case NATIVE_STDOUT_INDEX: stream_name = "native_stdout"; break;
-                        case NATIVE_STDERR_INDEX: stream_name = "native_stderr"; break;
-                        default: stream_name = "unknown"; break;
-                    }
-                    char errorMessage[256];
-                    snprintf(errorMessage, sizeof(errorMessage),
-                             "Error reading %s: %s", stream_name, strerror(errno));
-                    call_native_logging_function(LOG_ERROR, g_logging_state.log_tag, errorMessage);
-                    streams[i].is_open = 0;
+                    close_failed_stream(&streams[i], i);
                 }
             }
         }
