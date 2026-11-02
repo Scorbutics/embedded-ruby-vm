@@ -66,6 +66,38 @@ A release ships `build/include` (the `packaged_headers` target): the headers of 
 - `libembedded-ruby.so` cannot statically link Ruby (would create circular dependency)
 - Asset system handles runtime extraction of Ruby and its dependencies
 
+## Several Interpreters, One VM
+
+CRuby runs one VM per process, initialized once (`ruby_init`). The simplest host runs one script in it — a game — until the process ends, and sends its output to a file. embedded-ruby-vm does more: several **interpreters** run scripts in the same VM at the same time. The case it exists for is PSDK-android's loading screen, a splash animated by a Ruby script (LiteRGSS) while another interpreter compiles the game, also in Ruby.
+
+### How it works
+
+```
+host ──"<id> <script>"──▶ socket ──▶ dispatcher thread ──▶ worker thread (interpreter 1): splash loop
+                                     (fifo_interpreter.rb)  worker thread (interpreter 2): compile
+host ◀──"<id> <exit code>"── socket ◀──────────────────────  ...
+```
+
+- An interpreter is a Ruby thread of the shared VM, not a VM of its own. The dispatcher reads requests off a socket and hands each script to its interpreter's worker thread, created on first use.
+- One interpreter runs its scripts one after the other; different interpreters run side by side. A script that never ends (a render loop) only holds its own interpreter.
+- They share one GVL: Ruby code of two interpreters interleaves rather than runs in parallel. Long native work releases the GVL — LiteRGSS draws a frame outside it — so a splash keeps animating while a compile runs Ruby.
+- They share the VM's global state: constants, `$stdout`, loaded files, the archive mount. Scripts meant to run beside others keep to what they own (the splash uses LiteRGSS primitives only, not the game's scripts).
+
+### What it costs
+
+Everything a process would give each script for free is rebuilt per interpreter:
+
+- **Output**: `$stdout` is global, so each line is tagged with its interpreter and routed to that interpreter's listener (see [Logging Pipeline](#logging-pipeline)).
+- **Completion**: "this script ended and its output was delivered" is an end-of-script sentinel per script, which needs the logging system's ordering across streams.
+- **Lifetime**: an interpreter is stopped by a stop request its worker takes between two scripts — a render loop must end first (with LiteRGSS, the host asks its window to close).
+- **Messages**: `VMHost` addresses events and messages per interpreter.
+
+### Why not one script per process
+
+The alternative keeps the VM simple: one process per script, its output a file or logcat, its end the process's. It works for one game at a time, and PSDK-android does run the game itself alone in its own process. The loading screen is what it cannot do: the splash would have to be native, or the compile a process of its own — a second VM boot, the archive mounted twice, the compile's progress and logs back through IPC — and iOS gives an app no general way to start processes of its own.
+
+So the multi-interpreter machinery is what a Ruby loading screen costs. A host that runs one script per VM doesn't deal with it: it creates one interpreter, runs a script (`executeSync`, or a long-running one) and reads its listener.
+
 ## Logging Pipeline
 
 Everything the scripts and the native code print reaches the host's listeners through the logging system (`core/logging/`), started with the first interpreter created with a `LogListener`.
