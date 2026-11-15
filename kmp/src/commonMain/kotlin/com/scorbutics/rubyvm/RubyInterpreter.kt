@@ -91,10 +91,12 @@ expect class RubyInterpreter : AutoCloseable {
      * rdbg extension, `rdbg --attach`, JetBrains) can attach for live
      * debugging — breakpoints, step in/over/out, locals, exceptions.
      *
-     * Eagerly boots the VM with the listener armed in non-stop mode, so the
-     * port is available before the first script is enqueued. Must be called
-     * before any [enqueue] / `executeScriptSync` (otherwise returns
-     * [RubyVMErrorCode.ALREADY_STARTED]).
+     * Called before the VM is up, eagerly boots it with the listener armed
+     * in non-stop mode, so the port is available before the first script is
+     * enqueued. Called on a VM already up (after [enableRemoteEval], or after
+     * a script), injects the listener through this interpreter's queue: it
+     * then runs behind whatever script is queued, so call it before the
+     * first [enqueue] / `executeScriptSync`.
      *
      * For Android: bind to "127.0.0.1" (default) and tunnel via
      * `adb forward tcp:<port> tcp:<port>` from the dev host.
@@ -116,11 +118,11 @@ expect class RubyInterpreter : AutoCloseable {
      * against TOPLEVEL_BINDING (or a registered scope via
      * `RemoteEval.expose(:name, binding)` from script-side code).
      *
-     * Same eager-boot constraint as [enableRemoteDebug]: must be called
-     * before the first [enqueue] / `executeScriptSync`. In v1 the two
-     * remote services are mutually exclusive within a single VM
-     * lifecycle — whichever you call first arms its listener; the second
-     * call returns the `ALREADY_STARTED` error code.
+     * Same boot-or-inject behaviour as [enableRemoteDebug]: call it before
+     * the first [enqueue] / `executeScriptSync`. The two remote services
+     * coexist on one VM, each on its own port: whichever is called first
+     * boots the VM with its listener, the second injects its own into the
+     * running VM.
      *
      * @return 0 on success, negative RubyVMErrorCode on failure.
      * @throws IllegalStateException if interpreter has been destroyed
