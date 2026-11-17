@@ -27,8 +27,9 @@ endif()
 
 set(RUBY_PHYSFS_VERSION "0.1.0")
 set(RUBY_PHYSFS_GIT_REPO "https://github.com/Scorbutics/ruby-physfs.git")
-# Pin to a specific tag/commit when the gem stabilizes; for now track master.
-set(RUBY_PHYSFS_GIT_TAG "master")
+# Pinned: a build of a given commit embeds a known gem (master moves).
+# d5a83c7: require compiles archive scripts as UTF-8.
+set(RUBY_PHYSFS_GIT_TAG "d5a83c77cc26363d9ecfb3927d7fe2f426cc6ca2")
 
 set(RUBY_PHYSFS_PREFIX_DIR  "${CMAKE_BINARY_DIR}/ruby-physfs")
 set(RUBY_PHYSFS_INSTALL_DIR "${RUBY_PHYSFS_PREFIX_DIR}/install")
@@ -61,7 +62,7 @@ ExternalProject_Add(ruby-physfs_ep
     PREFIX            ${RUBY_PHYSFS_PREFIX_DIR}
     GIT_REPOSITORY    ${RUBY_PHYSFS_GIT_REPO}
     GIT_TAG           ${RUBY_PHYSFS_GIT_TAG}
-    GIT_SHALLOW       TRUE
+    GIT_SHALLOW       FALSE  # a commit, not a branch head: a shallow fetch can't reach it
     # -S points at our in-tree CMakeLists.txt (NOT the cloned gem repo). The
     # gem source path is forwarded as -DGEM_SOURCE_DIR so the sub-build can
     # pick up ext/physfs/*.cpp.
